@@ -32,7 +32,6 @@ defmodule HexHubWeb.ConnCase do
   end
 
   setup tags do
-    HexHub.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

@@ -35,9 +35,6 @@ defmodule HexHub.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.8.0-rc.4", override: true},
-      {:phoenix_ecto, "~> 4.5"},
-      {:ecto_sql, "~> 3.13"},
-      {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.1.0-rc.0"},
@@ -66,7 +63,7 @@ defmodule HexHub.MixProject do
   defp aliases do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      test: ["test"],
       "assets.setup": ["tailwind.install --if-missing", "bun.install --if-missing"],
       "assets.build": ["tailwind hex_hub", "bun hex_hub"],
       "assets.deploy": [
