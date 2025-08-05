@@ -6,7 +6,7 @@ defmodule HexHubWeb.Endpoint do
   # Set :encryption_salt if you would also like to encrypt it.
   @session_options [
     store: :cookie,
-    key: "_hex_hub_key",
+    key: "_hex_hub_",
     signing_salt: "tHS+SonG",
     same_site: "Lax"
   ]
@@ -32,7 +32,6 @@ defmodule HexHubWeb.Endpoint do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
-    plug Phoenix.Ecto.CheckRepoStatus, otp_app: :hex_hub
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,

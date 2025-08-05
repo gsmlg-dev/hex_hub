@@ -43,15 +43,9 @@ defmodule HexHub.MixProject do
       {:phoenix_live_view, "~> 1.1.0-rc.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
-      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      {:phoenix_duskmoon, "~> 6.0"},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
-      {:heroicons,
-       github: "tailwindlabs/heroicons",
-       tag: "v2.2.0",
-       sparse: "optimized",
-       app: false,
-       compile: false,
-       depth: 1},
+      {:bun, "~> 1.4", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
@@ -71,15 +65,13 @@ defmodule HexHub.MixProject do
   # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
-      setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
-      "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
-      "ecto.reset": ["ecto.drop", "ecto.setup"],
+      setup: ["deps.get", "assets.setup", "assets.build"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["tailwind hex_hub", "esbuild hex_hub"],
+      "assets.setup": ["tailwind.install --if-missing", "bun.install --if-missing"],
+      "assets.build": ["tailwind hex_hub", "bun hex_hub"],
       "assets.deploy": [
         "tailwind hex_hub --minify",
-        "esbuild hex_hub --minify",
+        "bun hex_hub --minify",
         "phx.digest"
       ]
     ]

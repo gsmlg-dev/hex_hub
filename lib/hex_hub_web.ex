@@ -84,8 +84,10 @@ defmodule HexHubWeb do
 
       # HTML escaping functionality
       import Phoenix.HTML
-      # Core UI components
-      import HexHubWeb.CoreComponents
+
+      use PhoenixDuskmoon.Component
+      # import all duskmoon ui fun component
+      use PhoenixDuskmoon.Fun
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
