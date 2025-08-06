@@ -85,7 +85,8 @@ defmodule HexHub.Mnesia do
     # Additional indices for common queries
     indices = [
       {:packages, :inserted_at},
-      {:package_releases, :inserted_at}
+      {:package_releases, :inserted_at},
+      {:users, :email}
     ]
 
     Enum.each(indices, fn {table, attribute} ->

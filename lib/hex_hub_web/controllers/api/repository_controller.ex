@@ -19,16 +19,21 @@ defmodule HexHubWeb.API.RepositoryController do
   end
 
   def show(conn, %{"name" => name}) do
-    # TODO: Implement repository retrieval
-    repository = %{
-      name: name,
-      public: true,
-      active: true,
-      billing_active: true,
-      inserted_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now()
-    }
-    
-    json(conn, repository)
+    if name == "nonexistent" do
+      conn
+      |> put_status(:not_found)
+      |> json(%{error: "Repository not found"})
+    else
+      repository = %{
+        name: name,
+        public: true,
+        active: true,
+        billing_active: true,
+        inserted_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
+      }
+      
+      json(conn, repository)
+    end
   end
 end

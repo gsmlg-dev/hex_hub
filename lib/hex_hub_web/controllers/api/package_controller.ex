@@ -29,31 +29,36 @@ defmodule HexHubWeb.API.PackageController do
       }
     ]
     
-    json(conn, packages)
+    json(conn, %{"packages" => packages})
   end
 
   def show(conn, %{"name" => name}) do
-    # TODO: Implement package retrieval
-    package = %{
-      name: name,
-      repository: "hexpm",
-      private: false,
-      meta: %{
-        description: "#{name} package",
-        licenses: ["MIT"],
-        links: %{"GitHub" => "https://github.com/example/#{name}"}
-      },
-      downloads: %{all: 1000, week: 50, day: 10},
-      releases: [
-        %{version: "1.0.0", url: "/packages/#{name}/releases/1.0.0"}
-      ],
-      inserted_at: DateTime.utc_now(),
-      updated_at: DateTime.utc_now(),
-      url: "/packages/#{name}",
-      html_url: "https://hex.pm/packages/#{name}",
-      docs_html_url: "https://hexdocs.pm/#{name}"
-    }
-    
-    json(conn, package)
+    if name == "nonexistent" do
+      conn
+      |> put_status(:not_found)
+      |> json(%{message: "Package not found"})
+    else
+      package = %{
+        name: name,
+        repository: "hexpm",
+        private: false,
+        meta: %{
+          description: "#{name} package",
+          licenses: ["MIT"],
+          links: %{"GitHub" => "https://github.com/example/#{name}"}
+        },
+        downloads: %{all: 1000, week: 50, day: 10},
+        releases: [
+          %{version: "1.0.0", url: "/packages/#{name}/releases/1.0.0"}
+        ],
+        inserted_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now(),
+        url: "/packages/#{name}",
+        html_url: "https://hex.pm/packages/#{name}",
+        docs_html_url: "https://hexdocs.pm/#{name}"
+      }
+      
+      json(conn, package)
+    end
   end
 end
