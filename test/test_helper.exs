@@ -1,1 +1,16 @@
 ExUnit.start()
+
+# Initialize Mnesia for testing
+:ok = Application.ensure_started(:mnesia)
+
+# Stop Mnesia if it's running, delete schema, then restart fresh
+:mnesia.stop()
+File.rm_rf!("Mnesia.#{node()}")
+:mnesia.create_schema([node()])
+:mnesia.start()
+
+# Initialize Mnesia tables
+HexHub.Mnesia.init()
+
+# Setup test storage directory
+File.mkdir_p!("priv/test_storage")

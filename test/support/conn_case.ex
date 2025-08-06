@@ -28,10 +28,21 @@ defmodule HexHubWeb.ConnCase do
       import Plug.Conn
       import Phoenix.ConnTest
       import HexHubWeb.ConnCase
+      import HexHub.TestHelpers
     end
   end
 
-  setup tags do
+  setup _tags do
+    # Clear Mnesia tables before each test
+    HexHub.Mnesia.reset_tables()
+    
+    # Clear test storage
+    test_storage_path = "priv/test_storage"
+    if File.exists?(test_storage_path) do
+      File.rm_rf!(test_storage_path)
+      File.mkdir_p!(test_storage_path)
+    end
+    
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

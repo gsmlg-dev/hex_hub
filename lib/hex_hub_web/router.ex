@@ -20,10 +20,45 @@ defmodule HexHubWeb.Router do
     get "/", PageController, :home
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", HexHubWeb do
-  #   pipe_through :api
-  # end
+  # API routes matching hex-api.yaml specification
+  scope "/api", HexHubWeb.API do
+    pipe_through :api
+
+    # Users endpoints
+    post "/users", UserController, :create
+    get "/users/:username_or_email", UserController, :show
+    get "/users/me", UserController, :me
+    post "/users/:username_or_email/reset", UserController, :reset
+
+    # Repositories endpoints
+    get "/repos", RepositoryController, :list
+    get "/repos/:name", RepositoryController, :show
+
+    # Packages endpoints
+    get "/packages", PackageController, :list
+    get "/packages/:name", PackageController, :show
+
+    # Package releases endpoints
+    get "/packages/:name/releases/:version", ReleaseController, :show
+    post "/publish", ReleaseController, :publish
+    post "/packages/:name/releases/:version/retire", ReleaseController, :retire
+    delete "/packages/:name/releases/:version/retire", ReleaseController, :unretire
+
+    # Package documentation endpoints
+    post "/packages/:name/releases/:version/docs", DocsController, :publish
+    delete "/packages/:name/releases/:version/docs", DocsController, :delete
+
+    # Package ownership endpoints
+    get "/packages/:name/owners", OwnerController, :index
+    put "/packages/:name/owners/:email", OwnerController, :add
+    delete "/packages/:name/owners/:email", OwnerController, :remove
+
+    # API Keys endpoints
+    get "/keys", KeyController, :list
+    post "/keys", KeyController, :create
+    get "/keys/:name", KeyController, :show
+    delete "/keys/:name", KeyController, :delete
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:hex_hub, :dev_routes) do

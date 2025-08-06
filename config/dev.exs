@@ -23,6 +23,10 @@ config :hex_hub, HexHubWeb.Endpoint,
 
 config :hex_hub, dev_routes: true
 
+config :hex_hub,
+  storage_type: :local,
+  storage_path: "priv/storage"
+
 config :logger, :default_formatter, format: "[$level] $message\n"
 
 config :phoenix, :stacktrace_depth, 20

@@ -22,3 +22,8 @@ config :phoenix, :plug_init_mode, :runtime
 # Enable helpful, but potentially expensive runtime checks
 config :phoenix_live_view,
   enable_expensive_runtime_checks: true
+
+# Test storage configuration
+config :hex_hub,
+  storage_type: :local,
+  storage_path: "priv/test_storage"
