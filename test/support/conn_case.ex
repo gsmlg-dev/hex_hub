@@ -36,6 +36,9 @@ defmodule HexHubWeb.ConnCase do
     # Clear Mnesia tables before each test
     HexHub.Mnesia.reset_tables()
     
+    # Clear Users test store
+    HexHub.Users.reset_test_store()
+    
     # Clear test storage
     test_storage_path = "priv/test_storage"
     if File.exists?(test_storage_path) do

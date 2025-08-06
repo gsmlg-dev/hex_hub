@@ -3,6 +3,11 @@ defmodule HexHub.UsersTest do
 
   alias HexHub.Users
 
+  setup do
+    Users.reset_test_store()
+    :ok
+  end
+
   describe "user management" do
     test "create_user/3 creates a new user" do
       username = "testuser_#{System.unique_integer([:positive])}"
@@ -16,7 +21,7 @@ defmodule HexHub.UsersTest do
     end
 
     test "create_user/3 validates username format" do
-      username = "testuser_#{System.unique_integer([:positive])}"
+      _username = "testuser_#{System.unique_integer([:positive])}"
       email = "test#{System.unique_integer([:positive])}@example.com"
       assert {:error, _reason} = Users.create_user("a", email, "password123")
     end
@@ -109,7 +114,7 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, user} = Users.create_user(username, email, password)
-      assert {:atomic, {:ok, updated}} = Users.update_password(username, "newpassword")
+      assert {:ok, updated} = Users.update_password(username, "newpassword")
       assert updated.username == user.username
     end
 
@@ -119,7 +124,7 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, user} = Users.create_user(username, email, password)
-      assert {:atomic, {:ok, updated}} = Users.update_email(username, "new#{System.unique_integer([:positive])}@example.com")
+      assert {:ok, updated} = Users.update_email(username, "new#{System.unique_integer([:positive])}@example.com")
       assert updated.username == user.username
     end
   end
