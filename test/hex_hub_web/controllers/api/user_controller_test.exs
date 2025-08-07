@@ -12,7 +12,7 @@ defmodule HexHubWeb.API.UserControllerTest do
       }
 
       conn = post(conn, ~p"/api/users", params)
-      
+
       assert %{
                "username" => "testuser",
                "email" => "test@example.com"
@@ -27,7 +27,7 @@ defmodule HexHubWeb.API.UserControllerTest do
       }
 
       conn = post(conn, ~p"/api/users", params)
-      
+
       assert json_response(conn, 422)
     end
 
@@ -41,7 +41,8 @@ defmodule HexHubWeb.API.UserControllerTest do
       }
 
       conn = post(conn, ~p"/api/users", params)
-      assert json_response(conn, 201) # Mock implementation allows duplicates
+      # Mock implementation allows duplicates
+      assert json_response(conn, 201)
     end
   end
 
@@ -50,7 +51,7 @@ defmodule HexHubWeb.API.UserControllerTest do
       {:ok, user} = Users.create_user("testuser", "test@example.com", "password123")
 
       conn = get(conn, ~p"/api/users/#{user.username}")
-      
+
       assert %{
                "username" => "testuser",
                "email" => "test@example.com"
@@ -61,7 +62,7 @@ defmodule HexHubWeb.API.UserControllerTest do
       {:ok, user} = Users.create_user("testuser", "test@example.com", "password123")
 
       conn = get(conn, ~p"/api/users/#{user.email}")
-      
+
       assert %{
                "username" => "testuser",
                "email" => "test@example.com"
@@ -76,13 +77,15 @@ defmodule HexHubWeb.API.UserControllerTest do
 
   describe "GET /api/users/me" do
     setup %{conn: conn} do
-      %{api_key: api_key} = setup_authenticated_user(%{username: "current_user", email: "current@example.com"})
+      %{api_key: api_key} =
+        setup_authenticated_user(%{username: "current_user", email: "current@example.com"})
+
       {:ok, conn: authenticated_conn(conn, api_key)}
     end
 
     test "returns current authenticated user", %{conn: conn} do
       conn = get(conn, ~p"/api/users/me")
-      
+
       assert %{
                "username" => "current_user",
                "email" => "current@example.com"
@@ -92,7 +95,9 @@ defmodule HexHubWeb.API.UserControllerTest do
 
   describe "POST /api/users/:username_or_email/reset" do
     setup %{conn: conn} do
-      %{user: user, api_key: api_key} = setup_authenticated_user(%{username: "testuser_reset", email: "test_reset@example.com"})
+      %{user: user, api_key: api_key} =
+        setup_authenticated_user(%{username: "testuser_reset", email: "test_reset@example.com"})
+
       {:ok, conn: authenticated_conn(conn, api_key), user: user}
     end
 

@@ -11,6 +11,7 @@ defmodule HexHub.ApiKeysTest do
       {:ok, _} -> :ok
       {:error, "Username already taken"} -> :ok
     end
+
     :ok
   end
 
@@ -27,12 +28,15 @@ defmodule HexHub.ApiKeysTest do
     end
 
     test "generate_key/3 returns error for non-existent user" do
-      assert {:error, "User not found"} = ApiKeys.generate_key("test-key", "nonexistent", ["read"])
+      assert {:error, "User not found"} =
+               ApiKeys.generate_key("test-key", "nonexistent", ["read"])
     end
 
     test "validate_key/1 validates correct key" do
       {:ok, key} = ApiKeys.generate_key("test-key", "testuser", ["read", "write"])
-      assert {:ok, %{username: "testuser", permissions: ["read", "write"]}} = ApiKeys.validate_key(key)
+
+      assert {:ok, %{username: "testuser", permissions: ["read", "write"]}} =
+               ApiKeys.validate_key(key)
     end
 
     test "validate_key/1 rejects invalid key" do
@@ -52,7 +56,7 @@ defmodule HexHub.ApiKeysTest do
     test "list_keys/1 lists all keys for a user" do
       {:ok, _} = ApiKeys.generate_key("key1", "testuser", ["read"])
       {:ok, _} = ApiKeys.generate_key("key2", "testuser", ["write"])
-      
+
       assert {:ok, keys} = ApiKeys.list_keys("testuser")
       assert length(keys) == 2
     end

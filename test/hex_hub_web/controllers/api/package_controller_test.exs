@@ -4,31 +4,31 @@ defmodule HexHubWeb.API.PackageControllerTest do
   describe "GET /api/packages" do
     test "lists all packages", %{conn: conn} do
       conn = get(conn, ~p"/api/packages")
-      
+
       assert %{
                "packages" => packages
              } = json_response(conn, 200)
-      
+
       assert is_list(packages)
     end
 
     test "supports pagination parameters", %{conn: conn} do
       conn = get(conn, ~p"/api/packages?page=1&per_page=10")
-      
+
       assert %{
                "packages" => packages
              } = json_response(conn, 200)
-      
+
       assert is_list(packages)
     end
 
     test "supports search parameter", %{conn: conn} do
       conn = get(conn, ~p"/api/packages?search=phoenix")
-      
+
       assert %{
                "packages" => packages
              } = json_response(conn, 200)
-      
+
       assert is_list(packages)
     end
   end
@@ -36,13 +36,13 @@ defmodule HexHubWeb.API.PackageControllerTest do
   describe "GET /api/packages/:name" do
     test "returns package details", %{conn: conn} do
       conn = get(conn, ~p"/api/packages/phoenix")
-      
+
       assert %{
                "name" => "phoenix",
                "repository" => "hexpm",
                "releases" => releases
              } = json_response(conn, 200)
-      
+
       assert is_list(releases)
     end
 

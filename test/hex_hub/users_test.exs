@@ -41,7 +41,7 @@ defmodule HexHub.UsersTest do
       username = "testuser_#{System.unique_integer([:positive])}"
       email1 = "test#{System.unique_integer([:positive])}@example.com"
       email2 = "test#{System.unique_integer([:positive])}@example.com"
-      
+
       {:ok, _} = Users.create_user(username, email1, "password123")
       assert {:error, _reason} = Users.create_user(username, email2, "password123")
     end
@@ -50,7 +50,7 @@ defmodule HexHub.UsersTest do
       username1 = "testuser_#{System.unique_integer([:positive])}"
       username2 = "testuser_#{System.unique_integer([:positive])}"
       email = "test#{System.unique_integer([:positive])}@example.com"
-      
+
       {:ok, _} = Users.create_user(username1, email, "password123")
       assert {:error, _reason} = Users.create_user(username2, email, "password123")
     end
@@ -61,7 +61,7 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, created_user} = Users.create_user(username, email, password)
-      
+
       assert {:ok, user} = Users.get_user(username)
       assert user.username == created_user.username
       assert user.email == created_user.email
@@ -73,14 +73,15 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, created_user} = Users.create_user(username, email, password)
-      
+
       assert {:ok, user} = Users.get_user(email)
       assert user.username == created_user.username
       assert user.email == created_user.email
     end
 
     test "get_user/1 returns error for non-existent user" do
-      assert {:error, :not_found} = Users.get_user("nonexistent_#{System.unique_integer([:positive])}")
+      assert {:error, :not_found} =
+               Users.get_user("nonexistent_#{System.unique_integer([:positive])}")
     end
 
     test "authenticate/2 returns user for valid credentials" do
@@ -89,7 +90,7 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, _} = Users.create_user(username, email, password)
-      
+
       assert {:ok, user} = Users.authenticate(username, password)
       assert user.username == username
     end
@@ -100,12 +101,16 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, _} = Users.create_user(username, email, password)
-      
+
       assert {:error, :invalid_credentials} = Users.authenticate(username, "wrongpassword")
     end
 
     test "authenticate/2 returns error for non-existent user" do
-      assert {:error, :invalid_credentials} = Users.authenticate("nonexistent_#{System.unique_integer([:positive])}", "password123")
+      assert {:error, :invalid_credentials} =
+               Users.authenticate(
+                 "nonexistent_#{System.unique_integer([:positive])}",
+                 "password123"
+               )
     end
 
     test "update_password/2 updates user password" do
@@ -124,7 +129,13 @@ defmodule HexHub.UsersTest do
       password = "password123"
 
       {:ok, user} = Users.create_user(username, email, password)
-      assert {:ok, updated} = Users.update_email(username, "new#{System.unique_integer([:positive])}@example.com")
+
+      assert {:ok, updated} =
+               Users.update_email(
+                 username,
+                 "new#{System.unique_integer([:positive])}@example.com"
+               )
+
       assert updated.username == user.username
     end
   end

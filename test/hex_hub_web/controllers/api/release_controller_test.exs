@@ -9,7 +9,7 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
   describe "GET /api/packages/:name/releases/:version" do
     test "returns release details", %{conn: conn} do
       conn = get(conn, ~p"/api/packages/phoenix/releases/1.7.0")
-      
+
       assert %{
                "name" => "phoenix",
                "version" => "1.7.0",
@@ -17,7 +17,7 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
                "requirements" => requirements,
                "inner_checksum" => _
              } = json_response(conn, 200)
-      
+
       assert is_map(requirements)
     end
 
@@ -46,11 +46,11 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
       }
 
       conn = post(conn, ~p"/api/publish", params)
-      
+
       assert %{
                "url" => url
              } = json_response(conn, 201)
-      
+
       assert url == "/packages/test_package/releases/1.0.0"
     end
 

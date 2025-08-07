@@ -59,13 +59,14 @@ defmodule HexHub.Storage do
 
   defp upload_to_storage(:local, key, content, _opts) do
     path = Path.join([storage_path(), key])
-    
+
     case File.mkdir_p(Path.dirname(path)) do
       :ok ->
         case File.write(path, content) do
           :ok -> {:ok, key}
           {:error, reason} -> {:error, "Failed to write file: #{inspect(reason)}"}
         end
+
       {:error, reason} ->
         {:error, "Failed to create directory: #{inspect(reason)}"}
     end
@@ -73,7 +74,7 @@ defmodule HexHub.Storage do
 
   defp upload_to_storage(:s3, key, _content, _opts) do
     bucket = Application.get_env(:hex_hub, :s3_bucket)
-    
+
     if bucket do
       # S3 upload implementation would go here
       # For now, returning mock response
@@ -85,7 +86,7 @@ defmodule HexHub.Storage do
 
   defp download_from_storage(:local, key) do
     path = Path.join([storage_path(), key])
-    
+
     case File.read(path) do
       {:ok, content} -> {:ok, content}
       {:error, :enoent} -> {:error, "File not found"}
@@ -95,7 +96,7 @@ defmodule HexHub.Storage do
 
   defp download_from_storage(:s3, _key) do
     bucket = Application.get_env(:hex_hub, :s3_bucket)
-    
+
     if bucket do
       # S3 download implementation would go here
       {:error, "S3 download not implemented"}
@@ -106,17 +107,18 @@ defmodule HexHub.Storage do
 
   defp delete_from_storage(:local, key) do
     path = Path.join([storage_path(), key])
-    
+
     case File.rm(path) do
       :ok -> :ok
-      {:error, :enoent} -> :ok  # Already deleted
+      # Already deleted
+      {:error, :enoent} -> :ok
       {:error, reason} -> {:error, "Failed to delete file: #{inspect(reason)}"}
     end
   end
 
   defp delete_from_storage(:s3, _key) do
     bucket = Application.get_env(:hex_hub, :s3_bucket)
-    
+
     if bucket do
       # S3 delete implementation would go here
       :ok

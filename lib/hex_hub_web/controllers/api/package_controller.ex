@@ -6,7 +6,7 @@ defmodule HexHubWeb.API.PackageController do
     _sort = params["sort"] || "name"
     _search = params["search"]
     _page = String.to_integer(params["page"] || "1")
-    
+
     packages = [
       %{
         name: "example",
@@ -28,7 +28,7 @@ defmodule HexHubWeb.API.PackageController do
         docs_html_url: "https://hexdocs.pm/example"
       }
     ]
-    
+
     json(conn, %{"packages" => packages})
   end
 
@@ -57,7 +57,7 @@ defmodule HexHubWeb.API.PackageController do
         html_url: "https://hex.pm/packages/#{name}",
         docs_html_url: "https://hexdocs.pm/#{name}"
       }
-      
+
       json(conn, package)
     end
   end

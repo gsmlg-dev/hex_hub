@@ -35,17 +35,18 @@ defmodule HexHubWeb.ConnCase do
   setup _tags do
     # Clear Mnesia tables before each test
     HexHub.Mnesia.reset_tables()
-    
+
     # Clear Users test store
     HexHub.Users.reset_test_store()
-    
+
     # Clear test storage
     test_storage_path = "priv/test_storage"
+
     if File.exists?(test_storage_path) do
       File.rm_rf!(test_storage_path)
       File.mkdir_p!(test_storage_path)
     end
-    
+
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
 end

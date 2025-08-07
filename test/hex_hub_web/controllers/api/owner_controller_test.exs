@@ -11,11 +11,11 @@ defmodule HexHubWeb.API.OwnerControllerTest do
       package_name = "test_package"
 
       conn = get(conn, ~p"/api/packages/#{package_name}/owners")
-      
+
       assert %{
                "owners" => owners
              } = json_response(conn, 200)
-      
+
       assert is_list(owners)
     end
 
@@ -27,7 +27,9 @@ defmodule HexHubWeb.API.OwnerControllerTest do
 
   describe "PUT /api/packages/:name/owners/:email" do
     setup %{conn: conn} do
-      %{api_key: api_key} = setup_authenticated_user(%{username: "testuser", permissions: ["read", "write"]})
+      %{api_key: api_key} =
+        setup_authenticated_user(%{username: "testuser", permissions: ["read", "write"]})
+
       {:ok, conn: authenticated_conn(conn, api_key)}
     end
 
@@ -47,7 +49,9 @@ defmodule HexHubWeb.API.OwnerControllerTest do
 
   describe "DELETE /api/packages/:name/owners/:email" do
     setup %{conn: conn} do
-      %{api_key: api_key} = setup_authenticated_user(%{username: "testuser", permissions: ["read", "write"]})
+      %{api_key: api_key} =
+        setup_authenticated_user(%{username: "testuser", permissions: ["read", "write"]})
+
       {:ok, conn: authenticated_conn(conn, api_key)}
     end
 

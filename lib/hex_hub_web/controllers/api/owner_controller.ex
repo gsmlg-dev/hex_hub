@@ -17,7 +17,7 @@ defmodule HexHubWeb.API.OwnerController do
           level: "full"
         }
       ]
-      
+
       json(conn, %{"owners" => owners})
     end
   end

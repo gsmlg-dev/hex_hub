@@ -10,13 +10,13 @@ defmodule HexHubWeb.API.UserController do
         |> put_status(:created)
         |> put_resp_header("location", "/users/#{user.username}")
         |> json(%{
-            username: user.username,
-            email: user.email,
-            inserted_at: user.inserted_at,
-            updated_at: user.updated_at,
-            url: "/users/#{user.username}"
-          })
-        
+          username: user.username,
+          email: user.email,
+          inserted_at: user.inserted_at,
+          updated_at: user.updated_at,
+          url: "/users/#{user.username}"
+        })
+
       {:error, reason} ->
         conn
         |> put_status(:unprocessable_entity)
@@ -34,7 +34,7 @@ defmodule HexHubWeb.API.UserController do
           updated_at: user.updated_at,
           url: "/users/#{user.username}"
         })
-        
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
@@ -48,7 +48,7 @@ defmodule HexHubWeb.API.UserController do
         conn
         |> put_status(:unauthorized)
         |> json(%{status: 401, message: "Authentication required"})
-        
+
       %{username: username} ->
         case Users.get_user(username) do
           {:ok, user} ->
@@ -60,7 +60,7 @@ defmodule HexHubWeb.API.UserController do
               url: "/users/#{user.username}",
               organizations: []
             })
-            
+
           {:error, _} ->
             conn
             |> put_status(:not_found)
@@ -74,7 +74,7 @@ defmodule HexHubWeb.API.UserController do
       {:ok, _user} ->
         # In a real implementation, this would send an email
         send_resp(conn, 204, "")
-        
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)

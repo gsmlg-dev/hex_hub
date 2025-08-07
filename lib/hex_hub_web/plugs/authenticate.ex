@@ -2,7 +2,7 @@ defmodule HexHubWeb.Plugs.Authenticate do
   @moduledoc """
   Authentication plug for API endpoints.
   """
-  
+
   import Plug.Conn
   alias HexHub.ApiKeys
   alias Phoenix.Controller
@@ -15,17 +15,20 @@ defmodule HexHubWeb.Plugs.Authenticate do
         case ApiKeys.validate_key(key) do
           {:ok, %{username: username, permissions: permissions}} ->
             assign(conn, :current_user, %{username: username, permissions: permissions})
+
           {:error, :invalid_key} ->
             conn
             |> put_status(401)
             |> Controller.json(%{"message" => "Invalid API key", "status" => 401})
             |> halt()
+
           {:error, :revoked_key} ->
             conn
             |> put_status(401)
             |> Controller.json(%{"message" => "API key has been revoked", "status" => 401})
             |> halt()
         end
+
       {:error, :missing_key} ->
         conn
         |> put_status(401)
@@ -43,10 +46,16 @@ defmodule HexHubWeb.Plugs.Authenticate do
               [_username, key] -> {:ok, key}
               _ -> {:error, :invalid_format}
             end
-          :error -> {:error, :invalid_format}
+
+          :error ->
+            {:error, :invalid_format}
         end
-      ["Bearer " <> key] -> {:ok, String.trim(key)}
-      _ -> {:error, :missing_key}
+
+      ["Bearer " <> key] ->
+        {:ok, String.trim(key)}
+
+      _ ->
+        {:error, :missing_key}
     end
   end
 end
@@ -55,7 +64,7 @@ defmodule HexHubWeb.Plugs.Authorize do
   @moduledoc """
   Authorization plug for checking permissions.
   """
-  
+
   import Plug.Conn
   alias Phoenix.Controller
 
@@ -69,9 +78,13 @@ defmodule HexHubWeb.Plugs.Authorize do
         else
           conn
           |> put_status(403)
-          |> Controller.json(%{"message" => "Permission denied: #{permission} required", "status" => 403})
+          |> Controller.json(%{
+            "message" => "Permission denied: #{permission} required",
+            "status" => 403
+          })
           |> halt()
         end
+
       _ ->
         conn
         |> put_status(401)

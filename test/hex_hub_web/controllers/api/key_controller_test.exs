@@ -9,7 +9,7 @@ defmodule HexHubWeb.API.KeyControllerTest do
   describe "GET /api/keys" do
     test "lists all API keys", %{conn: conn} do
       conn = get(conn, ~p"/api/keys")
-      
+
       keys = json_response(conn, 200)
       assert is_list(keys)
     end
@@ -23,12 +23,12 @@ defmodule HexHubWeb.API.KeyControllerTest do
       }
 
       conn = post(conn, ~p"/api/keys", params)
-      
+
       assert %{
                "name" => "test-key",
                "key" => key
              } = json_response(conn, 201)
-      
+
       assert is_binary(key)
       assert String.length(key) == 64
     end
@@ -39,7 +39,8 @@ defmodule HexHubWeb.API.KeyControllerTest do
       }
 
       conn = post(conn, ~p"/api/keys", params)
-      assert json_response(conn, 201) # Current implementation allows empty names
+      # Current implementation allows empty names
+      assert json_response(conn, 201)
     end
   end
 
@@ -47,18 +48,18 @@ defmodule HexHubWeb.API.KeyControllerTest do
     test "returns key details", %{conn: conn} do
       %{api_key: api_key} = setup_authenticated_user()
       conn = authenticated_conn(conn, api_key)
-      
+
       # Use the test key that was created during setup
       key_name = "test-key"
-      
+
       # Get the specific key
       conn = get(conn, ~p"/api/keys/#{key_name}")
-      
+
       assert %{
                "name" => "test-key",
                "permissions" => permissions
              } = json_response(conn, 200)
-      
+
       assert is_list(permissions)
     end
 
@@ -72,10 +73,10 @@ defmodule HexHubWeb.API.KeyControllerTest do
     test "deletes API key", %{conn: conn} do
       %{api_key: api_key} = setup_authenticated_user()
       conn = authenticated_conn(conn, api_key)
-      
+
       # Use the test key that was created during setup
       key_name = "test-key"
-      
+
       # Delete the key
       conn = delete(conn, ~p"/api/keys/#{key_name}")
       assert response(conn, 204)

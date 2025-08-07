@@ -10,16 +10,16 @@ defmodule HexHubWeb.API.DocsController do
       |> json(%{error: "Package not found"})
     else
       {:ok, body, conn} = Plug.Conn.read_body(conn)
-      
+
       key = Storage.generate_docs_key(name, version)
-      
+
       case Storage.upload(key, body) do
         {:ok, _key} ->
           conn
           |> put_status(:created)
           |> put_resp_header("location", "/packages/#{name}/releases/#{version}/docs")
           |> send_resp(201, "")
-          
+
         {:error, reason} ->
           conn
           |> put_status(:unprocessable_entity)
@@ -30,11 +30,11 @@ defmodule HexHubWeb.API.DocsController do
 
   def delete(conn, %{"name" => name, "version" => version}) do
     key = Storage.generate_docs_key(name, version)
-    
+
     case Storage.delete(key) do
       :ok ->
         send_resp(conn, 204, "")
-        
+
       {:error, _reason} ->
         send_resp(conn, 204, "")
     end

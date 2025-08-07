@@ -10,8 +10,10 @@ defmodule HexHubWeb.API.ReleaseController do
       release = %{
         name: name,
         version: version,
-        checksum: "#{:crypto.hash(:sha256, "#{name}-#{version}") |> Base.encode16() |> String.downcase()}",
-        inner_checksum: "#{:crypto.hash(:sha256, "inner-#{name}-#{version}") |> Base.encode16() |> String.downcase()}",
+        checksum:
+          "#{:crypto.hash(:sha256, "#{name}-#{version}") |> Base.encode16() |> String.downcase()}",
+        inner_checksum:
+          "#{:crypto.hash(:sha256, "inner-#{name}-#{version}") |> Base.encode16() |> String.downcase()}",
         has_docs: true,
         meta: %{
           build_tools: ["mix"]
@@ -26,7 +28,7 @@ defmodule HexHubWeb.API.ReleaseController do
         html_url: "https://hex.pm/packages/#{name}/#{version}",
         docs_html_url: "https://hexdocs.pm/#{name}/#{version}"
       }
-      
+
       json(conn, release)
     end
   end
@@ -34,7 +36,7 @@ defmodule HexHubWeb.API.ReleaseController do
   def publish(conn, params) do
     # TODO: Implement package publishing
     {:ok, _body, conn} = Plug.Conn.read_body(conn)
-    
+
     if params["name"] == "invalid" || params["version"] == "invalid" do
       conn
       |> put_status(:unprocessable_entity)
@@ -51,10 +53,11 @@ defmodule HexHubWeb.API.ReleaseController do
         updated_at: DateTime.utc_now(),
         url: "/packages/#{params["name"] || "example"}/releases/#{params["version"] || "1.0.0"}",
         package_url: "/packages/#{params["name"] || "example"}",
-        html_url: "https://hex.pm/packages/#{params["name"] || "example"}/#{params["version"] || "1.0.0"}",
+        html_url:
+          "https://hex.pm/packages/#{params["name"] || "example"}/#{params["version"] || "1.0.0"}",
         docs_html_url: "https://hexdocs.pm/#{params["name"] || "example"}"
       }
-      
+
       conn
       |> put_status(:created)
       |> json(release)

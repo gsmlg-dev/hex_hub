@@ -4,7 +4,7 @@ defmodule HexHubWeb.API.RepositoryControllerTest do
   describe "GET /api/repos" do
     test "lists all repositories", %{conn: conn} do
       conn = get(conn, ~p"/api/repos")
-      
+
       repositories = json_response(conn, 200)
       assert is_list(repositories)
       assert length(repositories) > 0
@@ -14,7 +14,7 @@ defmodule HexHubWeb.API.RepositoryControllerTest do
   describe "GET /api/repos/:name" do
     test "returns repository details", %{conn: conn} do
       conn = get(conn, ~p"/api/repos/hexpm")
-      
+
       assert %{
                "name" => "hexpm",
                "public" => true,

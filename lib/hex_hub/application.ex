@@ -9,7 +9,7 @@ defmodule HexHub.Application do
     unless Process.whereis(:mnesia_sup) do
       :mnesia.start()
     end
-    
+
     # Create Mnesia tables if they don't exist
     HexHub.Mnesia.init()
 

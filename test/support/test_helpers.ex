@@ -9,10 +9,12 @@ defmodule HexHub.TestHelpers do
     username = Map.get(attrs, :username) || "testuser#{System.unique_integer([:positive])}"
     email = Map.get(attrs, :email) || "test#{System.unique_integer([:positive])}@example.com"
     password = Map.get(attrs, :password) || "password123"
-    
+
     case Users.create_user(username, email, password) do
-      {:ok, user} -> user
-      {:error, "Username already taken"} -> 
+      {:ok, user} ->
+        user
+
+      {:error, "Username already taken"} ->
         {:ok, user} = Users.get_user(username)
         user
     end
@@ -58,5 +60,4 @@ defmodule HexHub.TestHelpers do
 
     Map.merge(default_attrs, attrs)
   end
-
-  end
+end

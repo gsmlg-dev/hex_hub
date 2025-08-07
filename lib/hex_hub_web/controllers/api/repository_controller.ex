@@ -14,7 +14,7 @@ defmodule HexHubWeb.API.RepositoryController do
         updated_at: DateTime.utc_now()
       }
     ]
-    
+
     json(conn, repositories)
   end
 
@@ -32,7 +32,7 @@ defmodule HexHubWeb.API.RepositoryController do
         inserted_at: DateTime.utc_now(),
         updated_at: DateTime.utc_now()
       }
-      
+
       json(conn, repository)
     end
   end
