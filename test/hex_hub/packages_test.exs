@@ -87,7 +87,7 @@ defmodule HexHub.PackagesTest do
     end
 
     test "list_releases/1 returns all releases for a package" do
-      package_name = "test_package"
+      package_name = "test_package_#{System.unique_integer([:positive])}"
       {:ok, _} = Packages.create_package(package_name, "hexpm", %{"description" => "Test"})
       
       {:ok, _} = Packages.create_release(package_name, "1.0.0", %{"app" => "test_package"}, %{}, "tarball1")

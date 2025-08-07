@@ -1,6 +1,11 @@
 defmodule HexHubWeb.API.ReleaseControllerTest do
   use HexHubWeb.ConnCase
 
+  setup %{conn: conn} do
+    %{api_key: api_key} = setup_authenticated_user()
+    {:ok, conn: authenticated_conn(conn, api_key)}
+  end
+
   describe "GET /api/packages/:name/releases/:version" do
     test "returns release details", %{conn: conn} do
       conn = get(conn, ~p"/api/packages/phoenix/releases/1.7.0")

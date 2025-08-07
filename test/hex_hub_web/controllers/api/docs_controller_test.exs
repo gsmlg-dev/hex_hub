@@ -1,6 +1,11 @@
 defmodule HexHubWeb.API.DocsControllerTest do
   use HexHubWeb.ConnCase
 
+  setup %{conn: conn} do
+    %{api_key: api_key} = setup_authenticated_user()
+    {:ok, conn: authenticated_conn(conn, api_key)}
+  end
+
   describe "POST /api/packages/:name/releases/:version/docs" do
     test "uploads documentation tarball", %{conn: conn} do
       package_name = "test_package"

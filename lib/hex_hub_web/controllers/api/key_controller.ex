@@ -1,79 +1,82 @@
 defmodule HexHubWeb.API.KeyController do
   use HexHubWeb, :controller
+  alias HexHub.ApiKeys
+
+  action_fallback HexHubWeb.FallbackController
 
   def list(conn, _params) do
-    # TODO: Implement API keys listing
-    keys = [
-      %{
-        name: "default",
-        permissions: [
-          %{domain: "api", resource: "*"}
-        ],
-        revoked_at: nil,
-        inserted_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now(),
-        url: "/keys/default"
-      }
-    ]
+    username = conn.assigns[:current_user][:username]
     
-    json(conn, %{"keys" => keys})
+    case ApiKeys.list_keys(username) do
+      {:ok, keys} ->
+        json(conn, Enum.map(keys, &format_key/1))
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def create(conn, %{"name" => name, "permissions" => permissions}) do
+    username = conn.assigns[:current_user][:username]
+    
+    case ApiKeys.generate_key(name, username, permissions) do
+      {:ok, key} ->
+        conn
+        |> put_status(201)
+        |> json(%{"name" => name, "key" => key, "permissions" => permissions})
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def create(conn, %{"name" => name}) do
-    if name == "" do
-      conn
-      |> put_status(:unprocessable_entity)
-      |> json(%{error: "Name cannot be blank"})
-    else
-      # TODO: Implement API key creation
-      # This requires Basic Authentication
-      key = %{
-        name: name,
-        permissions: [
-          %{domain: "api", resource: "*"}
-        ],
-        revoked_at: nil,
-        inserted_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now(),
-        url: "/keys/#{name}",
-        secret: "#{:crypto.strong_rand_bytes(16) |> Base.encode16() |> String.downcase()}"
-      }
-      
-      conn
-      |> put_status(:created)
-      |> put_resp_header("location", "/keys/#{name}")
-      |> json(key)
+    username = conn.assigns[:current_user][:username]
+    
+    case ApiKeys.generate_key(name, username) do
+      {:ok, key} ->
+        conn
+        |> put_status(201)
+        |> json(%{"name" => name, "key" => key, "permissions" => ["read", "write"]})
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   def show(conn, %{"name" => name}) do
-    if name == "nonexistent" do
-      conn
-      |> put_status(:not_found)
-      |> json(%{error: "Key not found"})
-    else
-      key = %{
-        name: name,
-        permissions: [
-          %{domain: "api", resource: "*"}
-        ],
-        revoked_at: nil,
-        inserted_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now(),
-        url: "/keys/#{name}"
-      }
-      
-      json(conn, key)
+    username = conn.assigns[:current_user][:username]
+    
+    case ApiKeys.list_keys(username) do
+      {:ok, keys} ->
+        case Enum.find(keys, &(&1.name == name)) do
+          nil ->
+            conn
+            |> put_status(404)
+            |> json(%{"message" => "Key not found", "status" => 404})
+          key ->
+            json(conn, format_key(key))
+        end
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
   def delete(conn, %{"name" => name}) do
-    if name == "nonexistent" do
-      conn
-      |> put_status(:not_found)
-      |> json(%{message: "Key not found"})
-    else
-      send_resp(conn, 204, "")
+    username = conn.assigns[:current_user][:username]
+    
+    case ApiKeys.revoke_key(name, username) do
+      :ok ->
+        send_resp(conn, 204, "")
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  defp format_key(%{name: name, username: username, permissions: permissions, revoked_at: revoked_at, inserted_at: inserted_at}) do
+    %{
+      "name" => name,
+      "username" => username,
+      "permissions" => permissions,
+      "revoked_at" => revoked_at,
+      "inserted_at" => inserted_at
+    }
   end
 end

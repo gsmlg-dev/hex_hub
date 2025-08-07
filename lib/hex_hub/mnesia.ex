@@ -52,9 +52,8 @@ defmodule HexHub.Mnesia do
       ]},
       {:package_releases, [
         attributes: [:package_name, :version, :has_docs, :meta, :requirements, :retired, :downloads, :inserted_at, :updated_at, :url, :package_url, :html_url, :docs_html_url],
-        type: :set,
-        ram_copies: [node()],
-        index: [:package_name]
+        type: :bag,
+        ram_copies: [node()]
       ]},
       {:package_owners, [
         attributes: [:package_name, :username, :level, :inserted_at],

@@ -75,9 +75,12 @@ defmodule HexHubWeb.API.UserControllerTest do
   end
 
   describe "GET /api/users/me" do
+    setup %{conn: conn} do
+      %{api_key: api_key} = setup_authenticated_user(%{username: "current_user", email: "current@example.com"})
+      {:ok, conn: authenticated_conn(conn, api_key)}
+    end
+
     test "returns current authenticated user", %{conn: conn} do
-      # Note: In real implementation, you'd need to add authentication headers
-      # For now, this test will use the mock implementation
       conn = get(conn, ~p"/api/users/me")
       
       assert %{
@@ -88,9 +91,12 @@ defmodule HexHubWeb.API.UserControllerTest do
   end
 
   describe "POST /api/users/:username_or_email/reset" do
-    test "initiates password reset", %{conn: conn} do
-      {:ok, user} = Users.create_user("testuser", "test@example.com", "password123")
+    setup %{conn: conn} do
+      %{user: user, api_key: api_key} = setup_authenticated_user(%{username: "testuser_reset", email: "test_reset@example.com"})
+      {:ok, conn: authenticated_conn(conn, api_key), user: user}
+    end
 
+    test "initiates password reset", %{conn: conn, user: user} do
       conn = post(conn, ~p"/api/users/#{user.username}/reset")
       assert response(conn, 204)
     end
