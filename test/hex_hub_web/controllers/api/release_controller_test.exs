@@ -8,11 +8,21 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
 
   describe "GET /api/packages/:name/releases/:version" do
     test "returns release details", %{conn: conn} do
-      conn = get(conn, ~p"/api/packages/phoenix/releases/1.7.0")
+      package_name = "test_package"
+      version = "1.0.0"
+
+      # Create package and release first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      {:ok, _release} =
+        HexHub.Packages.create_release(package_name, version, %{}, %{}, "mock tarball")
+
+      conn = get(conn, ~p"/api/packages/#{package_name}/releases/#{version}")
 
       assert %{
-               "name" => "phoenix",
-               "version" => "1.7.0",
+               "name" => ^package_name,
+               "version" => ^version,
                "checksum" => _,
                "requirements" => requirements,
                "inner_checksum" => _
@@ -34,18 +44,20 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
 
   describe "POST /api/publish" do
     test "publishes new package release", %{conn: conn} do
-      params = %{
-        "name" => "test_package",
-        "version" => "1.0.0",
-        "requirements" => %{},
-        "meta" => %{
-          "app" => "test_package",
-          "description" => "Test package",
-          "version" => "1.0.0"
-        }
-      }
+      package_name = "test_package"
+      version = "1.0.0"
 
-      conn = post(conn, ~p"/api/publish", params)
+      # Create package first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      # Create mock tarball content
+      tarball_content = "mock tarball content for testing"
+
+      conn =
+        conn
+        |> put_req_header("content-type", "application/octet-stream")
+        |> post(~p"/api/publish?name=#{package_name}&version=#{version}", tarball_content)
 
       assert %{
                "url" => url
@@ -68,12 +80,22 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
 
   describe "POST /api/packages/:name/releases/:version/retire" do
     test "retires a package release", %{conn: conn} do
+      package_name = "test_package"
+      version = "1.0.0"
+
       params = %{
         "reason" => "other",
         "message" => "This version has security vulnerabilities"
       }
 
-      conn = post(conn, ~p"/api/packages/phoenix/releases/1.7.0/retire", params)
+      # Create package and release first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      {:ok, _release} =
+        HexHub.Packages.create_release(package_name, version, %{}, %{}, "mock tarball")
+
+      conn = post(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire", params)
       assert response(conn, 204)
     end
 
@@ -85,7 +107,20 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
 
   describe "DELETE /api/packages/:name/releases/:version/retire" do
     test "unretires a package release", %{conn: conn} do
-      conn = delete(conn, ~p"/api/packages/phoenix/releases/1.7.0/retire")
+      package_name = "test_package"
+      version = "1.0.0"
+
+      # Create package and release first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      {:ok, _release} =
+        HexHub.Packages.create_release(package_name, version, %{}, %{}, "mock tarball")
+
+      # Retire the release first
+      {:ok, _release} = HexHub.Packages.retire_release(package_name, version)
+
+      conn = delete(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire")
       assert response(conn, 204)
     end
 

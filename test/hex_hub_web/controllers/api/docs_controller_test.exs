@@ -11,6 +11,13 @@ defmodule HexHubWeb.API.DocsControllerTest do
       package_name = "test_package"
       version = "1.0.0"
 
+      # Create package and release first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      {:ok, _release} =
+        HexHub.Packages.create_release(package_name, version, %{}, %{}, "mock tarball")
+
       # Create a simple tarball content for testing
       docs_content = "mock documentation tarball content"
 
@@ -37,14 +44,23 @@ defmodule HexHubWeb.API.DocsControllerTest do
       package_name = "test_package"
       version = "1.0.0"
 
+      # Create package and release first
+      {:ok, _package} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
+
+      {:ok, _release} =
+        HexHub.Packages.create_release(package_name, version, %{}, %{}, "mock tarball")
+
+      # Upload docs first
+      {:ok, _release} = HexHub.Packages.upload_docs(package_name, version, "mock docs")
+
       conn = delete(conn, ~p"/api/packages/#{package_name}/releases/#{version}/docs")
       assert response(conn, 204)
     end
 
     test "returns 404 for non-existent package", %{conn: conn} do
       conn = delete(conn, ~p"/api/packages/nonexistent/releases/1.0.0/docs")
-      # Mock implementation returns 204 for all cases
-      assert response(conn, 204)
+      assert response(conn, 404)
     end
   end
 end

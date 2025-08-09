@@ -405,6 +405,136 @@ defmodule HexHub.Packages do
     end
   end
 
+  @doc """
+  Retire a package release.
+  """
+  @spec retire_release(String.t(), String.t()) :: {:ok, release()} | {:error, String.t()}
+  def retire_release(package_name, version) do
+    case get_release(package_name, version) do
+      {:ok, _release} ->
+        case :mnesia.transaction(fn ->
+               releases =
+                 :mnesia.match_object(
+                   {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_,
+                    :_, :_}
+                 )
+
+               case releases do
+                 [] ->
+                   {:error, "Release not found"}
+
+                 releases ->
+                   # For :bag type, update all matching records
+                   Enum.each(releases, fn release_tuple ->
+                     {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
+                      inserted_at, _updated_at, url, package_url, html_url,
+                      docs_html_url} =
+                       release_tuple
+
+                     updated_release = {
+                       @releases_table,
+                       pkg_name,
+                       ver,
+                       has_docs,
+                       meta,
+                       requirements,
+                       # retired
+                       true,
+                       downloads,
+                       inserted_at,
+                       DateTime.utc_now(),
+                       url,
+                       package_url,
+                       html_url,
+                       docs_html_url
+                     }
+
+                     :mnesia.write(updated_release)
+                   end)
+
+                   {:ok, hd(releases)}
+               end
+             end) do
+          {:atomic, {:ok, release_tuple}} ->
+            {:ok, release_to_map(release_tuple)}
+
+          {:atomic, {:error, reason}} ->
+            {:error, reason}
+
+          {:aborted, reason} ->
+            {:error, "Failed to retire release: #{inspect(reason)}"}
+        end
+
+      {:error, :not_found} ->
+        {:error, "Release not found"}
+    end
+  end
+
+  @doc """
+  Unretire a package release.
+  """
+  @spec unretire_release(String.t(), String.t()) :: {:ok, release()} | {:error, String.t()}
+  def unretire_release(package_name, version) do
+    case get_release(package_name, version) do
+      {:ok, _release} ->
+        case :mnesia.transaction(fn ->
+               releases =
+                 :mnesia.match_object(
+                   {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_,
+                    :_, :_}
+                 )
+
+               case releases do
+                 [] ->
+                   {:error, "Release not found"}
+
+                 releases ->
+                   # For :bag type, update all matching records
+                   Enum.each(releases, fn release_tuple ->
+                     {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
+                      inserted_at, _updated_at, url, package_url, html_url,
+                      docs_html_url} =
+                       release_tuple
+
+                     updated_release = {
+                       @releases_table,
+                       pkg_name,
+                       ver,
+                       has_docs,
+                       meta,
+                       requirements,
+                       # retired
+                       false,
+                       downloads,
+                       inserted_at,
+                       DateTime.utc_now(),
+                       url,
+                       package_url,
+                       html_url,
+                       docs_html_url
+                     }
+
+                     :mnesia.write(updated_release)
+                   end)
+
+                   {:ok, hd(releases)}
+               end
+             end) do
+          {:atomic, {:ok, release_tuple}} ->
+            {:ok, release_to_map(release_tuple)}
+
+          {:atomic, {:error, reason}} ->
+            {:error, reason}
+
+          {:aborted, reason} ->
+            {:error, "Failed to unretire release: #{inspect(reason)}"}
+        end
+
+      {:error, :not_found} ->
+        {:error, "Release not found"}
+    end
+  end
+
   ## Helper functions
 
   defp package_to_map(

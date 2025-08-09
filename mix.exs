@@ -11,7 +11,16 @@ defmodule HexHub.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: [
+        hex_hub: [
+          include_executables_for: [:unix],
+          steps: [:assemble, :tar],
+          applications: [
+            hex_hub: :permanent
+          ]
+        ]
+      ]
     ]
   end
 
