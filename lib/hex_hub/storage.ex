@@ -58,9 +58,10 @@ defmodule HexHub.Storage do
   end
 
   defp upload_to_storage(:local, key, content, _opts) do
+    start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    case File.mkdir_p(Path.dirname(path)) do
+    result = case File.mkdir_p(Path.dirname(path)) do
       :ok ->
         case File.write(path, content) do
           :ok -> {:ok, key}
@@ -70,6 +71,17 @@ defmodule HexHub.Storage do
       {:error, reason} ->
         {:error, "Failed to create directory: #{inspect(reason)}"}
     end
+
+    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+    
+    case result do
+      {:ok, _} ->
+        HexHub.Telemetry.track_storage_operation("upload", "local", duration_ms, byte_size(content))
+      {:error, _} ->
+        HexHub.Telemetry.track_storage_operation("upload", "local", duration_ms, 0, "error")
+    end
+    
+    result
   end
 
   defp upload_to_storage(:s3, key, _content, _opts) do
@@ -85,13 +97,25 @@ defmodule HexHub.Storage do
   end
 
   defp download_from_storage(:local, key) do
+    start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    case File.read(path) do
+    result = case File.read(path) do
       {:ok, content} -> {:ok, content}
       {:error, :enoent} -> {:error, "File not found"}
       {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
     end
+
+    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+    
+    case result do
+      {:ok, content} ->
+        HexHub.Telemetry.track_storage_operation("download", "local", duration_ms, byte_size(content))
+      {:error, _} ->
+        HexHub.Telemetry.track_storage_operation("download", "local", duration_ms, 0, "error")
+    end
+    
+    result
   end
 
   defp download_from_storage(:s3, _key) do
@@ -106,14 +130,26 @@ defmodule HexHub.Storage do
   end
 
   defp delete_from_storage(:local, key) do
+    start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    case File.rm(path) do
+    result = case File.rm(path) do
       :ok -> :ok
       # Already deleted
       {:error, :enoent} -> :ok
       {:error, reason} -> {:error, "Failed to delete file: #{inspect(reason)}"}
     end
+
+    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+    
+    case result do
+      :ok ->
+        HexHub.Telemetry.track_storage_operation("delete", "local", duration_ms, 0)
+      {:error, _} ->
+        HexHub.Telemetry.track_storage_operation("delete", "local", duration_ms, 0, "error")
+    end
+    
+    result
   end
 
   defp delete_from_storage(:s3, _key) do

@@ -53,6 +53,8 @@ defmodule HexHub.Packages do
   @spec create_package(String.t(), String.t(), map(), boolean()) ::
           {:ok, package()} | {:error, String.t()}
   def create_package(name, repository_name, meta, private \\ false) do
+    start_time = System.monotonic_time()
+    
     with :ok <- validate_package_name(name) do
       now = DateTime.utc_now()
 
@@ -75,7 +77,10 @@ defmodule HexHub.Packages do
            end) do
         {:atomic, :ok} ->
           package_map = package_to_map(package)
-
+          duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+          
+          HexHub.Telemetry.track_mnesia_operation("create_package", duration_ms)
+          HexHub.Telemetry.track_package_published(repository_name)
           HexHub.Audit.log_event("package_created", "package", name, %{
             repository: repository_name,
             private: private
@@ -84,6 +89,8 @@ defmodule HexHub.Packages do
           {:ok, package_map}
 
         {:aborted, reason} ->
+          duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+          HexHub.Telemetry.track_mnesia_operation("create_package", duration_ms)
           {:error, "Failed to create package: #{inspect(reason)}"}
       end
     else

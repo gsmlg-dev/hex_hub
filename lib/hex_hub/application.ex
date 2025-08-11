@@ -5,6 +5,9 @@ defmodule HexHub.Application do
 
   @impl true
   def start(_type, _args) do
+    # Record application start time for uptime calculation
+    :persistent_term.put(:hex_hub_start_time, System.system_time(:second))
+    
     # Start Mnesia only if not already started
     unless Process.whereis(:mnesia_sup) do
       :mnesia.start()
@@ -17,6 +20,8 @@ defmodule HexHub.Application do
     children = [
       # Start the Telemetry supervisor
       HexHubWeb.Telemetry,
+      # Start the custom telemetry poller
+      {HexHub.Telemetry, []},
       # Start the PubSub system
       {Phoenix.PubSub, name: HexHub.PubSub},
       # Start the Endpoint (http/https)
@@ -35,5 +40,12 @@ defmodule HexHub.Application do
   def config_change(changed, _new, removed) do
     HexHubWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  @doc """
+  Returns the application start time in seconds since epoch.
+  """
+  def start_time do
+    :persistent_term.get(:hex_hub_start_time, 0)
   end
 end

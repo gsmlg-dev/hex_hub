@@ -30,6 +30,15 @@ defmodule HexHubWeb.Router do
     get "/", PageController, :home
   end
 
+  # Health check endpoints for monitoring
+  scope "/health", HexHubWeb do
+    pipe_through :api
+
+    get "/", HealthController, :index
+    get "/ready", HealthController, :readiness
+    get "/live", HealthController, :liveness
+  end
+
   # API routes matching hex-api.yaml specification
   scope "/api", HexHubWeb.API do
     pipe_through :api
