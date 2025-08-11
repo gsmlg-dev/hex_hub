@@ -1,11 +1,9 @@
-
 import Config
 
 config :hex_hub,
   generators: [timestamp_type: :utc_datetime]
 
 config :hex_hub, HexHubWeb.Endpoint,
-  server: true,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
   render_errors: [
