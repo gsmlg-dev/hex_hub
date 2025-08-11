@@ -14,3 +14,5 @@ HexHub.Mnesia.init()
 
 # Setup test storage directory
 File.mkdir_p!("priv/test_storage")
+Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
+Application.put_env(:hex_hub, :storage_type, :local)

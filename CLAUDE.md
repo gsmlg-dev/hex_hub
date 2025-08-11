@@ -13,6 +13,8 @@ HexHub is a private hex package manager and hexdocs server built with Phoenix 1.
 - **Bun**: JavaScript bundling and build tooling
 - **Bandit**: HTTP server (replacement for Cowboy)
 - **Swoosh**: Email functionality
+- **Mnesia**: In-memory database for package data storage
+- **Local Storage**: File-based storage for package and documentation tarballs
 
 ## Common Commands
 
@@ -71,7 +73,8 @@ mix test --cover
 ## Environment Configuration
 
 The application uses standard Phoenix configuration with:
-- PostgreSQL for data storage
+- **Mnesia** for in-memory package data storage (instead of PostgreSQL)
+- **Local file storage** for package and documentation tarballs
 - Bandit as the web server
 - Tailwind CSS for styling via `assets/css/app.css`
 - Bun for JavaScript bundling

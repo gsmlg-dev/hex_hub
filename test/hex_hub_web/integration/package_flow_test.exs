@@ -15,11 +15,12 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       version = "1.0.0"
 
       # 1. Create package
-      {:ok, package} = Packages.create_package(package_name, "hexpm", %{
-        "description" => "A test package",
-        "app" => package_name,
-        "version" => version
-      })
+      {:ok, package} =
+        Packages.create_package(package_name, "hexpm", %{
+          "description" => "A test package",
+          "app" => package_name,
+          "version" => version
+        })
 
       assert package.name == package_name
       assert package.repository_name == "hexpm"
@@ -50,6 +51,7 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
 
       # 7. Upload documentation
       mock_docs = "mock documentation content"
+
       case Packages.upload_docs(package_name, version, mock_docs) do
         {:ok, updated_release} ->
           assert updated_release.has_docs == true
@@ -63,22 +65,25 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
               case Packages.delete_docs(package_name, version) do
                 {:ok, _} ->
                   {:ok, _release_without_docs} = Packages.get_release(package_name, version)
-                  # Skip assertion due to Mnesia transaction issues in tests
+
+                # Skip assertion due to Mnesia transaction issues in tests
                 {:error, _reason} ->
                   # For now, skip docs deletion test due to Mnesia transaction issues
                   {:ok, _release_without_docs} = Packages.get_release(package_name, version)
                   # Skip assertion for docs deletion - this is a known limitation
               end
+
             {:error, reason} ->
               flunk("Failed to download docs: #{reason}")
           end
+
         {:error, reason} ->
           flunk("Failed to upload docs: #{reason}")
       end
 
       # 10. Test release retirement - skip due to Mnesia transaction issues
       # Note: retire/unretire functionality works in production but has issues in tests
-      
+
       # 11. Skip release unretirement test
 
       # 12. Verify via API endpoints
@@ -109,6 +114,7 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
 
       # 2. Publish release via API
       mock_tarball = "mock tarball content"
+
       conn2 =
         conn
         |> put_req_header("content-type", "application/octet-stream")
@@ -119,6 +125,7 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
 
       # 3. Upload docs via API
       mock_docs = "mock documentation"
+
       conn3 =
         conn
         |> put_req_header("content-type", "application/octet-stream")
@@ -142,7 +149,10 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
 
       # 7. Test retirement flow
       retire_params = %{"reason" => "other", "message" => "Test retirement"}
-      conn7 = post(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire", retire_params)
+
+      conn7 =
+        post(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire", retire_params)
+
       assert response(conn7, 204)
 
       conn8 = delete(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire")
@@ -156,13 +166,15 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       assert {:error, :not_found} = Packages.get_package(nonexistent_package)
 
       # 2. Try to create release for non-existent package
-      assert {:error, "Package not found"} = Packages.create_release(nonexistent_package, "1.0.0", %{}, %{}, "content")
+      assert {:error, "Package not found"} =
+               Packages.create_release(nonexistent_package, "1.0.0", %{}, %{}, "content")
 
       # 3. Try to access non-existent release
       assert {:error, :not_found} = Packages.get_release(nonexistent_package, "1.0.0")
 
       # 4. Try to upload docs for non-existent release
-      assert {:error, "Release not found"} = Packages.upload_docs(nonexistent_package, "1.0.0", "docs")
+      assert {:error, "Release not found"} =
+               Packages.upload_docs(nonexistent_package, "1.0.0", "docs")
 
       # 5. Verify API returns 404 for non-existent package
       conn = get(conn, ~p"/api/packages/#{nonexistent_package}")
@@ -171,9 +183,18 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
 
     test "package search functionality", %{conn: _conn} do
       # Create test packages
-      {:ok, _pkg1} = Packages.create_package("search_test_1", "hexpm", %{"description" => "Package for searching"})
-      {:ok, _pkg2} = Packages.create_package("search_test_2", "hexpm", %{"description" => "Another search package"})
-      {:ok, _pkg3} = Packages.create_package("unrelated", "hexpm", %{"description" => "Unrelated description"})
+      {:ok, _pkg1} =
+        Packages.create_package("search_test_1", "hexpm", %{
+          "description" => "Package for searching"
+        })
+
+      {:ok, _pkg2} =
+        Packages.create_package("search_test_2", "hexpm", %{
+          "description" => "Another search package"
+        })
+
+      {:ok, _pkg3} =
+        Packages.create_package("unrelated", "hexpm", %{"description" => "Unrelated description"})
 
       # Test search
       {:ok, results, _} = Packages.search_packages("search")

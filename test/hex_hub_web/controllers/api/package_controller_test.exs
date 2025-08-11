@@ -35,10 +35,16 @@ defmodule HexHubWeb.API.PackageControllerTest do
 
   describe "GET /api/packages/:name" do
     test "returns package details", %{conn: conn} do
-      conn = get(conn, ~p"/api/packages/phoenix")
+      # Create a test package first
+      package_name = "test_package_#{System.unique_integer([:positive])}"
+
+      {:ok, _} =
+        HexHub.Packages.create_package(package_name, "hexpm", %{"description" => "Test package"})
+
+      conn = get(conn, ~p"/api/packages/#{package_name}")
 
       assert %{
-               "name" => "phoenix",
+               "name" => ^package_name,
                "repository" => "hexpm",
                "releases" => releases
              } = json_response(conn, 200)

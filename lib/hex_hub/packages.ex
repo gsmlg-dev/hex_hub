@@ -74,7 +74,14 @@ defmodule HexHub.Packages do
              :mnesia.write(package)
            end) do
         {:atomic, :ok} ->
-          {:ok, package_to_map(package)}
+          package_map = package_to_map(package)
+
+          HexHub.Audit.log_event("package_created", "package", name, %{
+            repository: repository_name,
+            private: private
+          })
+
+          {:ok, package_map}
 
         {:aborted, reason} ->
           {:error, "Failed to create package: #{inspect(reason)}"}
@@ -90,52 +97,104 @@ defmodule HexHub.Packages do
   @spec get_package(String.t()) :: {:ok, package()} | {:error, :not_found}
   def get_package(name) do
     case :mnesia.transaction(fn ->
-           :mnesia.read(@packages_table, name)
+           # Use dirty_read for better performance when we know the exact key
+           case :mnesia.dirty_read(@packages_table, name) do
+             [
+               {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
+                updated_at, html_url, docs_html_url}
+             ] ->
+               {:ok,
+                package_to_map(
+                  {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
+                   updated_at, html_url, docs_html_url}
+                )}
+
+             [] ->
+               {:error, :not_found}
+           end
          end) do
-      {:atomic,
-       [
-         {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-          updated_at, html_url, docs_html_url}
-       ]} ->
-        {:ok,
-         package_to_map(
-           {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-            updated_at, html_url, docs_html_url}
-         )}
-
-      {:atomic, []} ->
-        {:error, :not_found}
-
-      {:aborted, _reason} ->
-        {:error, :not_found}
+      {:atomic, result} -> result
+      {:aborted, _reason} -> {:error, :not_found}
     end
   end
 
   @doc """
-  List all packages.
+  List all packages with optional search and pagination.
   """
-  @spec list_packages() :: {:ok, [package()]}
-  def list_packages() do
+  @spec list_packages(keyword()) :: {:ok, [package()], integer()}
+  def list_packages(opts \\ []) do
+    search_term = Keyword.get(opts, :search)
+    page = Keyword.get(opts, :page, 1)
+    per_page = Keyword.get(opts, :per_page, 50)
+
+    offset = (page - 1) * per_page
+
     case :mnesia.transaction(fn ->
-           :mnesia.foldl(
-             fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
-                 html_url, docs_html_url},
-                acc ->
-               [
-                 package_to_map(
-                   {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                    updated_at, html_url, docs_html_url}
-                 )
-                 | acc
-               ]
-             end,
-             [],
-             @packages_table
-           )
+           # Use transaction for consistency
+           packages =
+             :mnesia.foldl(
+               fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
+                   html_url, docs_html_url},
+                  acc ->
+                 package =
+                   package_to_map(
+                     {@packages_table, name, repository_name, meta, private, downloads,
+                      inserted_at, updated_at, html_url, docs_html_url}
+                   )
+
+                 # Filter by search term if provided
+                 if matches_search?(package, search_term) do
+                   [package | acc]
+                 else
+                   acc
+                 end
+               end,
+               [],
+               @packages_table
+             )
+
+           # Sort by downloads (descending) and then by name
+           sorted_packages = Enum.sort_by(packages, &{-&1.downloads, &1.name})
+
+           total_count = length(sorted_packages)
+
+           paginated_packages =
+             sorted_packages
+             |> Enum.drop(offset)
+             |> Enum.take(per_page)
+
+           {paginated_packages, total_count}
          end) do
-      {:atomic, packages} -> {:ok, packages}
+      {:atomic, {packages, total}} -> {:ok, packages, total}
       {:aborted, reason} -> {:error, "Failed to list packages: #{inspect(reason)}"}
     end
+  end
+
+  @doc """
+  Search packages by name or description.
+  """
+  @spec search_packages(String.t(), keyword()) :: {:ok, [package()], integer()}
+  def search_packages(query, opts \\ []) do
+    page = Keyword.get(opts, :page, 1)
+    per_page = Keyword.get(opts, :per_page, 50)
+
+    list_packages(search: query, page: page, per_page: per_page)
+  end
+
+  defp matches_search?(_package, nil), do: true
+  defp matches_search?(_package, ""), do: true
+
+  defp matches_search?(package, search_term) do
+    search_term = String.downcase(search_term)
+    name_match = package.name |> String.downcase() |> String.contains?(search_term)
+
+    description_match =
+      case package.meta["description"] do
+        nil -> false
+        description -> description |> String.downcase() |> String.contains?(search_term)
+      end
+
+    name_match or description_match
   end
 
   @doc """
@@ -177,7 +236,20 @@ defmodule HexHub.Packages do
                  :mnesia.write(release)
                end) do
             {:atomic, :ok} ->
-              {:ok, release_to_map(release)}
+              release_map = release_to_map(release)
+
+              HexHub.Audit.log_event(
+                "release_created",
+                "package_release",
+                "#{package_name}-#{version}",
+                %{
+                  package_name: package_name,
+                  version: version,
+                  meta: meta
+                }
+              )
+
+              {:ok, release_map}
 
             {:aborted, reason} ->
               # Rollback file upload
@@ -200,6 +272,7 @@ defmodule HexHub.Packages do
   @spec get_release(String.t(), String.t()) :: {:ok, release()} | {:error, :not_found}
   def get_release(package_name, version) do
     case :mnesia.transaction(fn ->
+           # Match all releases for this package and version
            :mnesia.match_object(
              {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
            )
@@ -210,8 +283,12 @@ defmodule HexHub.Packages do
       {:atomic, releases} when is_list(releases) ->
         # For :bag type, take the most recent one (last written)
         release =
-          Enum.max_by(releases, fn {_, _, _, _, _, _, _, _, _, updated_at, _, _, _, _} ->
-            updated_at
+          Enum.max_by(releases, fn release_tuple ->
+            case release_tuple do
+              {@releases_table, _, _, _, _, _, _, _, updated_at, _, _, _, _} -> updated_at
+              # fallback
+              _ -> DateTime.utc_now()
+            end
           end)
 
         {:ok, release_to_map(release)}
@@ -265,8 +342,8 @@ defmodule HexHub.Packages do
                      releases ->
                        # For :bag type, update all matching records and delete old ones
                        Enum.each(releases, fn release_tuple ->
-                         {_, pkg_name, ver, _has_docs, meta, requirements, retired, downloads,
-                          inserted_at, _updated_at, url, package_url, html_url,
+                         {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
+                          downloads, inserted_at, _updated_at, url, package_url, html_url,
                           docs_html_url} = release_tuple
 
                          updated_release = {
@@ -359,8 +436,8 @@ defmodule HexHub.Packages do
                  releases ->
                    # For :bag type, update all matching records
                    Enum.each(releases, fn release_tuple ->
-                     {_, pkg_name, ver, _has_docs, meta, requirements, retired, downloads,
-                      inserted_at, _updated_at, url, package_url, html_url,
+                     {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
+                      downloads, inserted_at, _updated_at, url, package_url, html_url,
                       docs_html_url} = release_tuple
 
                      updated_release = {
@@ -428,8 +505,7 @@ defmodule HexHub.Packages do
                    Enum.each(releases, fn release_tuple ->
                      {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
                       inserted_at, _updated_at, url, package_url, html_url,
-                      docs_html_url} =
-                       release_tuple
+                      docs_html_url} = release_tuple
 
                      updated_release = {
                        @releases_table,
@@ -493,8 +569,7 @@ defmodule HexHub.Packages do
                    Enum.each(releases, fn release_tuple ->
                      {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
                       inserted_at, _updated_at, url, package_url, html_url,
-                      docs_html_url} =
-                       release_tuple
+                      docs_html_url} = release_tuple
 
                      updated_release = {
                        @releases_table,

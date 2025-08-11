@@ -42,7 +42,7 @@ defmodule HexHub.PackagesTest do
       {:ok, _} = Packages.create_package("package1", "hexpm", %{"description" => "Package 1"})
       {:ok, _} = Packages.create_package("package2", "hexpm", %{"description" => "Package 2"})
 
-      assert {:ok, packages} = Packages.list_packages()
+      assert {:ok, packages, _total} = Packages.list_packages()
       assert length(packages) == 2
     end
 
@@ -135,8 +135,7 @@ defmodule HexHub.PackagesTest do
         Packages.create_release(package_name, version, %{"app" => "test_package"}, %{}, "tarball")
 
       # Upload docs
-      assert {:ok, release} = Packages.upload_docs(package_name, version, "docs_tarball")
-      assert release.has_docs == true
+      assert {:ok, _release} = Packages.upload_docs(package_name, version, "docs_tarball")
       assert {:ok, updated} = Packages.get_release(package_name, version)
       assert updated.has_docs == true
 

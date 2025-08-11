@@ -12,6 +12,7 @@ defmodule HexHub.Application do
 
     # Create Mnesia tables if they don't exist
     HexHub.Mnesia.init()
+    HexHub.Audit.init()
 
     children = [
       # Start the Telemetry supervisor

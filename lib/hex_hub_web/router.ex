@@ -17,6 +17,7 @@ defmodule HexHubWeb.Router do
   pipeline :api_auth do
     plug :accepts, ["json"]
     plug HexHubWeb.Plugs.Authenticate
+    plug HexHubWeb.Plugs.RateLimiter, limit: 100, window: 60_000, key: :user
   end
 
   pipeline :require_write do

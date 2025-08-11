@@ -242,6 +242,20 @@ defmodule HexHub.Users do
     end
   end
 
+  @doc """
+  Get user by API key.
+  """
+  @spec get_user_by_api_key(String.t()) :: {:ok, user()} | {:error, :not_found}
+  def get_user_by_api_key(api_key) do
+    case HexHub.ApiKeys.validate_key(api_key) do
+      {:ok, %{username: username}} ->
+        get_user(username)
+
+      {:error, _} ->
+        {:error, :not_found}
+    end
+  end
+
   ## Helper functions
 
   defp user_to_map({username, email, password_hash, inserted_at, updated_at}) do

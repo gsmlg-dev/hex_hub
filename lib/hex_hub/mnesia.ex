@@ -10,7 +10,9 @@ defmodule HexHub.Mnesia do
     :package_releases,
     :package_owners,
     :api_keys,
-    :package_downloads
+    :package_downloads,
+    :rate_limit,
+    :audit_logs
   ]
 
   @doc """
@@ -111,6 +113,29 @@ defmodule HexHub.Mnesia do
          attributes: [:package_name, :version, :day_count, :week_count, :all_count],
          type: :set,
          ram_copies: [node()]
+       ]},
+      {:rate_limit,
+       [
+         attributes: [:key, :count],
+         type: :set,
+         ram_copies: [node()]
+       ]},
+      {:audit_logs,
+       [
+         attributes: [
+           :id,
+           :timestamp,
+           :user_id,
+           :action,
+           :resource_type,
+           :resource_id,
+           :details,
+           :ip_address,
+           :user_agent
+         ],
+         type: :ordered_set,
+         ram_copies: [node()],
+         index: [:user_id, :resource_type, :timestamp]
        ]}
     ]
 
@@ -128,7 +153,10 @@ defmodule HexHub.Mnesia do
     indices = [
       {:packages, :inserted_at},
       {:package_releases, :inserted_at},
-      {:users, :email}
+      {:users, :email},
+      {:audit_logs, :user_id},
+      {:audit_logs, :resource_type},
+      {:audit_logs, :timestamp}
     ]
 
     Enum.each(indices, fn {table, attribute} ->
