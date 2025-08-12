@@ -5,6 +5,8 @@ defmodule HexHubWeb.API.ReleaseController do
   action_fallback HexHubWeb.FallbackController
 
   def show(conn, %{"name" => name, "version" => version}) do
+    start_time = System.monotonic_time()
+    
     case Packages.get_release(name, version) do
       {:ok, release} ->
         response = %{
@@ -25,9 +27,15 @@ defmodule HexHubWeb.API.ReleaseController do
           docs_html_url: release.docs_html_url
         }
 
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.show", duration_ms, 200)
+
         json(conn, response)
 
       {:error, :not_found} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.show", duration_ms, 404, "not_found")
+
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
@@ -35,6 +43,8 @@ defmodule HexHubWeb.API.ReleaseController do
   end
 
   def publish(conn, %{"name" => package_name, "version" => version}) do
+    start_time = System.monotonic_time()
+    
     with {:ok, body, conn} <- Plug.Conn.read_body(conn),
          {:ok, meta} <- parse_meta_from_tarball(body),
          {:ok, requirements} <- parse_requirements_from_tarball(body),
@@ -55,16 +65,26 @@ defmodule HexHubWeb.API.ReleaseController do
         docs_html_url: release.docs_html_url
       }
 
+      duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+      HexHub.Telemetry.track_api_request("releases.publish", duration_ms, 201)
+      HexHub.Telemetry.track_package_published("hexpm")
+
       conn
       |> put_status(:created)
       |> json(response)
     else
       {:error, "Package not found"} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.publish", duration_ms, 404, "not_found")
+        
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
 
       {:error, reason} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.publish", duration_ms, 422, "error")
+        
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{message: reason})
@@ -72,16 +92,27 @@ defmodule HexHubWeb.API.ReleaseController do
   end
 
   def retire(conn, %{"name" => name, "version" => version}) do
+    start_time = System.monotonic_time()
+    
     with {:ok, _release} <- Packages.get_release(name, version),
          {:ok, _} <- Packages.retire_release(name, version) do
+      duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+      HexHub.Telemetry.track_api_request("releases.retire", duration_ms, 204)
+
       send_resp(conn, 204, "")
     else
       {:error, :not_found} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.retire", duration_ms, 404, "not_found")
+        
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
 
       {:error, reason} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.retire", duration_ms, 422, "error")
+        
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{message: reason})
@@ -89,16 +120,27 @@ defmodule HexHubWeb.API.ReleaseController do
   end
 
   def unretire(conn, %{"name" => name, "version" => version}) do
+    start_time = System.monotonic_time()
+    
     with {:ok, _release} <- Packages.get_release(name, version),
          {:ok, _} <- Packages.unretire_release(name, version) do
+      duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+      HexHub.Telemetry.track_api_request("releases.unretire", duration_ms, 204)
+
       send_resp(conn, 204, "")
     else
       {:error, :not_found} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.unretire", duration_ms, 404, "not_found")
+        
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
 
       {:error, reason} ->
+        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        HexHub.Telemetry.track_api_request("releases.unretire", duration_ms, 422, "error")
+        
         conn
         |> put_status(:unprocessable_entity)
         |> json(%{message: reason})

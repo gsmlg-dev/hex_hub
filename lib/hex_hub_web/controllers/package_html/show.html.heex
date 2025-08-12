@@ -1,0 +1,161 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="bg-base-100 shadow-xl rounded-lg p-6 mb-6">
+      <div class="flex items-start justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-base-content mb-2"><%= @package.name %></h1>
+          <p class="text-lg text-base-content/70 mb-4"><%= @package.description || "No description available" %></p>
+          
+          <div class="flex flex-wrap gap-2">
+            <span class="badge badge-primary badge-lg">Latest: v<%= @package.latest_version %></span>
+            <span class="badge badge-ghost badge-lg">📥 <%= @package.downloads || 0 %> downloads</span>
+            <span class="badge badge-outline badge-lg"><%= @package.repository || "hexpm" %></span>
+          </div>
+        </div>
+        
+        <div class="text-right">
+          <div class="text-sm text-base-content/60">
+            <div>Published <%= format_date(@package.inserted_at) %></div>
+            <div>Updated <%= format_date(@package.updated_at) %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="md:col-span-2">
+        <div class="bg-base-100 shadow-xl rounded-lg p-6 mb-6">
+          <h2 class="text-2xl font-bold mb-4">Releases</h2>
+          
+          <div class="space-y-4">
+            <%= for release <- @releases do %>
+              <div class="border border-base-300 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-lg font-semibold">
+                    v<%= release.version %>
+                  </h3>
+                  
+                  <div class="flex items-center gap-2">
+                    <%= if release.has_docs do %>
+                      <span class="badge badge-success badge-sm">📚 Docs</span>
+                    <% end %>
+                    
+                    <%= if release.retired do %>
+                      <span class="badge badge-error badge-sm">Retired</span>
+                    <% end %>
+                  </div>
+                </div>
+                
+                <div class="text-sm text-base-content/70 mb-2">
+                  Published <%= format_date(release.inserted_at) %>
+                </div>
+                
+                <%= if release.meta do %>
+                  <div class="text-sm">
+                    <%= if release.meta["description"] do %>
+                      <p><%= release.meta["description"] %></p>
+                    <% end %>
+                    
+                    <%= if release.meta["links"] && !Enum.empty?(release.meta["links"]) do %>
+                      <div class="mt-2">
+                        <strong>Links:</strong>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                          <%= for {name, url} <- release.meta["links"] do %>
+                            <a href={url} target="_blank" class="link link-primary text-xs">
+                              <%= name %>
+                            </a>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <%= if Enum.any?(@releases, &(!Enum.empty?(&1.requirements))) do %>
+          <div class="bg-base-100 shadow-xl rounded-lg p-6">
+            <h2 class="text-2xl font-bold mb-4">Dependencies</h2>
+            
+            <%= for release <- Enum.filter(@releases, &(!Enum.empty?(&1.requirements))) do %>
+              <div class="mb-4">
+                <h3 class="text-lg font-semibold mb-2">v<%= release.version %> Requirements</h3>
+                
+                <div class="space-y-2">
+                  <%= for {dep_name, req} <- release.requirements do %>
+                    <div class="flex items-center justify-between p-2 bg-base-200 rounded">
+                      <span class="font-mono text-sm"><%= dep_name %></span>
+                      <span class="text-sm text-base-content/70"><%= req %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="space-y-6">
+        <div class="bg-base-100 shadow-xl rounded-lg p-4">
+          <h3 class="font-semibold mb-3">Quick Actions</h3>
+          
+          <div class="space-y-2">
+            <a href={~p"/packages/#{@package.name}/docs"} class="btn btn-primary w-full">
+              <%= if Enum.any?(@releases, & &1.has_docs) do %>
+                View Documentation
+              <% else %>
+                No Documentation
+              <% end %>
+            </a>
+            
+            <button class="btn btn-outline w-full" disabled>
+              Add to Favorites
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-base-100 shadow-xl rounded-lg p-4">
+          <h3 class="font-semibold mb-3">Package Info</h3>
+          
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-base-content/70">Name:</span>
+              <span class="font-mono"><%= @package.name %></span>
+            </div>
+            
+            <div class="flex justify-between">
+              <span class="text-base-content/70">Latest:</span>
+              <span>v<%= @package.latest_version %></span>
+            </div>
+            
+            <div class="flex justify-between">
+              <span class="text-base-content/70">Repository:</span>
+              <span><%= @package.repository || "hexpm" %></span>
+            </div>
+            
+            <div class="flex justify-between">
+              <span class="text-base-content/70">Downloads:</span>
+              <span><%= @package.downloads || 0 %></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-base-100 shadow-xl rounded-lg p-4">
+          <h3 class="font-semibold mb-3">Recent Activity</h3>
+          
+          <div class="space-y-2 text-sm">
+            <%= for release <- Enum.take(@releases, 3) do %>
+              <div class="flex items-center justify-between">
+                <span class="text-base-content/70">v<%= release.version %> released:</span>
+                <span><%= format_date(release.inserted_at) %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>

@@ -54,7 +54,8 @@ defmodule HexHub.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      {:libcluster, "~> 3.3"}
     ]
   end
 
