@@ -8,7 +8,10 @@ defmodule HexHub.Application do
     # Record application start time for uptime calculation
     :persistent_term.put(:hex_hub_start_time, System.system_time(:second))
     
-    # Start Mnesia only if not already started
+    # Initialize clustering if enabled
+    HexHub.Clustering.init_clustering()
+
+    # Start Mnesia only if not already started and clustering is not handling it
     unless Process.whereis(:mnesia_sup) do
       :mnesia.start()
     end
@@ -26,9 +29,14 @@ defmodule HexHub.Application do
       {Phoenix.PubSub, name: HexHub.PubSub},
       # Start the Endpoint (http/https)
       HexHubWeb.Endpoint
-      # Start a worker by calling: HexHub.Worker.start_link(arg)
-      # {HexHub.Worker, arg}
     ]
+
+    # Add clustering supervisor only if clustering is enabled
+    children =
+      case Application.get_env(:libcluster, :topologies, []) do
+        [] -> children
+        topologies -> children ++ [{Cluster.Supervisor, topologies}]
+      end
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

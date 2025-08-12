@@ -374,10 +374,10 @@ defmodule HexHub.Packages do
                          :mnesia.write(updated_release)
                        end)
 
-                       {:ok, hd(releases)}
+                       {:ok, :updated}
                    end
                  end) do
-              {:atomic, {:ok, _release_tuple}} ->
+              {:atomic, {:ok, _}} ->
                 case get_release(package_name, version) do
                   {:ok, release} -> {:ok, release}
                   error -> error
@@ -468,10 +468,10 @@ defmodule HexHub.Packages do
                      :mnesia.write(updated_release)
                    end)
 
-                   {:ok, hd(releases)}
+                   {:ok, :updated}
                end
              end) do
-          {:atomic, {:ok, _release_tuple}} ->
+          {:atomic, {:ok, _}} ->
             case get_release(package_name, version) do
               {:ok, release} -> {:ok, release}
               error -> error
@@ -684,6 +684,205 @@ defmodule HexHub.Packages do
 
       true ->
         :ok
+    end
+  end
+
+  @doc """
+  List all unique repository names from packages.
+  """
+  @spec list_repositories() :: list(map())
+  def list_repositories() do
+    case :mnesia.transaction(fn ->
+           :mnesia.foldl(
+             fn {_, _name, repository_name, _meta, _private, _downloads, _inserted_at, _updated_at,
+                 _html_url, _docs_html_url},
+                acc ->
+               MapSet.put(acc, repository_name)
+             end,
+             MapSet.new(),
+             @packages_table
+           )
+         end) do
+      {:atomic, repository_names} ->
+        Enum.map(MapSet.to_list(repository_names), fn name ->
+          %{
+            name: name,
+            package_count: count_packages_in_repository(name),
+            inserted_at: DateTime.utc_now(),
+            updated_at: DateTime.utc_now()
+          }
+        end)
+
+      {:aborted, _reason} ->
+        []
+    end
+  end
+
+  @doc """
+  Get a specific repository by name.
+  """
+  @spec get_repository(String.t()) :: {:ok, map()} | {:error, :not_found}
+  def get_repository(name) do
+    case :mnesia.transaction(fn ->
+           :mnesia.match_object(
+             {@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_}
+           )
+         end) do
+      {:atomic, []} ->
+        {:error, :not_found}
+
+      {:atomic, packages} ->
+        {:ok,
+         %{
+           name: name,
+           package_count: length(packages),
+           inserted_at: DateTime.utc_now(),
+           updated_at: DateTime.utc_now()
+         }}
+
+      {:aborted, _reason} ->
+        {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Create a new repository. This is a logical operation since repositories
+  are currently just names associated with packages.
+  """
+  @spec create_repository(map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  def create_repository(params) do
+    name = params["name"] || params[:name]
+
+    if String.trim(name) == "" do
+      {:error, %{name: ["can't be blank"]}}
+    else
+      # Check if repository already exists
+      case :mnesia.transaction(fn ->
+             :mnesia.match_object(
+               {@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_}
+             )
+           end) do
+        {:atomic, []} ->
+          {:ok,
+           %{
+             name: name,
+             package_count: 0,
+             inserted_at: DateTime.utc_now(),
+             updated_at: DateTime.utc_now()
+           }}
+
+        {:atomic, _packages} ->
+          {:error, %{name: ["has already been taken"]}}
+
+        {:aborted, _reason} ->
+          {:error, %{name: ["database error"]}}
+      end
+    end
+  end
+
+  @doc """
+  Update a repository name. This involves updating all packages in the repository.
+  """
+  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  def update_repository(old_name, params) do
+    new_name = params["name"] || params[:name]
+
+    if String.trim(new_name) == "" do
+      {:error, %{name: ["can't be blank"]}}
+    else
+      case :mnesia.transaction(fn ->
+             packages =
+               :mnesia.match_object(
+                 {@packages_table, :_, old_name, :_, :_, :_, :_, :_, :_, :_}
+               )
+
+             # Update all packages with the new repository name
+             Enum.each(packages, fn {table, pkg_name, _old_repo, meta, private, downloads,
+                                     inserted_at, _updated_at, html_url, docs_html_url} ->
+               updated_package = {
+                 table,
+                 pkg_name,
+                 new_name,
+                 meta,
+                 private,
+                 downloads,
+                 inserted_at,
+                 DateTime.utc_now(),
+                 html_url,
+                 docs_html_url
+               }
+
+               :mnesia.write(updated_package)
+             end)
+
+             :ok
+           end) do
+        {:atomic, :ok} ->
+          {:ok,
+           %{
+             name: new_name,
+             package_count: count_packages_in_repository(new_name),
+             inserted_at: DateTime.utc_now(),
+             updated_at: DateTime.utc_now()
+           }}
+
+        {:aborted, _reason} ->
+          {:error, %{name: ["update failed"]}}
+      end
+    end
+  end
+
+  @doc """
+  Delete a repository. This involves deleting all packages in the repository.
+  """
+  @spec delete_repository(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  def delete_repository(name) do
+    case :mnesia.transaction(fn ->
+           packages =
+             :mnesia.match_object(
+               {@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_}
+             )
+
+           # Delete all packages in the repository
+           Enum.each(packages, fn {table, pkg_name, _repo, _meta, _private, _downloads,
+                                   _inserted_at, _updated_at, _html_url, _docs_html_url} ->
+             :mnesia.delete({table, pkg_name})
+           end)
+
+           # Also delete all releases for packages in this repository
+           Enum.each(packages, fn {_table, pkg_name, _repo, _meta, _private, _downloads,
+                                   _inserted_at, _updated_at, _html_url, _docs_html_url} ->
+             releases =
+               :mnesia.match_object(
+                 {@releases_table, pkg_name, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+               )
+
+             Enum.each(releases, fn {rel_table, _pkg_name, version, _has_docs, _meta,
+                                     _requirements, _retired, _downloads, _inserted_at,
+                                     _updated_at, _url, _package_url, _html_url, _docs_html_url} ->
+               :mnesia.delete({rel_table, {pkg_name, version}})
+             end)
+           end)
+
+           :ok
+         end) do
+      {:atomic, :ok} ->
+        {:ok, name}
+
+      {:aborted, _reason} ->
+        {:error, "delete failed"}
+    end
+  end
+
+  @spec count_packages_in_repository(String.t()) :: integer()
+  defp count_packages_in_repository(name) do
+    case :mnesia.transaction(fn ->
+           :mnesia.match_object(
+             {@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_}
+           )
+         end) do
+      {:atomic, packages} -> length(packages)
+      {:aborted, _reason} -> 0
     end
   end
 end

@@ -28,6 +28,22 @@ defmodule HexHubWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+    get "/packages", PackageController, :index
+    get "/packages/:name", PackageController, :show
+    get "/packages/:name/docs", PackageController, :docs
+  end
+
+  # Admin dashboard routes
+  scope "/admin", HexHubWeb do
+    pipe_through :browser
+
+    get "/", AdminController, :dashboard
+    get "/repositories", AdminController, :repositories
+    get "/repositories/new", AdminController, :new_repository
+    post "/repositories", AdminController, :create_repository
+    get "/repositories/:name/edit", AdminController, :edit_repository
+    put "/repositories/:name", AdminController, :update_repository
+    delete "/repositories/:name", AdminController, :delete_repository
   end
 
   # Health check endpoints for monitoring
@@ -37,6 +53,15 @@ defmodule HexHubWeb.Router do
     get "/", HealthController, :index
     get "/ready", HealthController, :readiness
     get "/live", HealthController, :liveness
+  end
+
+  # Cluster management endpoints
+  scope "/api", HexHubWeb do
+    pipe_through :api
+
+    get "/cluster/status", ClusterController, :status
+    post "/cluster/join", ClusterController, :join
+    post "/cluster/leave", ClusterController, :leave
   end
 
   # API routes matching hex-api.yaml specification
