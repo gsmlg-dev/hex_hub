@@ -64,7 +64,12 @@ defmodule HexHub.MixProject do
       setup: ["deps.get", "assets.setup", "assets.build"],
       test: ["test"],
       "assets.setup": ["tailwind.install --if-missing", "bun.install --if-missing"],
-      "assets.build": ["tailwind hex_hub", "tailwind hex_hub_admin", "bun hex_hub", "bun hex_hub_admin"],
+      "assets.build": [
+        "tailwind hex_hub",
+        "tailwind hex_hub_admin",
+        "bun hex_hub",
+        "bun hex_hub_admin"
+      ],
       "assets.deploy": [
         "tailwind hex_hub --minify",
         "tailwind hex_hub_admin --minify",

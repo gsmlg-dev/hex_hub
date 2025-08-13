@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui";
+@import "phoenix_duskmoon/theme";
+@import "phoenix_duskmoon/components";
+@import "phoenix_duskmoon/neumorphic";
+
+@source "../js";
+@source "../../lib/hex_hub_admin_web";
+@source "../../deps/phoenix_duskmoon/lib/phoenix_duskmoon/";
+
+/* Custom styles for admin interface */
+.admin-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}

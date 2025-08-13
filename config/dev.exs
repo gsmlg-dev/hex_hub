@@ -16,10 +16,10 @@ config :hex_hub, HexHubAdminWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "admin_secret_key_base_1234567890abcdef",
+  secret_key_base: "SKnshuH0YE4iQNwz3qDeTKhOSwsnZV6W2h0PFf6prJjLQMQ3Ht+P4J4SoF0VGAHB",
   watchers: [
-    bun: {Bun, :install_and_run, [:hex_hub, ~w(--sourcemap=inline --watch)]},
-    tailwind: {Tailwind, :install_and_run, [:hex_hub, ~w(--watch)]}
+    bun: {Bun, :install_and_run, [:hex_hub_admin, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:hex_hub_admin, ~w(--watch)]}
   ]
 
 config :hex_hub, HexHubWeb.Endpoint,

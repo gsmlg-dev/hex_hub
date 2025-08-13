@@ -5,7 +5,6 @@
 @import "phoenix_duskmoon/components";
 @import "phoenix_duskmoon/neumorphic";
 
-@source "../css";
 @source "../js";
 @source "../../lib/hex_hub_web";
 @source "../../deps/phoenix_duskmoon/lib/phoenix_duskmoon/";

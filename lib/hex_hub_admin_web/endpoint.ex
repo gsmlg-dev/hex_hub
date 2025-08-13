@@ -12,7 +12,7 @@ defmodule HexHubAdminWeb.Endpoint do
 
   # Serve at "/admin" the static files from admin priv/static directory.
   plug Plug.Static,
-    at: "/admin",
+    at: "/",
     from: :hex_hub,
     gzip: false,
     only: HexHubAdminWeb.static_paths()
