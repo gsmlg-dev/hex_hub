@@ -9,7 +9,7 @@
         <div class="text-xl font-bold mb-4 px-2">HexHub Admin</div>
 
         <li>
-          <a href={~p"/admin"}>
+          <a href={~p"/"}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5"
@@ -35,7 +35,7 @@
         </li>
 
         <li class="bg-base-200">
-          <a href={~p"/admin/repositories"} class="active">
+          <a href={~p"/repositories"} class="active">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5"
@@ -127,7 +127,7 @@
       <div class="p-6">
         <div class="flex justify-between items-center mb-6">
           <h1 class="text-3xl font-bold">Repositories</h1>
-          <a href={~p"/admin/repositories/new"} class="btn btn-primary">
+          <a href={~p"/repositories/new"} class="btn btn-primary">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5"
@@ -168,7 +168,7 @@
                       <td>
                         <div class="flex gap-2">
                           <a
-                            href={~p"/admin/repositories/#{repository.name}/edit"}
+                            href={~p"/repositories/#{repository.name}/edit"}
                             class="btn btn-sm btn-ghost"
                           >
                             <svg
@@ -188,7 +188,7 @@
                             Edit
                           </a>
                           <form
-                            action={~p"/admin/repositories/#{repository.name}"}
+                            action={~p"/repositories/#{repository.name}"}
                             method="post"
                             class="inline"
                           >
@@ -235,7 +235,7 @@
             <%= if @total_pages > 1 do %>
               <div class="join flex justify-center mt-4">
                 <%= if @page > 1 do %>
-                  <a href={~p"/admin/repositories?page=#{@page - 1}"} class="join-item btn">
+                  <a href={~p"/repositories?page=#{@page - 1}"} class="join-item btn">
                     Previous
                   </a>
                 <% else %>
@@ -244,7 +244,7 @@
 
                 <%= for page_num <- 1..@total_pages do %>
                   <a
-                    href={~p"/admin/repositories?page=#{page_num}"}
+                    href={~p"/repositories?page=#{page_num}"}
                     class={"join-item btn #{if page_num == @page, do: "btn-active", else: ""}"}
                   >
                     {page_num}
@@ -252,7 +252,7 @@
                 <% end %>
 
                 <%= if @page < @total_pages do %>
-                  <a href={~p"/admin/repositories?page=#{@page + 1}"} class="join-item btn">
+                  <a href={~p"/repositories?page=#{@page + 1}"} class="join-item btn">
                     Next
                   </a>
                 <% else %>

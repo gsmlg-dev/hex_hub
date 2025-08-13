@@ -11,6 +11,17 @@ config :hex_hub, HexHubWeb.Endpoint,
     tailwind: {Tailwind, :install_and_run, [:hex_hub, ~w(--watch)]}
   ]
 
+config :hex_hub, HexHubAdminWeb.Endpoint,
+  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("ADMIN_PORT") || "4001")],
+  check_origin: false,
+  code_reloader: true,
+  debug_errors: true,
+  secret_key_base: "admin_secret_key_base_1234567890abcdef",
+  watchers: [
+    bun: {Bun, :install_and_run, [:hex_hub, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:hex_hub, ~w(--watch)]}
+  ]
+
 config :hex_hub, HexHubWeb.Endpoint,
   live_reload: [
     web_console_logger: true,
@@ -18,6 +29,16 @@ config :hex_hub, HexHubWeb.Endpoint,
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"priv/gettext/.*(po)$",
       ~r"lib/hex_hub_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
+    ]
+  ]
+
+config :hex_hub, HexHubAdminWeb.Endpoint,
+  live_reload: [
+    web_console_logger: true,
+    patterns: [
+      ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
+      ~r"priv/gettext/.*(po)$",
+      ~r"lib/hex_hub_admin_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
     ]
   ]
 

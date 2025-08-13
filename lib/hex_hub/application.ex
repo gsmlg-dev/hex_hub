@@ -23,12 +23,16 @@ defmodule HexHub.Application do
     children = [
       # Start the Telemetry supervisor
       HexHubWeb.Telemetry,
+      # Start the admin telemetry supervisor
+      HexHubAdminWeb.Telemetry,
       # Start the custom telemetry poller
       {HexHub.Telemetry, []},
       # Start the PubSub system
       {Phoenix.PubSub, name: HexHub.PubSub},
       # Start the Endpoint (http/https)
-      HexHubWeb.Endpoint
+      HexHubWeb.Endpoint,
+      # Start the Admin Endpoint (http/https)
+      HexHubAdminWeb.Endpoint
     ]
 
     # Add clustering supervisor only if clustering is enabled
@@ -47,6 +51,7 @@ defmodule HexHub.Application do
   @impl true
   def config_change(changed, _new, removed) do
     HexHubWeb.Endpoint.config_change(changed, removed)
+    HexHubAdminWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 

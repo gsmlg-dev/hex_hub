@@ -33,19 +33,6 @@ defmodule HexHubWeb.Router do
     get "/packages/:name/docs", PackageController, :docs
   end
 
-  # Admin dashboard routes
-  scope "/admin", HexHubWeb do
-    pipe_through :browser
-
-    get "/", AdminController, :dashboard
-    get "/repositories", AdminController, :repositories
-    get "/repositories/new", AdminController, :new_repository
-    post "/repositories", AdminController, :create_repository
-    get "/repositories/:name/edit", AdminController, :edit_repository
-    put "/repositories/:name", AdminController, :update_repository
-    delete "/repositories/:name", AdminController, :delete_repository
-  end
-
   # Health check endpoints for monitoring
   scope "/health", HexHubWeb do
     pipe_through :api

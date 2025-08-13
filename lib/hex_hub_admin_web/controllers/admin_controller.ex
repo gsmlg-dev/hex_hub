@@ -1,14 +1,10 @@
-defmodule HexHubWeb.AdminController do
-  use HexHubWeb, :controller
+defmodule HexHubAdminWeb.AdminController do
+  use HexHubAdminWeb, :controller
 
   alias HexHub.Packages
 
   def dashboard(conn, _params) do
-    total =
-      case Packages.list_packages() do
-        {:ok, _, total} -> total
-        _ -> 0
-      end
+    {:ok, _packages, total} = Packages.list_packages()
 
     stats = %{
       total_packages: total,
@@ -50,7 +46,7 @@ defmodule HexHubWeb.AdminController do
       {:ok, repository} ->
         conn
         |> put_flash(:info, "Repository #{repository.name} created successfully!")
-        |> redirect(to: ~p"/admin/repositories")
+        |> redirect(to: ~p"/repositories")
 
       {:error, changeset} ->
         render(conn, :new_repository, changeset: changeset)
@@ -65,7 +61,7 @@ defmodule HexHubWeb.AdminController do
       {:error, :not_found} ->
         conn
         |> put_flash(:error, "Repository not found")
-        |> redirect(to: ~p"/admin/repositories")
+        |> redirect(to: ~p"/repositories")
     end
   end
 
@@ -76,7 +72,7 @@ defmodule HexHubWeb.AdminController do
           {:ok, updated_repository} ->
             conn
             |> put_flash(:info, "Repository #{updated_repository.name} updated successfully!")
-            |> redirect(to: ~p"/admin/repositories")
+            |> redirect(to: ~p"/repositories")
 
           {:error, changeset} ->
             render(conn, :edit_repository, repository: repository, changeset: changeset)
@@ -85,7 +81,7 @@ defmodule HexHubWeb.AdminController do
       {:error, :not_found} ->
         conn
         |> put_flash(:error, "Repository not found")
-        |> redirect(to: ~p"/admin/repositories")
+        |> redirect(to: ~p"/repositories")
     end
   end
 
@@ -94,12 +90,12 @@ defmodule HexHubWeb.AdminController do
       {:ok, _} ->
         conn
         |> put_flash(:info, "Repository #{name} deleted successfully!")
-        |> redirect(to: ~p"/admin/repositories")
+        |> redirect(to: ~p"/repositories")
 
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Failed to delete repository")
-        |> redirect(to: ~p"/admin/repositories")
+        |> redirect(to: ~p"/repositories")
     end
   end
 end

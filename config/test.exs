@@ -7,6 +7,11 @@ config :hex_hub, HexHubWeb.Endpoint,
   secret_key_base: "x2KKtgZ09R+tkr1nKiJqCBfaVPNBCFhsUvopCd82COii3ZqS13u4TQQcwfQULNNy",
   server: false
 
+config :hex_hub, HexHubAdminWeb.Endpoint,
+  http: [ip: {127, 0, 0, 1}, port: 4003],
+  secret_key_base: "test_admin_secret_key_base_1234567890abcdef",
+  server: false
+
 # In test we don't send emails
 config :hex_hub, HexHub.Mailer, adapter: Swoosh.Adapters.Test
 

@@ -13,12 +13,27 @@ config :hex_hub, HexHubWeb.Endpoint,
   pubsub_server: HexHub.PubSub,
   live_view: [signing_salt: "y6PnerOV"]
 
+config :hex_hub, HexHubAdminWeb.Endpoint,
+  url: [host: "localhost", path: "/admin"],
+  adapter: Bandit.PhoenixAdapter,
+  render_errors: [
+    formats: [html: HexHubAdminWeb.ErrorHTML, json: HexHubAdminWeb.ErrorJSON],
+    layout: false
+  ],
+  pubsub_server: HexHub.PubSub,
+  live_view: [signing_salt: "admin_signing_salt"]
+
 config :hex_hub, HexHub.Mailer, adapter: Swoosh.Adapters.Local
 
 config :bun,
   version: "1.2.16",
   hex_hub: [
     args: ~w(build assets/js/app.js --outdir=priv/static/assets),
+    cd: Path.expand("..", __DIR__),
+    env: %{"NODE_PATH" => "#{Path.expand("../deps", __DIR__)}"}
+  ],
+  hex_hub_admin: [
+    args: ~w(build assets-admin/js/app.js --outdir=priv/static/assets),
     cd: Path.expand("..", __DIR__),
     env: %{"NODE_PATH" => "#{Path.expand("../deps", __DIR__)}"}
   ]
@@ -29,6 +44,13 @@ config :tailwind,
     args: ~w(
       --input=assets/css/app.css
       --output=priv/static/assets/css/app.css
+    ),
+    cd: Path.expand("..", __DIR__)
+  ],
+  hex_hub_admin: [
+    args: ~w(
+      --input=assets-admin/css/app.css
+      --output=priv/static/assets/css/admin.css
     ),
     cd: Path.expand("..", __DIR__)
   ]

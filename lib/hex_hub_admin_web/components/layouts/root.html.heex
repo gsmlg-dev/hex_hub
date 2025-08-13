@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" class="[scrollbar-gutter:stable]" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" sizes="180x180" href={~p"/assets/apple-touch-icon.png"} />
+    <link rel="icon" type="image/svg+xml" href={~p"/assets/favicon.svg"} />
+    <link rel="manifest" href={~p"/assets/site.webmanifest"} />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/admin.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+    <title>HexHub Admin</title>
+  </head>
+  <body class="bg-base-100 antialiased">
+    {@inner_content}
+  </body>
+</html>
