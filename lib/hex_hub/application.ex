@@ -7,7 +7,7 @@ defmodule HexHub.Application do
   def start(_type, _args) do
     # Record application start time for uptime calculation
     :persistent_term.put(:hex_hub_start_time, System.system_time(:second))
-    
+
     # Initialize clustering if enabled
     HexHub.Clustering.init_clustering()
 

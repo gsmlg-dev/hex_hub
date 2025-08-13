@@ -6,22 +6,23 @@ defmodule HexHubWeb.PackageController do
     page = String.to_integer(params["page"] || "1")
     per_page = String.to_integer(params["per_page"] || "20")
     search = params["search"]
-    
-    {packages, total_count} = 
+
+    {packages, total_count} =
       case search do
-        nil -> 
+        nil ->
           case Packages.list_packages(page: page, per_page: per_page) do
             {:ok, pkgs, total} -> {pkgs, total}
             _ -> {[], 0}
           end
-        search_term -> 
+
+        search_term ->
           case Packages.search_packages(search_term, page: page, per_page: per_page) do
             {:ok, pkgs, total} -> {pkgs, total}
             _ -> {[], 0}
           end
       end
-    
-    render(conn, :index, 
+
+    render(conn, :index,
       packages: packages,
       page: page,
       per_page: per_page,
@@ -35,7 +36,7 @@ defmodule HexHubWeb.PackageController do
       {:ok, package} ->
         releases = Packages.list_releases(name)
         render(conn, :show, package: package, releases: releases)
-      
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
@@ -48,13 +49,13 @@ defmodule HexHubWeb.PackageController do
     case Packages.get_release(name, version) do
       {:ok, release} when release.has_docs ->
         render(conn, :docs, package: release.package_name, version: release.version)
-      
+
       {:ok, _release} ->
         conn
         |> put_status(:not_found)
         |> put_view(HexHubWeb.ErrorHTML)
         |> render(404, message: "Documentation not found")
-      
+
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)

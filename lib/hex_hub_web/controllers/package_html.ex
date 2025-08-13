@@ -20,7 +20,7 @@ defmodule HexHubWeb.PackageHTML do
   def pagination_link(_conn, page, search, text) do
     query_params = %{page: page}
     query_params = if search, do: Map.put(query_params, :search, search), else: query_params
-    
+
     path = "/packages?" <> URI.encode_query(query_params)
     "<a href=\"#{path}\" class=\"btn btn-sm\">#{text}</a>"
   end
@@ -30,7 +30,7 @@ defmodule HexHubWeb.PackageHTML do
   end
 
   def download_count_badge(count) do
-    formatted_count = 
+    formatted_count =
       cond do
         count >= 1_000_000 -> "#{Float.round(count / 1_000_000, 1)}M"
         count >= 1_000 -> "#{Float.round(count / 1_000, 1)}K"

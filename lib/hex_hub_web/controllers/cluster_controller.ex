@@ -12,6 +12,7 @@ defmodule HexHubWeb.ClusterController do
     case Clustering.join_cluster(node) do
       {:ok, _} ->
         json(conn, %{status: "success", message: "Successfully joined cluster"})
+
       {:error, reason} ->
         conn
         |> put_status(:bad_request)
@@ -23,6 +24,7 @@ defmodule HexHubWeb.ClusterController do
     case Clustering.leave_cluster() do
       {:ok, _} ->
         json(conn, %{status: "success", message: "Successfully left cluster"})
+
       error ->
         conn
         |> put_status(:bad_request)

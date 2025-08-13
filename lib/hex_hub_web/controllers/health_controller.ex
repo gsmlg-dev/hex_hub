@@ -13,7 +13,7 @@ defmodule HexHubWeb.HealthController do
       disk_health()
     ]
 
-    overall_status = 
+    overall_status =
       if Enum.all?(checks, &(&1.status == :ok)), do: :ok, else: :error
 
     _status_code = if overall_status == :ok, do: 200, else: 503
@@ -50,13 +50,14 @@ defmodule HexHubWeb.HealthController do
     case :mnesia.system_info(:is_running) do
       :yes ->
         tables = [:users, :packages, :package_releases, :api_keys]
-        
-        table_health = 
+
+        table_health =
           Enum.reduce(tables, {:ok, []}, fn table, acc ->
             case :mnesia.table_info(table, :size) do
               size when is_integer(size) ->
                 {status, tables} = acc
                 {status, [{table, size} | tables]}
+
               error ->
                 {:error, [{table, error} | elem(acc, 1)]}
             end
@@ -72,6 +73,7 @@ defmodule HexHubWeb.HealthController do
                 running: true
               }
             }
+
           {:error, failed_tables} ->
             %{
               name: "mnesia",
@@ -80,6 +82,7 @@ defmodule HexHubWeb.HealthController do
               details: %{failed_tables: failed_tables}
             }
         end
+
       status ->
         %{
           name: "mnesia",
@@ -92,7 +95,7 @@ defmodule HexHubWeb.HealthController do
 
   defp storage_health do
     storage_path = Application.get_env(:hex_hub, :storage_path, "priv/storage")
-    
+
     cond do
       not File.exists?(storage_path) ->
         %{
@@ -101,7 +104,7 @@ defmodule HexHubWeb.HealthController do
           message: "Storage directory does not exist",
           details: %{path: storage_path}
         }
-      
+
       not File.dir?(storage_path) ->
         %{
           name: "storage",
@@ -109,16 +112,16 @@ defmodule HexHubWeb.HealthController do
           message: "Storage path is not a directory",
           details: %{path: storage_path}
         }
-      
+
       true ->
         try do
           # Test write permissions
           test_file = Path.join(storage_path, ".health-check")
           File.write!(test_file, "test")
           File.rm!(test_file)
-          
+
           # Get storage stats
-          {total_files, total_size} = 
+          {total_files, total_size} =
             Path.join(storage_path, "**/*")
             |> Path.wildcard()
             |> Enum.reject(&File.dir?/1)
@@ -153,11 +156,12 @@ defmodule HexHubWeb.HealthController do
     total_memory = memory[:total]
     process_memory = memory[:processes]
     system_memory = memory[:system]
-    
+
     # Alert if memory usage is high
-    max_memory = 1_000_000_000 # 1GB threshold
+    # 1GB threshold
+    max_memory = 1_000_000_000
     status = if total_memory > max_memory, do: :warning, else: :ok
-    
+
     %{
       name: "memory",
       status: status,
@@ -171,13 +175,13 @@ defmodule HexHubWeb.HealthController do
   end
 
   defp disk_health do
-    disk_stats = 
+    disk_stats =
       case :os.type() do
         {:unix, _} -> get_unix_disk_stats()
         {:win32, _} -> get_windows_disk_stats()
         _ -> %{status: :unknown, details: %{}}
       end
-    
+
     Map.put(disk_stats, :name, "disk")
   end
 
@@ -185,15 +189,18 @@ defmodule HexHubWeb.HealthController do
     case System.cmd("df", ["-h", "."]) do
       {output, 0} ->
         lines = String.split(output, "\n")
+
         if length(lines) >= 2 do
           [_header | data_lines] = lines
+
           case Enum.find(data_lines, &String.contains?(&1, "/")) do
             line when is_binary(line) ->
               parts = String.split(line, ~r/\s+/, trim: true)
+
               if length(parts) >= 5 do
                 [filesystem, size, used, available, use_percent | _] = parts
                 use_percent = String.trim_trailing(use_percent, "%") |> String.to_integer()
-                
+
                 %{
                   status: if(use_percent > 90, do: :warning, else: :ok),
                   details: %{
@@ -207,12 +214,14 @@ defmodule HexHubWeb.HealthController do
               else
                 %{status: :unknown, details: %{}}
               end
+
             _ ->
               %{status: :unknown, details: %{}}
           end
         else
           %{status: :unknown, details: %{}}
         end
+
       {_error, _} ->
         %{status: :unknown, details: %{}}
     end
@@ -222,16 +231,18 @@ defmodule HexHubWeb.HealthController do
     case System.cmd("wmic", ["logicaldisk", "get", "size,freespace,caption"]) do
       {output, 0} ->
         lines = String.split(output, "\n")
+
         case Enum.find(lines, &String.contains?(&1, "C:")) do
           line when is_binary(line) ->
             parts = String.split(line, ~r/\s+/, trim: true)
+
             if length(parts) >= 3 do
               [drive, free_space, total_size] = parts
               free = String.to_integer(free_space)
               total = String.to_integer(total_size)
               used = total - free
               use_percent = div(used * 100, total)
-              
+
               %{
                 status: if(use_percent > 90, do: :warning, else: :ok),
                 details: %{
@@ -245,9 +256,11 @@ defmodule HexHubWeb.HealthController do
             else
               %{status: :unknown, details: %{}}
             end
+
           _ ->
             %{status: :unknown, details: %{}}
         end
+
       {_error, _} ->
         %{status: :unknown, details: %{}}
     end

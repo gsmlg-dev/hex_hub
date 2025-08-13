@@ -61,26 +61,34 @@ defmodule HexHub.Storage do
     start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    result = case File.mkdir_p(Path.dirname(path)) do
-      :ok ->
-        case File.write(path, content) do
-          :ok -> {:ok, key}
-          {:error, reason} -> {:error, "Failed to write file: #{inspect(reason)}"}
-        end
+    result =
+      case File.mkdir_p(Path.dirname(path)) do
+        :ok ->
+          case File.write(path, content) do
+            :ok -> {:ok, key}
+            {:error, reason} -> {:error, "Failed to write file: #{inspect(reason)}"}
+          end
 
-      {:error, reason} ->
-        {:error, "Failed to create directory: #{inspect(reason)}"}
-    end
+        {:error, reason} ->
+          {:error, "Failed to create directory: #{inspect(reason)}"}
+      end
 
-    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
-    
+    duration_ms =
+      (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
     case result do
       {:ok, _} ->
-        HexHub.Telemetry.track_storage_operation("upload", "local", duration_ms, byte_size(content))
+        HexHub.Telemetry.track_storage_operation(
+          "upload",
+          "local",
+          duration_ms,
+          byte_size(content)
+        )
+
       {:error, _} ->
         HexHub.Telemetry.track_storage_operation("upload", "local", duration_ms, 0, "error")
     end
-    
+
     result
   end
 
@@ -100,21 +108,29 @@ defmodule HexHub.Storage do
     start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    result = case File.read(path) do
-      {:ok, content} -> {:ok, content}
-      {:error, :enoent} -> {:error, "File not found"}
-      {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
-    end
+    result =
+      case File.read(path) do
+        {:ok, content} -> {:ok, content}
+        {:error, :enoent} -> {:error, "File not found"}
+        {:error, reason} -> {:error, "Failed to read file: #{inspect(reason)}"}
+      end
 
-    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
-    
+    duration_ms =
+      (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
     case result do
       {:ok, content} ->
-        HexHub.Telemetry.track_storage_operation("download", "local", duration_ms, byte_size(content))
+        HexHub.Telemetry.track_storage_operation(
+          "download",
+          "local",
+          duration_ms,
+          byte_size(content)
+        )
+
       {:error, _} ->
         HexHub.Telemetry.track_storage_operation("download", "local", duration_ms, 0, "error")
     end
-    
+
     result
   end
 
@@ -133,22 +149,25 @@ defmodule HexHub.Storage do
     start_time = System.monotonic_time()
     path = Path.join([storage_path(), key])
 
-    result = case File.rm(path) do
-      :ok -> :ok
-      # Already deleted
-      {:error, :enoent} -> :ok
-      {:error, reason} -> {:error, "Failed to delete file: #{inspect(reason)}"}
-    end
+    result =
+      case File.rm(path) do
+        :ok -> :ok
+        # Already deleted
+        {:error, :enoent} -> :ok
+        {:error, reason} -> {:error, "Failed to delete file: #{inspect(reason)}"}
+      end
 
-    duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
-    
+    duration_ms =
+      (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
     case result do
       :ok ->
         HexHub.Telemetry.track_storage_operation("delete", "local", duration_ms, 0)
+
       {:error, _} ->
         HexHub.Telemetry.track_storage_operation("delete", "local", duration_ms, 0, "error")
     end
-    
+
     result
   end
 

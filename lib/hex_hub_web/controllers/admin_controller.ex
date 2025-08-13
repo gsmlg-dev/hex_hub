@@ -4,29 +4,36 @@ defmodule HexHubWeb.AdminController do
   alias HexHub.Packages
 
   def dashboard(conn, _params) do
+    total =
+      case Packages.list_packages() do
+        {:ok, _, total} -> total
+        _ -> 0
+      end
+
     stats = %{
-      total_packages: length(Packages.list_packages()),
+      total_packages: total,
       total_repositories: length(Packages.list_repositories()),
-      total_users: 0 # Placeholder - will implement when user management is added
+      # Placeholder - will implement when user management is added
+      total_users: 0
     }
-    
+
     render(conn, :dashboard, stats: stats)
   end
 
   def repositories(conn, params) do
     page = String.to_integer(params["page"] || "1")
     per_page = 20
-    
+
     repositories = Packages.list_repositories()
     total_count = length(repositories)
-    
+
     # Simple pagination
     offset = (page - 1) * per_page
     paginated_repos = Enum.slice(repositories, offset, per_page)
-    
+
     total_pages = ceil(total_count / per_page)
-    
-    render(conn, :repositories, 
+
+    render(conn, :repositories,
       repositories: paginated_repos,
       page: page,
       total_pages: total_pages,
@@ -44,7 +51,7 @@ defmodule HexHubWeb.AdminController do
         conn
         |> put_flash(:info, "Repository #{repository.name} created successfully!")
         |> redirect(to: ~p"/admin/repositories")
-        
+
       {:error, changeset} ->
         render(conn, :new_repository, changeset: changeset)
     end
@@ -54,7 +61,7 @@ defmodule HexHubWeb.AdminController do
     case Packages.get_repository(name) do
       {:ok, repository} ->
         render(conn, :edit_repository, repository: repository, changeset: nil)
-        
+
       {:error, :not_found} ->
         conn
         |> put_flash(:error, "Repository not found")
@@ -70,11 +77,11 @@ defmodule HexHubWeb.AdminController do
             conn
             |> put_flash(:info, "Repository #{updated_repository.name} updated successfully!")
             |> redirect(to: ~p"/admin/repositories")
-            
+
           {:error, changeset} ->
             render(conn, :edit_repository, repository: repository, changeset: changeset)
         end
-        
+
       {:error, :not_found} ->
         conn
         |> put_flash(:error, "Repository not found")
@@ -88,7 +95,7 @@ defmodule HexHubWeb.AdminController do
         conn
         |> put_flash(:info, "Repository #{name} deleted successfully!")
         |> redirect(to: ~p"/admin/repositories")
-        
+
       {:error, _reason} ->
         conn
         |> put_flash(:error, "Failed to delete repository")

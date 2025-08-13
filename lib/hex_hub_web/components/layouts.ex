@@ -54,7 +54,7 @@ defmodule HexHubWeb.Layouts do
     </.dm_simple_appbar>
 
     <main class="p-4">
-      <div class="mx-auto max-w-2xl space-y-4">
+      <div class="mx-auto space-y-4">
         {render_slot(@inner_block)}
       </div>
     </main>

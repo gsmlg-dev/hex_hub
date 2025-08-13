@@ -21,13 +21,19 @@ defmodule HexHubWeb.API.PackageController do
           pages: ceil(total / per_page)
         }
 
-        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
         HexHub.Telemetry.track_api_request("packages.list", duration_ms, 200)
 
         json(conn, response)
 
       {:error, reason} ->
-        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
         HexHub.Telemetry.track_api_request("packages.list", duration_ms, 500, "error")
 
         conn
@@ -38,26 +44,35 @@ defmodule HexHubWeb.API.PackageController do
 
   def show(conn, %{"name" => name}) do
     start_time = System.monotonic_time()
-    
+
     case HexHub.Packages.get_package(name) do
       {:ok, package} ->
-        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
         HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200)
-        
+
         json(conn, format_package_for_show(package))
 
       {:error, :not_found} ->
-        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
         HexHub.Telemetry.track_api_request("packages.show", duration_ms, 404, "not_found")
-        
+
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
 
       {:error, reason} ->
-        duration_ms = System.monotonic_time() - start_time |> System.convert_time_unit(:native, :millisecond)
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
         HexHub.Telemetry.track_api_request("packages.show", duration_ms, 500, "error")
-        
+
         conn
         |> put_status(:internal_server_error)
         |> json(%{message: reason})

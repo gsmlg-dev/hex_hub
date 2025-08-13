@@ -115,6 +115,7 @@ defmodule HexHub.Telemetry do
       case :mnesia.table_info(table, :size) do
         size when is_integer(size) ->
           :telemetry.execute([:hex_hub, :mnesia, :table_size], %{count: size}, %{table: table})
+
         _ ->
           :ok
       end
@@ -123,9 +124,9 @@ defmodule HexHub.Telemetry do
 
   def measure_storage_stats do
     storage_path = Application.get_env(:hex_hub, :storage_path, "priv/storage")
-    
+
     if File.exists?(storage_path) do
-      {total_files, total_size} = 
+      {total_files, total_size} =
         Path.join(storage_path, "**/*")
         |> Path.wildcard()
         |> Enum.reject(&File.dir?/1)
@@ -133,7 +134,9 @@ defmodule HexHub.Telemetry do
           {count + 1, size + File.stat!(file).size}
         end)
 
-      :telemetry.execute([:hex_hub, :storage, :stats], %{total_size: total_size}, %{files: total_files})
+      :telemetry.execute([:hex_hub, :storage, :stats], %{total_size: total_size}, %{
+        files: total_files
+      })
     end
   end
 
@@ -141,37 +144,64 @@ defmodule HexHub.Telemetry do
     # Memory usage
     memory = :erlang.memory()
     :telemetry.execute([:vm, :memory, :total], %{total: memory[:total]}, %{total: memory[:total]})
-    :telemetry.execute([:vm, :memory, :processes], %{processes: memory[:processes]}, %{processes: memory[:processes]})
-    :telemetry.execute([:vm, :memory, :system], %{system: memory[:system]}, %{system: memory[:system]})
+
+    :telemetry.execute([:vm, :memory, :processes], %{processes: memory[:processes]}, %{
+      processes: memory[:processes]
+    })
+
+    :telemetry.execute([:vm, :memory, :system], %{system: memory[:system]}, %{
+      system: memory[:system]
+    })
 
     # CPU/IO queues
     queues = :erlang.statistics(:run_queue)
+
     :telemetry.execute([:vm, :total_run_queue_lengths, :total], %{total: queues}, %{total: queues})
+
     :telemetry.execute([:vm, :total_run_queue_lengths, :cpu], %{cpu: queues}, %{cpu: queues})
     :telemetry.execute([:vm, :total_run_queue_lengths, :io], %{io: queues}, %{io: queues})
   end
 
   # Telemetry event functions
   def track_api_request(endpoint, duration_ms, status_code, error_type \\ nil) do
-    :telemetry.execute([:hex_hub, :api, :request_duration], %{duration: duration_ms}, %{endpoint: endpoint})
+    :telemetry.execute([:hex_hub, :api, :request_duration], %{duration: duration_ms}, %{
+      endpoint: endpoint
+    })
+
     :telemetry.execute([:hex_hub, :api, :requests], %{count: 1}, %{endpoint: endpoint})
-    
+
     if error_type do
-      :telemetry.execute([:hex_hub, :api, :errors], %{count: 1}, %{endpoint: endpoint, status: status_code, error_type: error_type})
+      :telemetry.execute([:hex_hub, :api, :errors], %{count: 1}, %{
+        endpoint: endpoint,
+        status: status_code,
+        error_type: error_type
+      })
     end
   end
 
   def track_storage_operation(operation, storage_type, duration_ms, size_bytes, error \\ nil) do
     if error do
-      :telemetry.execute([:hex_hub, :storage, :errors], %{count: 1}, %{operation: operation, storage_type: storage_type})
+      :telemetry.execute([:hex_hub, :storage, :errors], %{count: 1}, %{
+        operation: operation,
+        storage_type: storage_type
+      })
     else
-      :telemetry.execute([:hex_hub, :storage, :"#{operation}_duration"], %{duration: duration_ms}, %{storage_type: storage_type, size_bytes: size_bytes})
+      :telemetry.execute(
+        [:hex_hub, :storage, :"#{operation}_duration"],
+        %{duration: duration_ms},
+        %{storage_type: storage_type, size_bytes: size_bytes}
+      )
     end
   end
 
   def track_mnesia_operation(operation, duration_ms) do
-    :telemetry.execute([:hex_hub, :mnesia, :transaction_duration], %{duration: duration_ms}, %{operation: operation})
-    :telemetry.execute([:hex_hub, :mnesia, :transaction_count], %{count: 1}, %{operation: operation})
+    :telemetry.execute([:hex_hub, :mnesia, :transaction_duration], %{duration: duration_ms}, %{
+      operation: operation
+    })
+
+    :telemetry.execute([:hex_hub, :mnesia, :transaction_count], %{count: 1}, %{
+      operation: operation
+    })
   end
 
   def track_package_published(repository) do
