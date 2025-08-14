@@ -25,6 +25,14 @@ defmodule HexHubAdminWeb.Router do
     get "/repositories/:name/edit", AdminController, :edit_repository
     put "/repositories/:name", AdminController, :update_repository
     delete "/repositories/:name", AdminController, :delete_repository
+
+    get "/packages", AdminController, :packages
+    get "/packages/:name", AdminController, :show_package
+    delete "/packages/:name", AdminController, :delete_package
+
+    get "/users", AdminController, :users
+    get "/users/:username", AdminController, :show_user
+    delete "/users/:username", AdminController, :delete_user
   end
 
   # Enable LiveDashboard in development

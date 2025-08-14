@@ -1,0 +1,101 @@
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900"><%= @user.username %></h1>
+      <p class="mt-2 text-gray-600"><%= @user.email %></p>
+    </div>
+    
+    <div class="flex space-x-3">
+      <.link navigate={~p"/users"} class="btn btn-ghost">
+        Back to Users
+      </.link>
+      <.link href="#" class="btn btn-error" 
+             data-confirm="Are you sure you want to delete this user?" 
+             data-method="delete">
+        Delete User
+      </.link>
+    </div>
+  </div>
+
+  <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">User Details</h3>
+    </div>
+    
+    <div class="border-t border-gray-200">
+      <dl>
+        <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Username</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @user.username %></dd>
+        </div>
+        
+        <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Email</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @user.email %></dd>
+        </div>
+        
+        <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Joined</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= DateTime.to_iso8601(@user.inserted_at) %></dd>
+        </div>
+        
+        <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+          <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+          <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= DateTime.to_iso8601(@user.updated_at) %></dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">Owned Packages</h3>
+    </div>
+    
+    <div class="border-t border-gray-200">
+      <div class="overflow-x-auto">
+        <%= if length(@packages) > 0 do %>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Package</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Repository</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <%= for package <- @packages do %>
+                <tr>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <.link navigate={~p"/packages/#{package.name}"} class="text-blue-600 hover:text-blue-900">
+                      <%= package.name %>
+                    </.link>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= package.repository_name %></td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= package.downloads %></td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><%= DateTime.to_iso8601(package.updated_at) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% else %>
+          <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No packages</h3>
+            <p class="mt-1 text-sm text-gray-500">This user doesn't own any packages yet.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add navigation to dashboard -->
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+  <.link navigate={~p"/"} class="btn btn-ghost">
+    &lt;- Back to Dashboard
+  </.link>
+</div>

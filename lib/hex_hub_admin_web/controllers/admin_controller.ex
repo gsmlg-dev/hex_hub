@@ -2,15 +2,16 @@ defmodule HexHubAdminWeb.AdminController do
   use HexHubAdminWeb, :controller
 
   alias HexHub.Packages
+  alias HexHub.Users
 
   def dashboard(conn, _params) do
     {:ok, _packages, total} = Packages.list_packages()
+    {:ok, users} = Users.list_users()
 
     stats = %{
       total_packages: total,
       total_repositories: length(Packages.list_repositories()),
-      # Placeholder - will implement when user management is added
-      total_users: 0
+      total_users: length(users)
     }
 
     render(conn, :dashboard, stats: stats)
@@ -97,5 +98,89 @@ defmodule HexHubAdminWeb.AdminController do
         |> put_flash(:error, "Failed to delete repository")
         |> redirect(to: ~p"/repositories")
     end
+  end
+
+  def packages(conn, params) do
+    page = String.to_integer(params["page"] || "1")
+    per_page = 20
+    
+    {:ok, packages, total} = Packages.list_packages(page: page, per_page: per_page)
+    total_pages = max(ceil(total / per_page), 1)
+    
+    render(conn, :packages,
+      packages: packages,
+      page: page,
+      total_pages: total_pages,
+      total_count: total
+    )
+  end
+
+  def show_package(conn, %{"name" => name}) do
+    case Packages.get_package(name) do
+      {:ok, package} ->
+        {:ok, releases} = Packages.list_releases(name)
+        render(conn, :show_package, 
+          package: package, 
+          releases: releases
+        )
+      
+      {:error, :not_found} ->
+        conn
+        |> put_flash(:error, "Package not found")
+        |> redirect(to: ~p"/packages")
+    end
+  end
+
+  def delete_package(conn, %{"name" => _name}) do
+    # For now, show not implemented message since delete_package is not available
+    conn
+    |> put_flash(:error, "Package deletion is not implemented yet")
+    |> redirect(to: ~p"/packages")
+  end
+
+  def users(conn, params) do
+    page = String.to_integer(params["page"] || "1")
+    per_page = 20
+    
+    {:ok, users} = Users.list_users()
+    total_count = length(users)
+    
+    # Simple pagination
+    offset = (page - 1) * per_page
+    paginated_users = Enum.slice(users, offset, per_page)
+    total_pages = max(ceil(total_count / per_page), 1)
+    
+    render(conn, :users,
+      users: paginated_users,
+      page: page,
+      total_pages: total_pages,
+      total_count: total_count
+    )
+  end
+
+  def show_user(conn, %{"username" => username}) do
+    case Users.get_user(username) do
+      {:ok, user} ->
+        # Get packages where user is an owner (simplified for now)
+        {:ok, _all_packages, _total} = Packages.list_packages()
+        user_packages = []
+        
+        render(conn, :show_user, 
+          user: user, 
+          packages: user_packages
+        )
+      
+      {:error, :not_found} ->
+        conn
+        |> put_flash(:error, "User not found")
+        |> redirect(to: ~p"/users")
+    end
+  end
+
+  def delete_user(conn, %{"username" => _username}) do
+    # For now, show not implemented message since delete_user is not available
+    conn
+    |> put_flash(:error, "User deletion is not implemented yet")
+    |> redirect(to: ~p"/users")
   end
 end
