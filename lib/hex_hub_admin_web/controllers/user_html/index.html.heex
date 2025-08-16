@@ -26,7 +26,7 @@
           </.dm_link>
         </:col>
         <:col :let={user} label="Email">{user.email}</:col>
-        <:col :let={user} label="Packages">0</:col>
+        <:col :let={_user} label="Packages">0</:col>
         <:col :let={user} label="Joined">{DateTime.to_iso8601(user.inserted_at)}</:col>
         <:col :let={user} label="Actions">
           <div class="flex gap-2">
