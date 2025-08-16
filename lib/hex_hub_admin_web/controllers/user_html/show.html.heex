@@ -33,7 +33,7 @@
     <div class="card bg-base-100 shadow-lg">
       <div class="card-body">
         <h2 class="card-title text-base-content">User Details</h2>
-        
+
         <div class="space-y-4">
           <div class="flex justify-between items-center py-3 border-b border-base-200">
             <span class="font-medium text-base-content/70">Username</span>
@@ -61,7 +61,7 @@
     <div class="card bg-base-100 shadow-lg mt-8">
       <div class="card-body">
         <h2 class="card-title text-base-content">Owned Packages</h2>
-        
+
         <div class="overflow-x-auto">
           <%= if length(@packages || []) > 0 do %>
             <.dm_table data={@packages}>
@@ -95,7 +95,9 @@
                 />
               </svg>
               <h3 class="mt-2 text-sm font-medium text-base-content">No packages</h3>
-              <p class="mt-1 text-sm text-base-content/70">This user doesn't own any packages yet.</p>
+              <p class="mt-1 text-sm text-base-content/70">
+                This user doesn't own any packages yet.
+              </p>
             </div>
           <% end %>
         </div>

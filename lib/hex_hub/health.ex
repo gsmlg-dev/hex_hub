@@ -9,6 +9,7 @@ defmodule HexHub.HealthCheck do
       :yes ->
         IO.puts("Database is healthy")
         System.halt(0)
+
       _ ->
         IO.puts("Database is not running")
         System.halt(1)

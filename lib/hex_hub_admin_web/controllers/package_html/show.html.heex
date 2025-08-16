@@ -3,7 +3,9 @@
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-3xl font-bold text-base-content">{@package.name}</h1>
-        <p class="mt-2 text-base-content/70">{@package.meta["description"] || "No description"}</p>
+        <p class="mt-2 text-base-content/70">
+          {@package.meta["description"] || "No description"}
+        </p>
       </div>
 
       <div class="flex space-x-3">
@@ -30,7 +32,7 @@
     <div class="card bg-base-100 shadow-lg">
       <div class="card-body">
         <h2 class="card-title text-base-content">Package Details</h2>
-        
+
         <div class="space-y-4">
           <div class="flex justify-between items-center py-3 border-b border-base-200">
             <span class="font-medium text-base-content/70">Repository</span>
@@ -72,7 +74,7 @@
     <div class="card bg-base-100 shadow-lg mt-8">
       <div class="card-body">
         <h2 class="card-title text-base-content">Releases</h2>
-        
+
         <div class="overflow-x-auto">
           <.dm_table data={@releases}>
             <:col :let={release} label="Version">{release.version}</:col>
@@ -93,7 +95,7 @@
     <div class="card bg-base-100 shadow-lg mt-8">
       <div class="card-body">
         <h2 class="card-title text-base-content">Metadata</h2>
-        
+
         <div class="mockup-code">
           <pre class="text-sm whitespace-pre-wrap text-base-content">
             <code><%= Jason.encode!(@package.meta, pretty: true) %></code>

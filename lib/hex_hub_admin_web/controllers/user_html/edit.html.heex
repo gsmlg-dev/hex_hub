@@ -14,7 +14,7 @@
         <.dm_form action={~p"/users/#{@user.username}"} method="post">
           <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
           <input type="hidden" name="_method" value="put" />
-          
+
           <div class="space-y-6">
             <.dm_input
               name="user[username]"
