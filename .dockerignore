@@ -1,0 +1,55 @@
+.dockerignore
+# there are valid reasons to keep the .git, namely so that you can get the
+# current commit hash
+# .git
+.gitignore
+.envrc
+.idea
+.vscode
+*.iml
+*.DS_Store
+
+# Mix artifacts
+/_build/
+/cover/
+/deps/
+/doc/
+/.fetch
+erl_crash.dump
+
+# Generated on crash by the VM
+erl_crash.dump
+
+# Static artifacts
+/priv/static/assets/
+/priv/static/cache_manifest.json
+
+# Assets directory
+/assets/node_modules/
+/assets/.bun/
+
+# Test artifacts
+/test/
+/test_support/
+
+# Local development
+/.elixir_ls/
+/dev/
+
+# Mnesia data
+/Mnesia*
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE files
+/.idea/
+/.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

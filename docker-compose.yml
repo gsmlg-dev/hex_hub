@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  hex_hub:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - SECRET_KEY_BASE=your-64-byte-secret-key-here-change-in-production
+      - PHX_HOST=localhost
+      - MIX_ENV=prod
+      - CLUSTERING_ENABLED=false
+      - STORAGE_TYPE=local
+      - MNESIA_DIR=/app/priv/storage/mnesia
+    volumes:
+      - hex_hub_storage:/app/priv/storage
+    healthcheck:
+      test: ["CMD", "/app/bin/hex_hub", "eval", "HexHub.HealthCheck.check()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add mailhog for local email testing
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    environment:
+      - MH_STORAGE=maildir
+      - MH_MAILDIR_PATH=/maildir
+    volumes:
+      - mailhog_data:/maildir
+
+  # Optional: Add clustering example
+  hex_hub_cluster:
+    build: .
+    ports:
+      - "4001:4000"
+    environment:
+      - SECRET_KEY_BASE=your-64-byte-secret-key-here-change-in-production
+      - PHX_HOST=localhost
+      - MIX_ENV=prod
+      - CLUSTERING_ENABLED=true
+      - STORAGE_TYPE=local
+      - MNESIA_DIR=/app/priv/storage/mnesia
+      - PORT=4000
+      - NODE_NAME=hex_hub2@hex_hub_cluster
+    volumes:
+      - hex_hub_storage:/app/priv/storage
+    depends_on:
+      - hex_hub
+    command: ["/app/bin/hex_hub", "start"]
+
+volumes:
+  hex_hub_storage:
+  mailhog_data:
