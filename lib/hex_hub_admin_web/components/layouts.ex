@@ -45,11 +45,112 @@ defmodule HexHubAdminWeb.Layouts do
       </:user_profile>
     </.dm_simple_appbar>
 
-    <main class="p-4">
-      <div class="mx-auto space-y-4">
-        {render_slot(@inner_block)}
+    <div class="drawer lg:drawer-open">
+      <input id="my-drawer-2" type="checkbox" class="drawer-toggle" />
+      
+    <!-- Sidebar -->
+      <div class="drawer-side lg:drawer-open">
+        <label for="my-drawer-2" class="drawer-overlay"></label>
+        <ul class="menu p-4 w-80 min-h-full bg-base-100 text-base-content">
+          <div class="text-xl font-bold mb-4 px-2">HexHub Admin</div>
+
+          <li>
+            <a href={~p"/"} class="active">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 5a2 2 0 012-2h4a2 2 0 012 2v0M8 5a2 2 0 00-2 2v6a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2V5a2 2 0 00-2-2H8z"
+                />
+              </svg>
+              Dashboard
+            </a>
+          </li>
+
+          <li>
+            <a href={~p"/repositories"}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              Repositories
+            </a>
+          </li>
+
+          <li>
+            <a href={~p"/packages"}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              Packages
+            </a>
+          </li>
+
+          <li>
+            <a href={~p"/users"}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+              Users
+            </a>
+          </li>
+        </ul>
       </div>
-    </main>
+      
+    <!-- Main content -->
+      <div class="drawer-content flex flex-col">
+        <main class="p-4">
+          <div class="mx-auto space-y-4">
+            {render_slot(@inner_block)}
+          </div>
+        </main>
+      </div>
+    </div>
 
     <.dm_flash_group flash={@flash} />
     """
