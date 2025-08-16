@@ -19,20 +19,28 @@ defmodule HexHubAdminWeb.Router do
     pipe_through :browser
 
     get "/", AdminController, :dashboard
-    get "/repositories", AdminController, :repositories
-    get "/repositories/new", AdminController, :new_repository
-    post "/repositories", AdminController, :create_repository
-    get "/repositories/:name/edit", AdminController, :edit_repository
-    put "/repositories/:name", AdminController, :update_repository
-    delete "/repositories/:name", AdminController, :delete_repository
+    get "/repositories", RepositoryController, :index
+    get "/repositories/new", RepositoryController, :new
+    post "/repositories", RepositoryController, :create
+    get "/repositories/:name/edit", RepositoryController, :edit
+    put "/repositories/:name", RepositoryController, :update
+    delete "/repositories/:name", RepositoryController, :delete
 
-    get "/packages", AdminController, :packages
-    get "/packages/:name", AdminController, :show_package
-    delete "/packages/:name", AdminController, :delete_package
+    get "/packages", PackageController, :index
+    get "/packages/new", PackageController, :new
+    post "/packages", PackageController, :create
+    get "/packages/:name", PackageController, :show
+    get "/packages/:name/edit", PackageController, :edit
+    put "/packages/:name", PackageController, :update
+    delete "/packages/:name", PackageController, :delete
 
-    get "/users", AdminController, :users
-    get "/users/:username", AdminController, :show_user
-    delete "/users/:username", AdminController, :delete_user
+    get "/users", UserController, :index
+    get "/users/new", UserController, :new
+    post "/users", UserController, :create
+    get "/users/:username", UserController, :show
+    get "/users/:username/edit", UserController, :edit
+    put "/users/:username", UserController, :update
+    delete "/users/:username", UserController, :delete
   end
 
   # Enable LiveDashboard in development
