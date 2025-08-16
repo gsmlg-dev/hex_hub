@@ -20,92 +20,71 @@
     </a>
   </div>
   
-  <!-- Repository table -->
+<!-- Repository table -->
   <div class="card bg-base-100 shadow">
     <div class="card-body">
       <div class="overflow-x-auto">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Packages</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <%= for repository <- @repositories do %>
-              <tr>
-                <td>{repository.name}</td>
-                <td>{repository.package_count}</td>
-                <td>{repository.inserted_at}</td>
-                <td>
-                  <div class="flex gap-2">
-                    <a
-                      href={~p"/repositories/#{repository.name}/edit"}
-                      class="btn btn-sm btn-ghost"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      Edit
-                    </a>
-                    <form
-                      action={~p"/repositories/#{repository.name}"}
-                      method="post"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_method" value="delete" />
-                      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
-                      <button
-                        type="submit"
-                        class="btn btn-sm btn-ghost btn-error"
-                        onclick="return confirm('Are you sure you want to delete this repository and all its packages?')"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-            <% end %>
-            <%= if Enum.empty?(@repositories) do %>
-              <tr>
-                <td colspan="4" class="text-center py-8 text-gray-500">
-                  No repositories found
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+        <.dm_table data={@repositories}>
+          <:col :let={repository} label="Name">{repository.name}</:col>
+          <:col :let={repository} label="Packages">{repository.package_count}</:col>
+          <:col :let={repository} label="Created">{repository.inserted_at}</:col>
+          <:col :let={repository} label="Actions">
+            <div class="flex gap-2">
+              <.dm_link
+                navigate={~p"/repositories/#{repository.name}/edit"}
+                class="btn btn-sm btn-ghost"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+                Edit
+              </.dm_link>
+              <form
+                action={~p"/repositories/#{repository.name}"}
+                method="post"
+                class="inline"
+              >
+                <input type="hidden" name="_method" value="delete" />
+                <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+                <.dm_btn
+                  type="submit"
+                  class="btn btn-sm btn-ghost btn-error"
+                  onclick="return confirm('Are you sure you want to delete this repository and all its packages?')"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  Delete
+                </.dm_btn>
+              </form>
+            </div>
+          </:col>
+        </.dm_table>
       </div>
       
-      <!-- Pagination -->
+<!-- Pagination -->
       <%= if @total_pages > 1 do %>
         <div class="join flex justify-center mt-4">
           <%= if @page > 1 do %>

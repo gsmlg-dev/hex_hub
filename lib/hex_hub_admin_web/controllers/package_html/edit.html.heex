@@ -2,92 +2,69 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="sm:flex sm:items-center">
       <div class="sm:flex-auto">
-        <h1 class="text-2xl font-semibold text-gray-900">Edit Package</h1>
-        <p class="mt-2 text-sm text-gray-700">
+        <h1 class="text-2xl font-bold text-base-content">Edit Package</h1>
+        <p class="text-sm text-base-content/70">
           Edit package <span class="font-semibold">{@package.name}</span>.
         </p>
       </div>
     </div>
 
     <div class="mt-8">
-      <div class="bg-white shadow sm:rounded-lg">
+      <div class="bg-base-100 shadow sm:rounded-lg">
         <div class="px-4 py-6 sm:p-6">
-          <form action={~p"/packages/#{@package.name}"} method="post">
+          <.dm_form action={~p"/packages/#{@package.name}"} method="post">
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
             <input type="hidden" name="_method" value="put" />
-            <div class="grid grid-cols-1 gap-6">              <div>
-                <label for="name" class="block text-sm font-medium text-gray-700">
-                  Package Name
-                </label>
-                <input
-                  type="text"
-                  name="package[name]"
-                  id="name"
-                  value={@package.name}
-                  class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  readonly
-                />
-              </div>
 
-              <div>
-                <label for="repository_name" class="block text-sm font-medium text-gray-700">
-                  Repository
-                </label>
-                <input
-                  type="text"
-                  name="package[repository_name]"
-                  id="repository_name"
-                  value={@package.repository_name}
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  required
-                />
-              </div>
+            <div class="grid grid-cols-1 gap-6">
+              <.dm_input
+                name="package[name]"
+                label="Package Name"
+                type="text"
+                value={@package.name}
+                readonly
+              />
 
-              <div>
-                <label for="description" class="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  name="package[description]"
-                  id="description"
-                  rows="3"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                >{@package.meta["description"] || ""}</textarea>
-                <p class="mt-2 text-sm text-gray-500">
-                  A brief description of what this package does.
-                </p>
-              </div>
+              <.dm_input
+                name="package[repository_name]"
+                label="Repository"
+                type="text"
+                value={@package.repository_name}
+                required
+              />
 
-              <div>
-                <label class="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="package[private]"
-                    checked={@package.private}
-                    class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span class="ml-2 text-sm text-gray-700">
-                    Private package
-                  </span>
-                </label>
-              </div>
+              <.dm_input
+                name="package[description]"
+                label="Description"
+                type="textarea"
+                rows="3"
+                value={@package.meta["description"] || ""}
+                placeholder="A brief description of what this package does..."
+              />
+
+              <.dm_input
+                name="package[private]"
+                label="Private package"
+                type="checkbox"
+                checked={@package.private}
+              />
             </div>
 
-            <div class="mt-6 flex items-center justify-end space-x-3">
-              <.link
+            <:actions>
+              <.dm_link
                 navigate={~p"/packages/#{@package.name}"}
-                class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                class="btn btn-ghost"
               >
                 Cancel
-              </.link>
-              <button
+              </.dm_link>
+              <.dm_btn
                 type="submit"
-                class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                class="btn btn-primary"
               >
                 Update Package
-              </button>
-            </div>
-          </form>
+              </.dm_btn>
+            </:actions>
+          </.dm_form>
         </div>
       </div>
     </div>

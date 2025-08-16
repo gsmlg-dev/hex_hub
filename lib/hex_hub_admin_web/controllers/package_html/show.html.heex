@@ -2,116 +2,101 @@
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900"><%= @package.name %></h1>
-        <p class="mt-2 text-gray-600"><%= @package.meta["description"] || "No description" %></p>
+        <h1 class="text-3xl font-bold text-base-content">{@package.name}</h1>
+        <p class="mt-2 text-base-content/70">{@package.meta["description"] || "No description"}</p>
       </div>
-      
+
       <div class="flex space-x-3">
-        <.link navigate={~p"/packages"} class="btn btn-ghost">
+        <.dm_link navigate={~p"/packages"} class="btn btn-ghost">
           Back to Packages
-        </.link>
-        <.link href="#" class="btn btn-error" 
-               data-confirm="Are you sure you want to delete this package?" 
-               data-method="delete">
-          Delete Package
-        </.link>
+        </.dm_link>
+        <.dm_link navigate={~p"/packages/#{@package.name}/edit"} class="btn btn-primary">
+          Edit Package
+        </.dm_link>
+        <form action={~p"/packages/#{@package.name}"} method="post" class="inline">
+          <input type="hidden" name="_method" value="delete" />
+          <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+          <.dm_btn
+            type="submit"
+            class="btn btn-error"
+            onclick="return confirm('Are you sure you want to delete this package?')"
+          >
+            Delete Package
+          </.dm_btn>
+        </form>
       </div>
     </div>
 
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Package Details</h3>
-      </div>
-      
-      <div class="border-t border-gray-200">
-        <dl>
-          <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">Repository</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @package.repository_name %></dd>
+    <div class="card bg-base-100 shadow-lg">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Package Details</h2>
+        
+        <div class="space-y-4">
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Repository</span>
+            <span class="text-base-content">{@package.repository_name}</span>
           </div>
-          
-          <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">License</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @package.meta["license"] || "Not specified" %></dd>
-          </div>
-          
-          <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">Downloads</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= @package.downloads %></dd>
-          </div>
-          
-          <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">Private</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-              <span class={if @package.private, do: "badge badge-error", else: "badge badge-success"}>
-                <%= if @package.private, do: "Private", else: "Public" %>
-              </span>
-            </dd>
-          </div>
-          
-          <div class="bg-gray-50 px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">Updated</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= DateTime.to_iso8601(@package.updated_at) %></dd>
-          </div>
-          
-          <div class="bg-white px-4 py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-            <dt class="text-sm font-medium text-gray-500">Created</dt>
-            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2"><%= DateTime.to_iso8601(@package.inserted_at) %></dd>
-          </div>
-        </dl>
-      </div>
-    </div>
 
-    <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Releases</h3>
-      </div>
-      
-      <div class="border-t border-gray-200">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Version</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Has Docs</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <%= for release <- @releases do %>
-                <tr>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    <%= release.version %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span class={if release.has_docs, do: "badge badge-success", else: "badge badge-error"}>
-                      <%= if release.has_docs, do: "Yes", else: "No" %>
-                    </span>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <%= release.downloads %>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <%= DateTime.to_iso8601(release.updated_at) %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">License</span>
+            <span class="text-base-content">{@package.meta["license"] || "Not specified"}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Downloads</span>
+            <span class="text-base-content">{@package.downloads}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Visibility</span>
+            <span class={
+              if @package.private, do: "badge badge-error", else: "badge badge-success"
+            }>
+              {if @package.private, do: "Private", else: "Public"}
+            </span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Updated</span>
+            <span class="text-base-content">{DateTime.to_iso8601(@package.updated_at)}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3">
+            <span class="font-medium text-base-content/70">Created</span>
+            <span class="text-base-content">{DateTime.to_iso8601(@package.inserted_at)}</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
-      <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">Metadata</h3>
+    <div class="card bg-base-100 shadow-lg mt-8">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Releases</h2>
+        
+        <div class="overflow-x-auto">
+          <.dm_table data={@releases}>
+            <:col :let={release} label="Version">{release.version}</:col>
+            <:col :let={release} label="Has Docs">
+              <span class={
+                if release.has_docs, do: "badge badge-success", else: "badge badge-error"
+              }>
+                {if release.has_docs, do: "Yes", else: "No"}
+              </span>
+            </:col>
+            <:col :let={release} label="Downloads">{release.downloads}</:col>
+            <:col :let={release} label="Updated">{DateTime.to_iso8601(release.updated_at)}</:col>
+          </.dm_table>
+        </div>
       </div>
-      
-      <div class="border-t border-gray-200">
-        <div class="px-4 py-5 sm:px-6">
-          <pre class="text-sm text-gray-900 whitespace-pre-wrap">
-            <%= Jason.encode!(@package.meta, pretty: true) %>
+    </div>
+
+    <div class="card bg-base-100 shadow-lg mt-8">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Metadata</h2>
+        
+        <div class="mockup-code">
+          <pre class="text-sm whitespace-pre-wrap text-base-content">
+            <code><%= Jason.encode!(@package.meta, pretty: true) %></code>
           </pre>
         </div>
       </div>

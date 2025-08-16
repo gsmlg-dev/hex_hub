@@ -28,7 +28,7 @@ defmodule HexHubAdminWeb.Layouts do
   def app(assigns) do
     ~H"""
     <.dm_simple_appbar
-      title="HexHub"
+      title="HexHub Admin"
       class={[
         "z-50 bg-primary",
         "shadow shadow-primary-content"

@@ -11,14 +11,22 @@ defmodule HexHubWeb.PackageController do
       case search do
         nil ->
           case Packages.list_packages(page: page, per_page: per_page) do
-            {:ok, pkgs, total} -> {pkgs, total}
-            _ -> {[], 0}
+            {:ok, pkgs, total} ->
+              enriched_packages = Enum.map(pkgs, &enrich_package_with_latest_version/1)
+              {enriched_packages, total}
+
+            _ ->
+              {[], 0}
           end
 
         search_term ->
           case Packages.search_packages(search_term, page: page, per_page: per_page) do
-            {:ok, pkgs, total} -> {pkgs, total}
-            _ -> {[], 0}
+            {:ok, pkgs, total} ->
+              enriched_packages = Enum.map(pkgs, &enrich_package_with_latest_version/1)
+              {enriched_packages, total}
+
+            _ ->
+              {[], 0}
           end
       end
 
@@ -34,8 +42,15 @@ defmodule HexHubWeb.PackageController do
   def show(conn, %{"name" => name}) do
     case Packages.get_package(name) do
       {:ok, package} ->
-        releases = Packages.list_releases(name)
-        render(conn, :show, package: package, releases: releases)
+        case Packages.list_releases(name) do
+          {:ok, releases} ->
+            enriched_package = enrich_package_with_latest_version(package)
+            render(conn, :show, package: enriched_package, releases: releases)
+
+          {:error, _reason} ->
+            enriched_package = enrich_package_with_latest_version(package)
+            render(conn, :show, package: enriched_package, releases: [])
+        end
 
       {:error, :not_found} ->
         conn
@@ -61,6 +76,28 @@ defmodule HexHubWeb.PackageController do
         |> put_status(:not_found)
         |> put_view(HexHubWeb.ErrorHTML)
         |> render(404)
+    end
+  end
+
+  defp enrich_package_with_latest_version(package) do
+    case Packages.list_releases(package.name) do
+      {:ok, releases} ->
+        latest_version =
+          case releases do
+            [] ->
+              "0.0.0"
+
+            releases ->
+              releases
+              |> Enum.map(& &1.version)
+              |> Enum.sort_by(& &1, &>=/2)
+              |> List.first()
+          end
+
+        Map.put(package, :latest_version, latest_version)
+
+      {:error, _reason} ->
+        Map.put(package, :latest_version, "0.0.0")
     end
   end
 end

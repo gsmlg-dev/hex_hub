@@ -8,11 +8,3 @@
 @source "../js";
 @source "../../lib/hex_hub_admin_web";
 @source "../../deps/phoenix_duskmoon/lib/phoenix_duskmoon/";
-
-/* Custom styles for admin interface */
-.admin-sidebar {
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-}

@@ -12,7 +12,7 @@
     
 <!-- Search -->
     <div class="mb-6">
-      <form method="get" action="/packages" class="max-w-md mx-auto">
+      <.dm_form method="get" action="/packages" class="max-w-md mx-auto">
         <div class="join w-full">
           <input
             type="text"
@@ -25,7 +25,7 @@
             Search
           </button>
         </div>
-      </form>
+      </.dm_form>
     </div>
     
 <!-- Stats -->
@@ -93,13 +93,13 @@
             </div>
 
             <p class="text-sm text-base-content/70">
-              {format_description(package.description || "No description available")}
+              {format_description(package.meta["description"] || "No description available")}
             </p>
 
             <div class="flex items-center justify-between text-xs text-base-content/60 mt-4">
               <span>Updated {format_date(package.updated_at)}</span>
               <span class="badge badge-outline badge-sm">
-                {package.repository || "hexpm"}
+                {package.repository_name || "hexpm"}
               </span>
             </div>
           </div>

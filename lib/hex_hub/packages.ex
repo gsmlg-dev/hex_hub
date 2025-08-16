@@ -874,6 +874,56 @@ defmodule HexHub.Packages do
     end
   end
 
+  @doc """
+  Delete a specific package and all its releases.
+  """
+  @spec delete_package(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  def delete_package(name) do
+    case :mnesia.transaction(fn ->
+           # Get the package first
+           case :mnesia.read({@packages_table, name}) do
+             [] ->
+               {:error, :not_found}
+
+             [_package] ->
+               # Delete the package
+               :mnesia.delete({@packages_table, name})
+
+               # Delete all releases for this package
+               releases =
+                 :mnesia.match_object(
+                   {@releases_table, name, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+                 )
+
+               Enum.each(releases, fn {rel_table, _pkg_name, version, _has_docs, _meta,
+                                       _requirements, _retired, _downloads, _inserted_at,
+                                       _updated_at, _url, _package_url, _html_url,
+                                       _docs_html_url} ->
+                 :mnesia.delete({rel_table, {name, version}})
+               end)
+
+               # Delete package owners
+               owners =
+                 :mnesia.match_object({@owners_table, name, :_})
+
+               Enum.each(owners, fn {owner_table, _pkg_name, _username} ->
+                 :mnesia.delete({owner_table, name})
+               end)
+
+               {:ok, name}
+           end
+         end) do
+      {:atomic, {:ok, name}} ->
+        {:ok, name}
+
+      {:atomic, {:error, reason}} ->
+        {:error, reason}
+
+      {:aborted, _reason} ->
+        {:error, "delete failed"}
+    end
+  end
+
   @spec count_packages_in_repository(String.t()) :: integer()
   defp count_packages_in_repository(name) do
     case :mnesia.transaction(fn ->
