@@ -11,14 +11,7 @@
 #   - https://pkgs.org/ - resource for finding needed packages
 #   - Ex: docker.io/hexpm/elixir:1.15.7-erlang-26.2.5-debian-bookworm-20240423-slim
 #
-ARG ELIXIR_VERSION=1.15.7
-ARG OTP_VERSION=26.2.5
-ARG DEBIAN_VERSION=bookworm-20240423-slim
-
-ARG BUILDER_IMAGE="docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
-ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
-
-FROM ${BUILDER_IMAGE} AS builder
+FROM ghcr.io/gsmlg-dev/phoenix:latest AS builder
 
 # install build dependencies
 RUN apt-get update \
@@ -41,6 +34,10 @@ ARG MIX_ENV=prod
 ARG SECRET_KEY_BASE=XOvyNXFliw6nExlZ1ZxQ/lQYNQygmvpEGtRVI1XajTxCg3Fdg//fwMgbM3qbncJK
 ENV MIX_ENV=$MIX_ENV
 ENV SECRET_KEY_BASE=$SECRET_KEY_BASE
+
+# install npm packages
+COPY package.json package.json
+RUN npm install
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
