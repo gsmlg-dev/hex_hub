@@ -32,8 +32,6 @@ RUN mix local.hex --force \
 # set build ENV
 ARG MIX_ENV=prod
 ARG SECRET_KEY_BASE=XOvyNXFliw6nExlZ1ZxQ/lQYNQygmvpEGtRVI1XajTxCg3Fdg//fwMgbM3qbncJK
-ENV MIX_ENV=$MIX_ENV
-ENV SECRET_KEY_BASE=$SECRET_KEY_BASE
 
 # install npm packages
 COPY package.json package.json
@@ -72,9 +70,10 @@ RUN mix release
 # start a new build stage so that the final image will only contain
 # the compiled release and other runtime necessities
 FROM debian:13 AS final
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates curl \
+  && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 locales ca-certificates curl tini \
   && rm -rf /var/lib/apt/lists/*
 
 # Set the locale
@@ -89,7 +88,9 @@ WORKDIR "/app"
 RUN chown nobody /app
 
 # set runner ENV
+ARG MIX_ENV=prod
 ENV MIX_ENV="prod"
+ENV SECRET_KEY_BASE=XOvyNXFliw6nExlZ1ZxQ/lQYNQygmvpEGtRVI1XajTxCg3Fdg//fwMgbM3qbncJK
 
 # Create storage directory
 RUN mkdir -p /app/priv/storage && chown nobody:nogroup /app/priv/storage
@@ -102,7 +103,7 @@ USER nobody
 # If using an environment that doesn't automatically reap zombie processes, it is
 # advised to add an init process such as tini via `apt-get install`
 # above and adding an entrypoint. See https://github.com/krallin/tini for details
-# ENTRYPOINT ["/tini", "--"]
+ENTRYPOINT ["/tini", "--"]
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
