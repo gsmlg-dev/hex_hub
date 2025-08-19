@@ -69,7 +69,7 @@ defmodule HexHubWeb.HealthController do
               name: "mnesia",
               status: :ok,
               details: %{
-                tables: table_sizes,
+                tables: Map.new(table_sizes),
                 running: true
               }
             }
@@ -79,7 +79,7 @@ defmodule HexHubWeb.HealthController do
               name: "mnesia",
               status: :error,
               message: "Some tables failed health check",
-              details: %{failed_tables: failed_tables}
+              details: %{failed_tables: Map.new(failed_tables)}
             }
         end
 
