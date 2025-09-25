@@ -1,10 +1,9 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
-@import "phoenix_duskmoon/theme";
-@import "phoenix_duskmoon/components";
-@import "phoenix_duskmoon/neumorphic";
+@import "../../deps/phoenix_duskmoon/assets/css/theme.css";
+@import "../../deps/phoenix_duskmoon/assets/css/components.css";
+@import "../../deps/phoenix_duskmoon/assets/css/neumorphic.css";
 
 @source "../js";
 @source "../../lib/hex_hub_web";
-@source "../../deps/phoenix_duskmoon/lib/phoenix_duskmoon/";
