@@ -1,66 +1,70 @@
 <Layouts.app flash={@flash}>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-bold text-base-content">Packages</h1>
-        <p class="text-sm text-base-content/70 mt-1">
-          Manage all packages in the system. Total: {@total_count} packages
-        </p>
-      </div>
-      <div>
-        <.dm_link
-          navigate={~p"/packages/new"}
-          class="btn btn-primary btn-md"
-        >
-          Add Package
-        </.dm_link>
+    <div class="hero bg-base-200 rounded-box mb-8">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-4xl font-bold">Manage Packages</h1>
+          <p class="py-6">
+            Manage all packages in the system. Total: {@total_count} packages
+          </p>
+          <.dm_link
+            navigate={~p"/packages/new"}
+            class="btn btn-primary"
+          >
+            Add Package
+          </.dm_link>
+        </div>
       </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <.dm_table data={@packages}>
-        <:col :let={package} label="Name">
-          <.dm_link
-            navigate={~p"/packages/#{package.name}"}
-            class="link link-primary"
-          >
-            {package.name}
-          </.dm_link>
-        </:col>
-        <:col :let={package} label="Repository">
-          {package.repository_name}
-        </:col>
-        <:col :let={package} label="Description" class="max-w-xs truncate">
-          {package.meta["description"] || "No description"}
-        </:col>
-        <:col :let={package} label="Downloads">
-          {package.downloads}
-        </:col>
-        <:col :let={package} label="Updated">
-          {DateTime.to_iso8601(package.updated_at)}
-        </:col>
-        <:col :let={package} label="Actions">
-          <div class="flex gap-2">
-            <.dm_link
-              navigate={~p"/packages/#{package.name}"}
-              class="link link-hover"
-            >
-              View
-            </.dm_link>
-            <form action={~p"/packages/#{package.name}"} method="post" class="inline">
-              <input type="hidden" name="_method" value="delete" />
-              <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
-              <.dm_btn
-                type="submit"
-                class="btn btn-sm btn-ghost btn-error"
-                onclick="return confirm('Are you sure you want to delete this package?')"
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <div class="overflow-x-auto">
+          <.dm_table data={@packages}>
+            <:col :let={package} label="Name">
+              <.dm_link
+                navigate={~p"/packages/#{package.name}"}
+                class="link link-primary"
               >
-                Delete
-              </.dm_btn>
-            </form>
-          </div>
-        </:col>
-      </.dm_table>
+                {package.name}
+              </.dm_link>
+            </:col>
+            <:col :let={package} label="Repository">
+              {package.repository_name}
+            </:col>
+            <:col :let={package} label="Description" class="max-w-xs truncate">
+              {package.meta["description"] || "No description"}
+            </:col>
+            <:col :let={package} label="Downloads">
+              {package.downloads}
+            </:col>
+            <:col :let={package} label="Updated">
+              {DateTime.to_iso8601(package.updated_at)}
+            </:col>
+            <:col :let={package} label="Actions">
+              <div class="flex gap-2">
+                <.dm_link
+                  navigate={~p"/packages/#{package.name}"}
+                  class="link link-hover"
+                >
+                  View
+                </.dm_link>
+                <form action={~p"/packages/#{package.name}"} method="post" class="inline">
+                  <input type="hidden" name="_method" value="delete" />
+                  <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+                  <.dm_btn
+                    type="submit"
+                    class="btn btn-sm btn-ghost btn-error"
+                    onclick="return confirm('Are you sure you want to delete this package?')"
+                  >
+                    Delete
+                  </.dm_btn>
+                </form>
+              </div>
+            </:col>
+          </.dm_table>
+        </div>
+      </div>
     </div>
 
     <div class="flex justify-between items-center mt-6">

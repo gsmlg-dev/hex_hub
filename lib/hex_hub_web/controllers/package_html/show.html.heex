@@ -1,26 +1,18 @@
 <Layouts.app flash={@flash}>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="bg-base-100 shadow-xl rounded-lg p-6 mb-6">
-      <div class="flex items-start justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-base-content mb-2">{@package.name}</h1>
-          <p class="text-lg text-base-content/70 mb-4">
+    <div class="hero bg-base-200 rounded-box mb-8">
+      <div class="hero-content">
+        <div class="max-w-2xl">
+          <h1 class="text-5xl font-bold">{@package.name}</h1>
+          <p class="py-6">
             {@package.meta["description"] || "No description available"}
           </p>
-
           <div class="flex flex-wrap gap-2">
             <span class="badge badge-primary badge-lg">Latest: v{@package.latest_version}</span>
             <span class="badge badge-ghost badge-lg">📥 {@package.downloads || 0} downloads</span>
             <span class="badge badge-outline badge-lg">
               {@package.repository_name || "hexpm"}
             </span>
-          </div>
-        </div>
-
-        <div class="text-right">
-          <div class="text-sm text-base-content/60">
-            <div>Published {format_date(@package.inserted_at)}</div>
-            <div>Updated {format_date(@package.updated_at)}</div>
           </div>
         </div>
       </div>

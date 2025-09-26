@@ -12,6 +12,22 @@
     </script>
   </head>
   <body class="bg-base-100 antialiased">
-    {@inner_content}
+    <div class="navbar bg-base-100">
+      <div class="flex-1">
+        <a href={~p"/"} class="btn btn-ghost text-xl">
+          <img src={~p"/images/logo.svg"} width="32" height="32" alt="HexHub Logo" />
+          HexHub
+        </a>
+      </div>
+      <div class="flex-none">
+        <ul class="menu menu-horizontal px-1">
+          <li><.link href={~p"/packages"} class="btn btn-ghost">Packages</.link></li>
+        </ul>
+      </div>
+    </div>
+
+    <main class="container mx-auto px-4 py-8">
+      {@inner_content}
+    </main>
   </body>
 </html>

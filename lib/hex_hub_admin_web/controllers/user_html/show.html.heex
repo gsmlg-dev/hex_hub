@@ -1,32 +1,33 @@
 <Layouts.app flash={@flash}>
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-3xl font-bold text-base-content">{@user.username}</h1>
-        <p class="text-base-content/70 mt-2">{@user.email}</p>
-      </div>
-
-      <div class="flex space-x-3">
-        <.dm_link navigate={~p"/users"} class="btn btn-ghost">
-          Back to Users
-        </.dm_link>
-        <.dm_link
-          navigate={~p"/users/#{@user.username}/edit"}
-          class="btn btn-primary"
-        >
-          Edit User
-        </.dm_link>
-        <form action={~p"/users/#{@user.username}"} method="post" class="inline">
-          <input type="hidden" name="_method" value="delete" />
-          <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
-          <.dm_btn
-            type="submit"
-            class="btn btn-error"
-            onclick="return confirm('Are you sure you want to delete this user?')"
-          >
-            Delete User
-          </.dm_btn>
-        </form>
+    <div class="hero bg-base-200 rounded-box mb-8">
+      <div class="hero-content">
+        <div class="max-w-2xl">
+          <h1 class="text-5xl font-bold">{@user.username}</h1>
+          <p class="py-6">{@user.email}</p>
+          <div class="flex space-x-3">
+            <.dm_link navigate={~p"/users"} class="btn btn-ghost">
+              Back to Users
+            </.dm_link>
+            <.dm_link
+              navigate={~p"/users/#{@user.username}/edit"}
+              class="btn btn-primary"
+            >
+              Edit User
+            </.dm_link>
+            <form action={~p"/users/#{@user.username}"} method="post" class="inline">
+              <input type="hidden" name="_method" value="delete" />
+              <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+              <.dm_btn
+                type="submit"
+                class="btn btn-error"
+                onclick="return confirm('Are you sure you want to delete this user?')"
+              >
+                Delete User
+              </.dm_btn>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 

@@ -1,18 +1,20 @@
 <Layouts.app flash={@flash}>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-base-content">Users</h1>
-        <p class="text-sm text-base-content/70 mt-1">
-          Manage all users in the system. Total: {@total_count} users
-        </p>
+    <div class="hero bg-base-200 rounded-box mb-8">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h1 class="text-4xl font-bold">Manage Users</h1>
+          <p class="py-6">
+            Manage all users in the system. Total: {@total_count} users
+          </p>
+          <.link
+            navigate={~p"/users/new"}
+            class="btn btn-primary"
+          >
+            Add User
+          </.link>
+        </div>
       </div>
-      <.link
-        navigate={~p"/users/new"}
-        class="btn btn-primary"
-      >
-        Add User
-      </.link>
     </div>
 
     <div class="overflow-x-auto">
