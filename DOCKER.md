@@ -45,6 +45,10 @@ docker run -p 4000:4000 \
 - `AWS_ACCESS_KEY_ID`: AWS access key (if using S3)
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key (if using S3)
 - `AWS_REGION`: AWS region (if using S3)
+- `AWS_S3_HOST`: Custom S3 host (for S3-compatible services)
+- `AWS_S3_PORT`: Custom S3 port (default: 443)
+- `AWS_S3_PATH_STYLE`: Use path-style addressing (for MinIO, default: false)
+- `AWS_S3_SCHEME`: URL scheme `http` or `https` (default: https)
 - `MNESIA_DIR`: Directory for Mnesia data (default: /app/priv/storage/mnesia)
 - `PORT`: Port to run on (default: 4000)
 
@@ -128,6 +132,22 @@ docker run \
   -e AWS_ACCESS_KEY_ID=your-key \
   -e AWS_SECRET_ACCESS_KEY=your-secret \
   -e AWS_REGION=us-east-1 \
+  hex_hub:latest
+```
+
+For S3-compatible services (MinIO, DigitalOcean Spaces, etc.):
+
+```bash
+docker run \
+  -e STORAGE_TYPE=s3 \
+  -e S3_BUCKET=your-bucket \
+  -e AWS_ACCESS_KEY_ID=your-key \
+  -e AWS_SECRET_ACCESS_KEY=your-secret \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_S3_HOST=minio-server.com \
+  -e AWS_S3_PORT=9000 \
+  -e AWS_S3_PATH_STYLE=true \
+  -e AWS_S3_SCHEME=http \
   hex_hub:latest
 ```
 

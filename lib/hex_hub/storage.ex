@@ -4,6 +4,9 @@ defmodule HexHub.Storage do
   Supports both local filesystem storage and S3-compatible storage.
   """
 
+  require Logger
+  alias ExAws.S3
+
   @type storage_type :: :local | :s3
   @type upload_result :: {:ok, String.t()} | {:error, String.t()}
 
@@ -32,6 +35,15 @@ defmodule HexHub.Storage do
   def delete(key) do
     storage_type = get_storage_type()
     delete_from_storage(storage_type, key)
+  end
+
+  @doc """
+  Generate a signed URL for file download (S3 only).
+  """
+  @spec signed_url(String.t(), Keyword.t()) :: {:ok, String.t()} | {:error, String.t()}
+  def signed_url(key, opts \\ []) do
+    storage_type = get_storage_type()
+    generate_signed_url(storage_type, key, opts)
   end
 
   @doc """
@@ -92,13 +104,37 @@ defmodule HexHub.Storage do
     result
   end
 
-  defp upload_to_storage(:s3, key, _content, _opts) do
-    bucket = Application.get_env(:hex_hub, :s3_bucket)
+  defp upload_to_storage(:s3, key, content, opts) do
+    bucket = get_s3_bucket()
 
     if bucket do
-      # S3 upload implementation would go here
-      # For now, returning mock response
-      {:ok, key}
+      start_time = System.monotonic_time()
+
+      upload_opts = build_s3_upload_opts(opts)
+
+      result =
+        content
+        |> S3.upload(bucket, key, upload_opts)
+        |> ExAws.request()
+        |> handle_s3_response("upload", key)
+
+      duration_ms =
+        (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
+      case result do
+        {:ok, _} ->
+          HexHub.Telemetry.track_storage_operation(
+            "upload",
+            "s3",
+            duration_ms,
+            byte_size(content)
+          )
+
+        {:error, _} ->
+          HexHub.Telemetry.track_storage_operation("upload", "s3", duration_ms, 0, "error")
+      end
+
+      result
     else
       {:error, "S3 bucket not configured"}
     end
@@ -134,12 +170,35 @@ defmodule HexHub.Storage do
     result
   end
 
-  defp download_from_storage(:s3, _key) do
-    bucket = Application.get_env(:hex_hub, :s3_bucket)
+  defp download_from_storage(:s3, key) do
+    bucket = get_s3_bucket()
 
     if bucket do
-      # S3 download implementation would go here
-      {:error, "S3 download not implemented"}
+      start_time = System.monotonic_time()
+
+      result =
+        bucket
+        |> S3.get_object(key)
+        |> ExAws.request()
+        |> handle_s3_download_response(key)
+
+      duration_ms =
+        (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
+      case result do
+        {:ok, content} ->
+          HexHub.Telemetry.track_storage_operation(
+            "download",
+            "s3",
+            duration_ms,
+            byte_size(content)
+          )
+
+        {:error, _} ->
+          HexHub.Telemetry.track_storage_operation("download", "s3", duration_ms, 0, "error")
+      end
+
+      result
     else
       {:error, "S3 bucket not configured"}
     end
@@ -171,12 +230,30 @@ defmodule HexHub.Storage do
     result
   end
 
-  defp delete_from_storage(:s3, _key) do
-    bucket = Application.get_env(:hex_hub, :s3_bucket)
+  defp delete_from_storage(:s3, key) do
+    bucket = get_s3_bucket()
 
     if bucket do
-      # S3 delete implementation would go here
-      :ok
+      start_time = System.monotonic_time()
+
+      result =
+        bucket
+        |> S3.delete_object(key)
+        |> ExAws.request()
+        |> handle_s3_response("delete", key)
+
+      duration_ms =
+        (System.monotonic_time() - start_time) |> System.convert_time_unit(:native, :millisecond)
+
+      case result do
+        {:ok, _} ->
+          HexHub.Telemetry.track_storage_operation("delete", "s3", duration_ms, 0)
+
+        {:error, _} ->
+          HexHub.Telemetry.track_storage_operation("delete", "s3", duration_ms, 0, "error")
+      end
+
+      result
     else
       {:error, "S3 bucket not configured"}
     end
@@ -184,5 +261,82 @@ defmodule HexHub.Storage do
 
   defp storage_path() do
     Application.get_env(:hex_hub, :storage_path, "priv/storage")
+  end
+
+  defp get_s3_bucket() do
+    Application.get_env(:hex_hub, :s3_bucket)
+  end
+
+  defp build_s3_upload_opts(opts) do
+    base_opts = [
+      acl: :private,
+      content_type: Keyword.get(opts, :content_type, "application/octet-stream")
+    ]
+
+    # Add encryption if specified
+    if Keyword.get(opts, :encrypt, true) do
+      Keyword.put(base_opts, :server_side_encryption, "AES256")
+    else
+      base_opts
+    end
+  end
+
+  defp handle_s3_response({:ok, _response}, operation, key) do
+    Logger.debug("S3 #{operation} successful for key: #{key}")
+    {:ok, key}
+  end
+
+  defp handle_s3_response({:error, error}, operation, key) do
+    Logger.error("S3 #{operation} failed for key: #{key}, error: #{inspect(error)}")
+    {:error, format_s3_error(error)}
+  end
+
+  defp handle_s3_download_response({:ok, %{body: body}}, _key) do
+    {:ok, body}
+  end
+
+  defp handle_s3_download_response({:error, error}, key) do
+    Logger.error("S3 download failed for key: #{key}, error: #{inspect(error)}")
+    {:error, format_s3_error(error)}
+  end
+
+  defp format_s3_error({:http_error, status_code, body}) when is_binary(body) do
+    try do
+      error_data = Jason.decode!(body)
+      "S3 error (#{status_code}): #{error_data["message"] || "Unknown error"}"
+    rescue
+      _ -> "S3 error (#{status_code}): #{body}"
+    end
+  end
+
+  defp format_s3_error({:http_error, status_code, _body}) do
+    "S3 error (#{status_code}): HTTP request failed"
+  end
+
+  defp format_s3_error(error) do
+    "S3 error: #{inspect(error)}"
+  end
+
+  defp generate_signed_url(:local, _key, _opts) do
+    {:error, "Signed URLs not supported for local storage"}
+  end
+
+  defp generate_signed_url(:s3, key, opts) do
+    bucket = get_s3_bucket()
+
+    if bucket do
+      # 1 hour default
+      expires_in = Keyword.get(opts, :expires_in, 3600)
+
+      # Use ExAws to generate a presigned URL
+      config = ExAws.Config.new(:s3)
+
+      case ExAws.S3.presigned_url(config, :get, bucket, key, expires_in: expires_in) do
+        {:ok, url} -> {:ok, url}
+        {:error, error} -> {:error, format_s3_error(error)}
+      end
+    else
+      {:error, "S3 bucket not configured"}
+    end
   end
 end

@@ -55,7 +55,12 @@ defmodule HexHub.MixProject do
       {:bandit, "~> 1.5"},
       {:bcrypt_elixir, "~> 3.0"},
       {:uuid, "~> 1.1"},
-      {:libcluster, "~> 3.3"}
+      {:libcluster, "~> 3.3"},
+      {:ex_aws, "~> 2.5"},
+      {:ex_aws_s3, "~> 2.5"},
+      {:sweet_xml, "~> 0.7"},
+      {:hackney, "~> 1.20"},
+      {:mox, "~> 1.1", only: :test}
     ]
   end
 

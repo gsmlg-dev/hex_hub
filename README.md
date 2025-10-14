@@ -173,7 +173,84 @@ config :hex_hub,
   storage_type: :s3,
   s3_bucket: "your-bucket-name",
   s3_region: "us-east-1"
+
+# S3 Configuration
+config :ex_aws,
+  access_key_id: System.get_env("AWS_ACCESS_KEY_ID"),
+  secret_access_key: System.get_env("AWS_SECRET_ACCESS_KEY"),
+  region: System.get_env("AWS_REGION", "us-east-1")
+
+config :ex_aws, :s3,
+  scheme: "https://",
+  host: System.get_env("AWS_S3_HOST"),  # For custom S3-compatible services
+  port: (if port = System.get_env("AWS_S3_PORT"), do: String.to_integer(port), else: 443),
+  path_style: System.get_env("AWS_S3_PATH_STYLE", "false") == "true"
 ```
+
+### S3 Storage Setup
+
+#### AWS S3 Setup
+
+1. Create an S3 bucket:
+   ```bash
+   aws s3 mb s3://your-hex-packages-bucket
+   ```
+
+2. Create an IAM user with programmatic access and attach the following policy:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": [
+           "s3:GetObject",
+           "s3:PutObject",
+           "s3:DeleteObject",
+           "s3:ListBucket"
+         ],
+         "Resource": [
+           "arn:aws:s3:::your-hex-packages-bucket",
+           "arn:aws:s3:::your-hex-packages-bucket/*"
+         ]
+       }
+     ]
+   }
+   ```
+
+3. Set environment variables:
+   ```bash
+   export STORAGE_TYPE=s3
+   export S3_BUCKET=your-hex-packages-bucket
+   export AWS_ACCESS_KEY_ID=your-access-key
+   export AWS_SECRET_ACCESS_KEY=your-secret-key
+   export AWS_REGION=us-east-1
+   ```
+
+#### S3-Compatible Services (MinIO, DigitalOcean Spaces, etc.)
+
+For S3-compatible services, use additional environment variables:
+
+```bash
+export AWS_S3_HOST=your-minio-server.com
+export AWS_S3_PORT=9000
+export AWS_S3_PATH_STYLE=true  # Required for MinIO
+export AWS_S3_SCHEME=http  # Use http for local MinIO
+```
+
+#### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STORAGE_TYPE` | Storage backend (`local` or `s3`) | `local` |
+| `S3_BUCKET` | S3 bucket name | - |
+| `AWS_ACCESS_KEY_ID` | AWS access key ID | - |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret access key | - |
+| `AWS_REGION` | AWS region | `us-east-1` |
+| `AWS_S3_HOST` | Custom S3 host (for S3-compatible services) | - |
+| `AWS_S3_PORT` | Custom S3 port | `443` |
+| `AWS_S3_PATH_STYLE` | Use path-style addressing (for MinIO) | `false` |
+| `AWS_S3_SCHEME` | URL scheme (`http` or `https`) | `https` |
 
 ### Repository Settings
 

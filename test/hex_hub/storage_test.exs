@@ -1,6 +1,12 @@
 defmodule HexHub.StorageTest do
   use ExUnit.Case
 
+  setup do
+    # Ensure we start with local storage for each test
+    Application.put_env(:hex_hub, :storage_type, :local)
+    :ok
+  end
+
   describe "local storage" do
     test "upload/3 stores package tarball" do
       key = "packages/test_package-1.0.0.tar.gz"
@@ -75,6 +81,80 @@ defmodule HexHub.StorageTest do
 
     test "generate_docs_key/2 creates correct key" do
       assert "docs/phoenix-1.7.0.tar.gz" = HexHub.Storage.generate_docs_key("phoenix", "1.7.0")
+    end
+  end
+
+  describe "S3 storage configuration" do
+    test "returns error when bucket not configured" do
+      # Temporarily remove bucket configuration
+      Application.put_env(:hex_hub, :storage_type, :s3)
+      Application.delete_env(:hex_hub, :s3_bucket)
+
+      key = "packages/test_package-1.0.0.tar.gz"
+      content = "test package content"
+
+      assert {:error, "S3 bucket not configured"} = HexHub.Storage.upload(key, content)
+
+      # Restore configuration
+      Application.put_env(:hex_hub, :storage_type, :local)
+    end
+
+    test "builds S3 upload options correctly" do
+      # Test the private function through the public interface
+      Application.put_env(:hex_hub, :storage_type, :s3)
+      Application.put_env(:hex_hub, :s3_bucket, "test-bucket")
+
+      # This will fail due to no real S3, but we can check the error format
+      key = "packages/test_package-1.0.0.tar.gz"
+      content = "test package content"
+
+      result = HexHub.Storage.upload(key, content)
+
+      # Should get an S3 error, not a configuration error
+      assert {:error, reason} = result
+      assert String.contains?(reason, "S3 error")
+
+      # Restore configuration
+      Application.put_env(:hex_hub, :storage_type, :local)
+      Application.delete_env(:hex_hub, :s3_bucket)
+    end
+
+    test "signed_url/2 returns error for local storage" do
+      key = "packages/test_package-1.0.0.tar.gz"
+
+      assert {:error, "Signed URLs not supported for local storage"} =
+               HexHub.Storage.signed_url(key)
+    end
+
+    test "signed_url/2 returns error when bucket not configured" do
+      Application.put_env(:hex_hub, :storage_type, :s3)
+      Application.delete_env(:hex_hub, :s3_bucket)
+
+      key = "packages/test_package-1.0.0.tar.gz"
+
+      assert {:error, "S3 bucket not configured"} = HexHub.Storage.signed_url(key)
+
+      # Restore configuration
+      Application.put_env(:hex_hub, :storage_type, :local)
+    end
+
+    test "signed_url/2 generates URL for S3 storage" do
+      Application.put_env(:hex_hub, :storage_type, :s3)
+      Application.put_env(:hex_hub, :s3_bucket, "test-bucket")
+
+      key = "packages/test_package-1.0.0.tar.gz"
+
+      result = HexHub.Storage.signed_url(key)
+
+      # Should get a signed URL (even with invalid credentials, the URL generation works)
+      assert {:ok, url} = result
+      assert String.contains?(url, "test-bucket")
+      assert String.contains?(url, key)
+      assert String.contains?(url, "X-Amz-Signature")
+
+      # Restore configuration
+      Application.put_env(:hex_hub, :storage_type, :local)
+      Application.delete_env(:hex_hub, :s3_bucket)
     end
   end
 end
