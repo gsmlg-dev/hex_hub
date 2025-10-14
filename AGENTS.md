@@ -3,20 +3,21 @@
 ## Commands
 - `mix setup` - Install deps and build assets
 - `mix phx.server` - Start dev server
-- `mix test` - Run all tests (94 tests)
+- `mix test` - Run all tests
 - `mix test test/path/to/file_test.exs` - Run single test file
 - `mix test test/path/to/file_test.exs:123` - Run specific test line
-- `mix format` - Format code
-- `mix assets.build` - Build frontend assets
-- `mix assets.deploy` - Build production assets
+- `mix format` - Format code (uses .formatter.exs config)
+- `mix assets.build` - Build frontend assets (tailwind + bun for both apps)
+- `mix assets.deploy` - Build production assets with minification
 
 ## Code Style
 - Use `@moduledoc` for module documentation
-- Define `@type` specs for public functions
-- Alias modules at top of file
+- Define `@type` specs for public functions with proper types
+- Alias modules at top of file after `require` statements
 - Use pattern matching in function heads
-- Return `{:ok, result}` or `{:error, reason}` tuples
+- Return `{:ok, result}` or `{:error, reason}` tuples consistently
 - Use `@table_name` module attributes for Mnesia tables
 - Write descriptive test names with `test "description do"`
 - Use `setup` blocks for test isolation
 - Follow Phoenix conventions for controllers and components
+- Import Phoenix deps in formatter, handle HEEX templates
