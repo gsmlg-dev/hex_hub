@@ -127,7 +127,124 @@
           </div>
         </div>
       </div>
-      
+
+<!-- Configuration Section -->
+      <div class="mb-12">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-bold text-base-content mb-4">
+            Configure Your Elixir Environment
+          </h2>
+          <p class="text-lg text-base-content/70 max-w-2xl mx-auto">
+            Use the HEX_MIRROR environment variable to configure Elixir to fetch packages from this HexHub instance instead of the public hex.pm.
+          </p>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl max-w-2xl mx-auto">
+          <div class="card-body">
+            <h3 class="card-title text-xl mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-6 h-6 mr-2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v.001c0 .621.504 1.125 1.125 1.125z"
+                />
+              </svg>
+              Package Mirror Configuration
+            </h3>
+
+            <div class="bg-base-200 rounded-lg p-4">
+              <h4 class="font-semibold text-lg mb-3 text-primary">Configure HEX_MIRROR</h4>
+              <p class="text-sm text-base-content/70 mb-3">
+                Set this environment variable to make Elixir fetch packages from this HexHub instance instead of the public hex.pm repository.
+              </p>
+              <div class="mockup-code">
+                <pre data-prefix="1"><code class="text-success">export</code> <code class="text-info">HEX_MIRROR=<%= hex_hub_url(@conn) %></code></pre>
+                <pre data-prefix="2"><code class="text-success"># Or in mix.exs:</code></pre>
+                <pre data-prefix="3"><code class="text-info">config</code> <code>:hex, :cdn_url, "<%= hex_hub_url(@conn) %>"</code></pre>
+              </div>
+            </div>
+
+            <div class="alert alert-info mt-6">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                class="stroke-current shrink-0 w-6 h-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              <div>
+                <h3 class="font-bold">Quick Start</h3>
+                <div class="text-xs">
+                  Set the HEX_MIRROR environment variable in your shell or add it to your <code>~/.bashrc</code>, <code>~/.zshrc</code>, or project's <code>.env</code> file. Restart your shell or Elixir application for changes to take effect.
+                </div>
+              </div>
+            </div>
+
+            <div class="collapse collapse-arrow bg-base-200 mt-4">
+              <input type="checkbox" />
+              <div class="collapse-title text-lg font-medium">
+                Advanced Configuration Examples
+              </div>
+              <div class="collapse-content">
+                <div class="space-y-4 mt-4">
+                  <!-- System-wide Configuration -->
+                  <div>
+                    <h5 class="font-semibold mb-2">System-wide Configuration</h5>
+                    <div class="mockup-code">
+                      <pre data-prefix="1"><code># Add to ~/.bashrc or ~/.zshrc</code></pre>
+                      <pre data-prefix="2"><code class="text-success">export</code> <code class="text-info">HEX_MIRROR=<%= hex_hub_url(@conn) %></code></pre>
+                      <pre data-prefix="3"><code class="text-comment"># Then restart your shell or run: source ~/.bashrc</code></pre>
+                    </div>
+                  </div>
+
+                  <!-- Project Configuration -->
+                  <div>
+                    <h5 class="font-semibold mb-2">Project-specific Configuration</h5>
+                    <div class="mockup-code">
+                      <pre data-prefix="1"><code># In config/config.exs</code></pre>
+                      <pre data-prefix="2"><code class="text-info">config</code> <code>:hex, cdn_url: "<%= hex_hub_url(@conn) %>"</code></pre>
+                    </div>
+                  </div>
+
+                  <!-- Docker Configuration -->
+                  <div>
+                    <h5 class="font-semibold mb-2">Docker Environment</h5>
+                    <div class="mockup-code">
+                      <pre data-prefix="1"><code># In Dockerfile</code></pre>
+                      <pre data-prefix="2"><code class="text-success">ENV</code> <code class="text-info">HEX_MIRROR=<%= hex_hub_url(@conn) %></code></pre>
+                      <pre data-prefix="3"><code class="text-comment"># Or docker-compose.yml environment section</code></pre>
+                    </div>
+                  </div>
+
+                  <!-- CI/CD Configuration -->
+                  <div>
+                    <h5 class="font-semibold mb-2">CI/CD Pipeline</h5>
+                    <div class="mockup-code">
+                      <pre data-prefix="1"><code># GitHub Actions example</code></pre>
+                      <pre data-prefix="2"><code class="text-info">env:</code></pre>
+                      <pre data-prefix="3"><code>  HEX_MIRROR: <%= hex_hub_url(@conn) %></code></pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 <!-- Quick Stats -->
       <div class="stats shadow w-full">
         <div class="stat">

@@ -51,14 +51,26 @@ mix assets.setup
 # Run all tests with coverage
 mix test --cover
 
+# Run specific test file
+mix test test/hex_hub_web/controllers/api/package_controller_test.exs
+
+# Run tests matching pattern
+mix test --only user
+
 # Format code
 mix format
 
 # Static analysis
-credo
+mix credo
 
 # Type checking
-dialyzer
+mix dialyzer
+
+# Check dependency status
+mix deps.tree
+
+# Clean and recompile
+mix deps.clean --build && mix deps.get && mix compile
 ```
 
 ## Project Structure
@@ -87,9 +99,30 @@ lib/
 - `hex-api.yaml` - Complete OpenAPI specification for Hex API
 - `config/config.exs` - General configuration
 - `config/clustering.exs` - Mnesia clustering configuration
-- `lib/hex_hub/mnesia.ex` - Mnesia database setup
-- `lib/hex_hub/clustering.ex` - Cluster management
+- `lib/hex_hub/mnesia.ex` - Mnesia database setup and table definitions
+- `lib/hex_hub/clustering.ex` - Cluster management logic
+- `lib/hex_hub/storage.ex` - Storage abstraction (local/S3)
 - `scripts/cluster.sh` - Cluster management script
+
+## Important Development Notes
+
+### Mnesia Database
+- **No external database required** - uses Mnesia for storage
+- Tables auto-initialize on first run
+- Data stored in `Mnesia.<node_name>/` directory
+- Test data is isolated automatically
+- Use `:mnesia.info()` in IEx for debugging
+
+### Storage Architecture
+- **Local storage** (default): `priv/storage/`
+- **S3 storage** (production): Configure via environment variables
+- Storage abstraction in `lib/hex_hub/storage.ex` handles both
+
+### API Testing
+- All endpoints require API key authentication
+- Use `mix test` for comprehensive test coverage (94 tests)
+- API tests in `test/hex_hub_web/controllers/api/`
+- Test users and API keys auto-created in test setup
 
 ## Environment Configuration
 
@@ -106,14 +139,22 @@ lib/
 ### Environment Variables
 ```bash
 # Required
-SECRET_KEY_BASE=your-64-byte-secret
-PHX_HOST=your-domain.com
+SECRET_KEY_BASE=your-64-byte-secret  # Generate with `mix phx.gen.secret`
+PHX_HOST=your-domain.com             # Host for URL generation
 
 # Optional
-CLUSTERING_ENABLED=true          # Enable clustering
-MNESIA_DIR=/app/mnesia          # Mnesia data directory
-STORAGE_TYPE=local              # or s3
-S3_BUCKET=your-bucket           # S3 configuration
+CLUSTERING_ENABLED=true              # Enable clustering
+MNESIA_DIR=/app/mnesia              # Mnesia data directory
+STORAGE_TYPE=local                  # or s3
+S3_BUCKET=your-bucket               # S3 configuration
+
+# S3 Configuration (when STORAGE_TYPE=s3)
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_REGION=us-east-1
+AWS_S3_HOST=your-s3-host            # For S3-compatible services
+AWS_S3_PORT=9000                     # Custom S3 port
+AWS_S3_PATH_STYLE=true               # Required for MinIO
 ```
 
 ## API Implementation Status ✅
@@ -176,6 +217,11 @@ docker-compose up -d
 
 # Kubernetes
 kubectl apply -f k8s/
+
+# Build and deploy release
+MIX_ENV=prod mix assets.deploy
+MIX_ENV=prod mix release
+_build/prod/rel/hex_hub/bin/hex_hub start
 ```
 
 ## Monitoring & Debugging
@@ -198,3 +244,24 @@ kubectl apply -f k8s/
 - **Horizontal Scaling**: Linear scaling with cluster nodes
 - **Storage**: Efficient binary storage for packages/docs
 - **Memory**: RAM + disk hybrid storage strategy
+
+## Common Development Patterns
+
+### Adding New API Endpoints
+1. Define route in `lib/hex_hub_web/router.ex`
+2. Create controller in `lib/hex_hub_web/controllers/api/`
+3. Add business logic to appropriate context in `lib/hex_hub/`
+4. Add tests in `test/hex_hub_web/controllers/api/`
+5. Update `hex-api.yaml` if exposing public API
+
+### Database Schema Changes
+1. Modify table definitions in `lib/hex_hub/mnesia.ex`
+2. Add migration logic for existing data
+3. Update test fixtures in `test/support/`
+4. Test with `mix test` (data automatically reset between tests)
+
+### Adding New Storage Types
+1. Implement storage callbacks in `lib/hex_hub/storage.ex`
+2. Add configuration to `config/config.exs`
+3. Add tests for new storage type
+4. Update environment variable documentation
