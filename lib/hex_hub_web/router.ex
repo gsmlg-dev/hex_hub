@@ -24,6 +24,29 @@ defmodule HexHubWeb.Router do
     plug HexHubWeb.Plugs.Authorize, "write"
   end
 
+  # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
+  # These must come before browser routes to avoid conflicts
+  scope "/", HexHubWeb.API do
+    pipe_through :api
+
+    # Public endpoints for Mix/HEX_MIRROR support
+    post "/users", UserController, :create
+    get "/users/:username_or_email", UserController, :show
+    get "/packages", PackageController, :list
+    get "/packages/:name", PackageController, :show
+    get "/packages/:name/releases/:version", ReleaseController, :show
+    get "/repos", RepositoryController, :list
+    get "/repos/:name", RepositoryController, :show
+
+    # Download endpoints (public, with upstream fallback)
+    get "/packages/:name/releases/:version/download", DownloadController, :package
+    get "/packages/:name/releases/:version/docs/download", DownloadController, :docs
+    # Tarballs endpoint for Mix compatibility (HEX_MIRROR support)
+    get "/tarballs/:tarball", DownloadController, :tarball
+    # Installs endpoint for Mix dependency resolution
+    get "/installs/:elixir_version/:requirements", PackageController, :installs
+  end
+
   scope "/", HexHubWeb do
     pipe_through :browser
 
@@ -51,7 +74,7 @@ defmodule HexHubWeb.Router do
     post "/cluster/leave", ClusterController, :leave
   end
 
-  # API routes matching hex-api.yaml specification
+  # API routes matching hex-api.yaml specification (with /api prefix)
   scope "/api", HexHubWeb.API do
     pipe_through :api
 
@@ -67,6 +90,10 @@ defmodule HexHubWeb.Router do
     # Download endpoints (public, with upstream fallback)
     get "/packages/:name/releases/:version/download", DownloadController, :package
     get "/packages/:name/releases/:version/docs/download", DownloadController, :docs
+    # Tarballs endpoint for Mix compatibility (HEX_MIRROR support)
+    get "/tarballs/:tarball", DownloadController, :tarball
+    # Installs endpoint for Mix dependency resolution
+    get "/installs/:elixir_version/:requirements", PackageController, :installs
   end
 
   # Authenticated API routes
