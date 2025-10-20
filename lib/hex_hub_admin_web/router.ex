@@ -53,6 +53,11 @@ defmodule HexHubAdminWeb.Router do
     get "/upstream/edit", UpstreamController, :edit
     put "/upstream", UpstreamController, :update
     post "/upstream/test-connection", UpstreamController, :test_connection
+
+    get "/storage", StorageController, :index
+    get "/storage/edit", StorageController, :edit
+    put "/storage", StorageController, :update
+    post "/storage/test-connection", StorageController, :test_connection
   end
 
   # Enable LiveDashboard in development

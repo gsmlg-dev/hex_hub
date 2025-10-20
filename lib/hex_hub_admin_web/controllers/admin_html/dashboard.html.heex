@@ -30,7 +30,7 @@
     <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
     
 <!-- Stats cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
       <div class="stat shadow bg-base-100">
         <div class="stat-figure text-primary">
           <svg
@@ -112,13 +112,35 @@
           <%= if @stats.upstream_enabled, do: "Enabled", else: "Disabled" %>
         </div>
       </div>
+
+      <div class="stat shadow bg-base-100">
+        <div class="stat-figure text-warning">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="inline-block w-8 h-8 stroke-current"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+            />
+          </svg>
+        </div>
+        <div class="stat-title">Storage</div>
+        <div class="stat-value text-warning">
+          <%= String.capitalize(to_string(@stats.storage_type)) %>
+        </div>
+      </div>
     </div>
     
 <!-- Quick actions -->
     <div class="card bg-base-100 shadow">
       <div class="card-body">
         <h2 class="card-title">Quick Actions</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <a href={~p"/repositories"} class="btn btn-primary">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -192,6 +214,23 @@
               />
             </svg>
             Upstream Settings
+          </a>
+          <a href={~p"/storage"} class="btn btn-warning">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+              />
+            </svg>
+            Storage Settings
           </a>
         </div>
       </div>

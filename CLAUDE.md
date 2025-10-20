@@ -324,3 +324,4 @@ curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/download
 # Download documentation (will fetch from upstream if needed)
 curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/docs/download
 ```
+- When add a new page, wrap the page in <Layouts.app />
