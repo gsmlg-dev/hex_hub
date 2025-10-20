@@ -32,7 +32,9 @@ defmodule HexHub.Application do
       # Start the Endpoint (http/https)
       HexHubWeb.Endpoint,
       # Start the Admin Endpoint (http/https)
-      HexHubAdminWeb.Endpoint
+      HexHubAdminWeb.Endpoint,
+      # Start the MCP server (optional - only if enabled)
+      {HexHub.MCP, []}
     ]
 
     # Add clustering supervisor only if clustering is enabled

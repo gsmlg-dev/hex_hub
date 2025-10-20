@@ -25,6 +25,16 @@ config :hex_hub, HexHubAdminWeb.Endpoint,
 
 config :hex_hub, HexHub.Mailer, adapter: Swoosh.Adapters.Local
 
+# MCP (Model Context Protocol) configuration
+config :hex_hub, :mcp,
+  enabled: System.get_env("MCP_ENABLED", "false") == "true",
+  websocket_path: System.get_env("MCP_WEBSOCKET_PATH", "/mcp/ws"),
+  rate_limit: String.to_integer(System.get_env("MCP_RATE_LIMIT", "1000")),
+  require_auth: System.get_env("MCP_REQUIRE_AUTH", "true") == "true",
+  websocket_heartbeat: System.get_env("MCP_WEBSOCKET_HEARTBEAT", "true") == "true",
+  heartbeat_interval: String.to_integer(System.get_env("MCP_HEARTBEAT_INTERVAL", "30000")),
+  debug: System.get_env("MCP_DEBUG", "false") == "true"
+
 config :bun,
   version: "1.2.16",
   hex_hub: [

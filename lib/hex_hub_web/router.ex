@@ -74,6 +74,32 @@ defmodule HexHubWeb.Router do
     post "/cluster/leave", ClusterController, :leave
   end
 
+  # MCP (Model Context Protocol) endpoints
+  if Application.get_env(:hex_hub, :mcp)[:enabled] do
+    scope "/mcp", HexHubWeb do
+      pipe_through :api
+
+      # MCP HTTP endpoints
+      post "/", MCPController, :handle_request
+      get "/tools", MCPController, :list_tools
+      get "/server-info", MCPController, :server_info
+      get "/health", MCPController, :health
+    end
+
+    # MCP WebSocket endpoint
+    scope "/" do
+      pipe_through :api
+
+      if function_exported?(Phoenix.Endpoint, :socket, 3) do
+        socket "/mcp/ws", HexHub.MCP.WebSocket,
+          websocket: [
+            connect_info: [:req_headers, :query_params, :peer_data],
+            timeout: 60_000
+          ]
+      end
+    end
+  end
+
   # API routes matching hex-api.yaml specification (with /api prefix)
   scope "/api", HexHubWeb.API do
     pipe_through :api
