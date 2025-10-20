@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HexHub is a **complete private hex package manager and hexdocs server** built with Phoenix 1.8.0-rc.4 and Elixir 1.15+. It provides a **drop-in replacement for hex.pm** with complete API compatibility, using Mnesia for zero-database storage and clustering support for high availability.
 
+### Architecture Highlights
+
+**Dual Web Interface**: Main public API (`hex_hub_web`) + Admin dashboard (`hex_hub_admin_web`)
+**Mnesia Database**: No external database required, with clustering support for high availability
+**Storage Abstraction**: Local filesystem or S3-compatible storage via `HexHub.Storage`
+**Upstream Integration**: Transparent fallback to hex.pm or any hex-compatible repository
+**Complete API**: 94 comprehensive tests with 100% endpoint coverage
+
 ## Key Architecture
 
 - **Phoenix Framework 1.8.0-rc.4**: Web layer with LiveView for real-time features
@@ -78,19 +86,24 @@ mix deps.clean --build && mix deps.get && mix compile
 ```
 lib/
 ├── hex_hub/                    # Core business logic
-│   ├── api_keys.ex            # API key management
-│   ├── packages.ex            # Package operations
-│   ├── users.ex               # User management
-│   ├── storage.ex             # File storage abstraction
+│   ├── packages.ex            # Package publishing & management
+│   ├── users.ex               # User management & authentication
+│   ├── api_keys.ex            # API key generation & auth
+│   ├── mnesia.ex              # Database schema & table definitions
+│   ├── storage.ex             # Storage abstraction (local/S3)
+│   ├── upstream.ex            # Upstream package fetching
 │   ├── clustering.ex          # Mnesia cluster management
-│   └── mnesia.ex              # Database setup and queries
-├── hex_hub_web/               # Main web interface
-│   ├── controllers/           # Web controllers
+│   ├── telemetry.ex           # Application metrics
+│   └── audit.ex               # Audit logging
+├── hex_hub_web/               # Main web interface (public API)
+│   ├── controllers/api/       # API controllers with authentication
 │   ├── components/            # LiveView components
-│   └── router.ex             # Web routes
+│   ├── plugs/                 # Authentication & rate limiting
+│   └── router.ex             # API routes organization
 ├── hex_hub_admin_web/         # Admin dashboard
-│   ├── controllers/           # Admin controllers
-│   └── components/            # Admin UI components
+│   ├── controllers/           # Admin CRUD operations
+│   ├── components/            # Admin LiveView components
+│   └── router.ex             # Admin routes
 ```
 
 ## Key Files
@@ -273,55 +286,54 @@ _build/prod/rel/hex_hub/bin/hex_hub start
 3. Add tests for new storage type
 4. Update environment variable documentation
 
-### Upstream Package Fetching
-HexHub supports automatic upstream package fetching when packages are not available locally. This allows you to create a transparent caching proxy for hex.pm or any other hex-compatible repository.
+### Working with Mnesia
 
-#### Upstream Features
-- **Transparent Fallback**: Automatically fetches packages from upstream when not found locally
-- **Permanent Caching**: Once fetched, packages are cached indefinitely for faster access
-- **Configurable Upstream**: Support for any hex-compatible repository
-- **Retry Logic**: Automatic retry with exponential backoff for network failures
-- **Telemetry**: Comprehensive monitoring of upstream requests and performance
-
-#### Upstream Configuration
+#### Database Operations
+All Mnesia operations must be wrapped in transactions:
 ```elixir
-# config/config.exs
-config :hex_hub, :upstream,
-  enabled: true,                    # Enable/disable upstream fetching
-  url: "https://hex.pm",           # Upstream repository URL
-  timeout: 30_000,                 # Request timeout (ms)
-  retry_attempts: 3,               # Number of retry attempts
-  retry_delay: 1_000               # Delay between retries (ms)
+:mnesia.transaction(fn ->
+  :mnesia.write({:users, username, email, password_hash, now, now})
+end)
 ```
 
-#### Environment Variables
-- `UPSTREAM_ENABLED`: Enable/disable upstream fetching (default: true)
-- `UPSTREAM_URL`: Upstream hex repository URL (default: https://hex.pm)
-- `UPSTREAM_TIMEOUT`: Request timeout in milliseconds (default: 30000)
-- `UPSTREAM_RETRY_ATTEMPTS`: Number of retry attempts (default: 3)
-- `UPSTREAM_RETRY_DELAY`: Delay between retries in milliseconds (default: 1000)
+#### Debugging Mnesia
+```elixir
+# In IEx console
+:mnesia.info()                    # Show database info
+:mnesia.table_info(:users, :all)  # Show table details
+:qlc.q([u || u <- :mnesia.table(:users)])  # Query table
+```
 
-#### How It Works
-1. **Package Request**: When a package is requested, HexHub first checks local storage
-2. **Upstream Fallback**: If not found locally and upstream is enabled, HexHub fetches from upstream
-3. **Local Caching**: The fetched package is stored locally for future requests
-4. **Telemetry**: All upstream requests are tracked with performance metrics
+#### Testing with Mnesia
+Tests automatically reset Mnesia between runs:
+```elixir
+# In test setup
+HexHub.Mnesia.reset_test_store()  # Clean test database
+```
 
-#### API Endpoints
-- `GET /api/packages/:name` - Package metadata with upstream fallback
-- `GET /api/packages/:name/releases/:version` - Release metadata with upstream fallback
-- `GET /api/packages/:name/releases/:version/download` - Package tarball with upstream fallback
-- `GET /api/packages/:name/releases/:version/docs/download` - Documentation with upstream fallback
+### Upstream Package Fetching
 
-#### Example Usage
+HexHub automatically fetches packages from upstream when not found locally, creating a transparent caching proxy for hex.pm or any hex-compatible repository.
+
+**Configuration**: Enable/disable via `UPSTREAM_ENABLED` environment variable
+**Behavior**: Packages fetched once are cached permanently for future requests
+**Monitoring**: All upstream requests tracked with telemetry metrics
+**Retry Logic**: Automatic retry with exponential backoff for network failures
+
+### Authentication Patterns
+
+**API Key Authentication**: Bearer token required for all API endpoints
 ```bash
-# Fetch a package that doesn't exist locally
-curl http://localhost:4000/api/packages/phoenix
-
-# Download a package tarball (will fetch from upstream if needed)
-curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/download
-
-# Download documentation (will fetch from upstream if needed)
-curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/docs/download
+curl -H "Authorization: Bearer YOUR_API_KEY" /api/packages
 ```
-- When add a new page, wrap the page in <Layouts.app />
+
+**Permission Levels**: Read/write access separated by API key permissions
+**Rate Limiting**: Configurable per-endpoint rate limiting
+**Security**: All secrets hashed with bcrypt
+
+### Development Patterns
+
+**Always Use Storage Abstraction**: Never access storage directly, use `HexHub.Storage`
+**Transaction Safety**: Wrap all Mnesia operations in transactions
+**Error Handling**: Use consistent error response formats
+**Audit Logging**: All operations automatically logged for compliance
