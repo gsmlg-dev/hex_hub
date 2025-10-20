@@ -19,7 +19,8 @@ defmodule HexHub.UpstreamIntegrationTest do
         # This test actually hits hex.pm - run with HEX_HUB_INTEGRATION_TESTS=true
         Application.put_env(:hex_hub, :upstream,
           enabled: true,
-          url: "https://hex.pm",
+          api_url: "https://hex.pm",
+          repo_url: "https://repo.hex.pm",
           timeout: 10_000,
           retry_attempts: 2,
           retry_delay: 500
@@ -46,7 +47,8 @@ defmodule HexHub.UpstreamIntegrationTest do
       else
         Application.put_env(:hex_hub, :upstream,
           enabled: true,
-          url: "https://hex.pm",
+          api_url: "https://hex.pm",
+          repo_url: "https://repo.hex.pm",
           timeout: 10_000,
           retry_attempts: 2,
           retry_delay: 500
@@ -73,7 +75,8 @@ defmodule HexHub.UpstreamIntegrationTest do
       else
         Application.put_env(:hex_hub, :upstream,
           enabled: true,
-          url: "https://hex.pm",
+          api_url: "https://hex.pm",
+          repo_url: "https://repo.hex.pm",
           timeout: 10_000,
           retry_attempts: 1,
           retry_delay: 100
@@ -91,7 +94,8 @@ defmodule HexHub.UpstreamIntegrationTest do
       # Configure upstream to be enabled
       Application.put_env(:hex_hub, :upstream,
         enabled: true,
-        url: "https://hex.pm",
+        api_url: "https://hex.pm",
+        repo_url: "https://repo.hex.pm",
         timeout: 30_000,
         retry_attempts: 1,
         retry_delay: 100
@@ -103,7 +107,8 @@ defmodule HexHub.UpstreamIntegrationTest do
       # Test that we can get configuration
       config = HexHub.Upstream.config()
       assert config.enabled == true
-      assert config.url == "https://hex.pm"
+      assert config.api_url == "https://hex.pm"
+      assert config.repo_url == "https://repo.hex.pm"
     end
   end
 end

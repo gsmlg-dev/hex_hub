@@ -64,7 +64,8 @@ config :phoenix, :json_library, Jason
 # Upstream configuration
 config :hex_hub, :upstream,
   enabled: true,
-  url: "https://hex.pm",
+  api_url: "https://hex.pm",
+  repo_url: "https://repo.hex.pm",
   timeout: 30_000,
   retry_attempts: 3,
   retry_delay: 1_000

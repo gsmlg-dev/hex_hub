@@ -1,0 +1,139 @@
+<Layouts.app flash={@flash}>
+
+<!-- Page content -->
+  <div class="p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold">Upstream Configuration</h1>
+      <.link href="/upstream/edit" class="btn btn-primary">
+        Edit Configuration
+      </.link>
+    </div>
+
+  <div class="grid gap-6">
+    <!-- Status Card -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Status</h2>
+        <div class="flex items-center gap-2">
+          <%= if @upstream_config.enabled do %>
+            <span class="badge badge-success">Enabled</span>
+            <form action="/upstream/test-connection" method="post" class="inline">
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+              <button type="submit" class="btn btn-sm btn-outline" id="test-connection-btn">
+                Test Connection
+              </button>
+            </form>
+          <% else %>
+            <span class="badge badge-error">Disabled</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Card -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Current Configuration</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="label">Status</label>
+            <div class="input-group">
+              <span class="badge badge-success">
+                <%= if @upstream_config.enabled, do: "Enabled", else: "Disabled" %>
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label class="label">API URL</label>
+            <div class="input-group">
+              <input type="text" class="input input-bordered" value={@upstream_config.api_url} readonly />
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Repository URL</label>
+            <div class="input-group">
+              <input type="text" class="input input-bordered" value={@upstream_config.repo_url} readonly />
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Timeout (ms)</label>
+            <div class="input-group">
+              <input type="text" class="input input-bordered" value={@upstream_config.timeout} readonly />
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Retry Attempts</label>
+            <div class="input-group">
+              <input type="text" class="input input-bordered" value={@upstream_config.retry_attempts} readonly />
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Retry Delay (ms)</label>
+            <div class="input-group">
+              <input type="text" class="input input-bordered" value={@upstream_config.retry_delay} readonly />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage Statistics -->
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title">Usage Information</h2>
+        <div class="prose max-w-none">
+          <p class="text-sm">
+            <strong>API URL</strong>: Used for fetching package metadata and release information from the upstream repository.
+          </p>
+          <p class="text-sm">
+            <strong>Repository URL</strong>: Used for downloading package tarballs and documentation files.
+          </p>
+          <p class="text-sm">
+            <strong>Timeout</strong>: Maximum time to wait for upstream requests before timing out.
+          </p>
+          <p class="text-sm">
+            <strong>Retry Attempts</strong>: Number of times to retry failed upstream requests.
+          </p>
+          <p class="text-sm">
+            <strong>Retry Delay</strong>: Delay between retry attempts in milliseconds.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+<script>
+  // Handle test connection form submission with AJAX
+  document.getElementById('test-connection-btn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    const form = e.target.closest('form');
+
+    fetch(form.action, {
+      method: form.method,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(new FormData(form))
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        alert('✅ ' + data.message);
+      } else {
+        alert('❌ ' + data.message);
+      }
+    })
+    .catch(error => {
+      alert('❌ Error testing connection: ' + error.message);
+    });
+  });
+</script>
+</Layouts.app>

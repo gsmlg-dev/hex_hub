@@ -974,25 +974,53 @@ defmodule HexHub.Packages do
     if not Upstream.enabled?() do
       {:error, :not_found}
     else
-      with {:ok, tarball} <- Upstream.fetch_release_tarball(package_name, version),
-           {:ok, releases} <- Upstream.fetch_releases(package_name),
-           release_info <- Enum.find(releases, fn r -> r["version"] == version end),
-           {:ok, _package} <- fetch_package_from_upstream(package_name),
-           meta <- extract_release_meta(release_info),
-           requirements <- extract_requirements(release_info) do
-        # Cache the tarball
-        case Upstream.cache_package(package_name, version, tarball, meta) do
-          :ok ->
-            # Create release in local database
-            create_release_from_upstream(package_name, version, meta, requirements)
+      Logger.debug("Starting upstream fetch for #{package_name}-#{version}")
 
-          {:error, _reason} ->
-            Logger.error("Failed to cache release tarball #{package_name}-#{version}")
+      with {:ok, tarball} <- Upstream.fetch_release_tarball(package_name, version) do
+        Logger.debug("✅ Step 1: Got tarball, size: #{byte_size(tarball)}")
+
+        with {:ok, releases} <- Upstream.fetch_releases(package_name) do
+          Logger.debug("✅ Step 2: Got #{length(releases)} releases")
+
+          release_info = Enum.find(releases, fn r -> r["version"] == version end)
+          if release_info do
+            Logger.debug("✅ Step 3: Found release info for version #{version}")
+
+            with {:ok, _package} <- fetch_package_from_upstream(package_name) do
+              Logger.debug("✅ Step 4: Got package info")
+
+              meta = extract_release_meta(release_info)
+              requirements = extract_requirements(release_info)
+              Logger.debug("✅ Step 5: Extracted meta and requirements")
+
+              # Cache the tarball
+              case Upstream.cache_package(package_name, version, tarball, meta) do
+                :ok ->
+                  Logger.debug("✅ Step 6: Cached tarball successfully")
+                  # Create release in local database
+                  create_release_from_upstream(package_name, version, meta, requirements)
+
+                {:error, reason} ->
+                  Logger.error("❌ Step 6 failed: Failed to cache release tarball #{package_name}-#{version}: #{reason}")
+                  {:error, :not_found}
+              end
+            else
+              {:error, reason} ->
+                Logger.error("❌ Step 4 failed: Failed to fetch package from upstream: #{reason}")
+                {:error, :not_found}
+            end
+          else
+            Logger.error("❌ Step 3 failed: Version #{version} not found in releases")
+            {:error, :not_found}
+          end
+        else
+          {:error, reason} ->
+            Logger.error("❌ Step 2 failed: Failed to fetch releases: #{reason}")
             {:error, :not_found}
         end
       else
-        {:error, _reason} ->
-          Logger.warning("Failed to fetch release #{package_name}-#{version} from upstream")
+        {:error, reason} ->
+          Logger.error("❌ Step 1 failed: Failed to fetch release tarball: #{reason}")
           {:error, :not_found}
       end
     end

@@ -12,7 +12,8 @@ defmodule HexHub.Upstream do
 
   @type upstream_config :: %{
           enabled: boolean(),
-          url: String.t(),
+          api_url: String.t(),
+          repo_url: String.t(),
           timeout: integer(),
           retry_attempts: integer(),
           retry_delay: integer()
@@ -25,7 +26,8 @@ defmodule HexHub.Upstream do
   def config do
     %{
       enabled: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:enabled, true),
-      url: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:url, "https://hex.pm"),
+      api_url: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:api_url, "https://hex.pm"),
+      repo_url: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:repo_url, "https://repo.hex.pm"),
       timeout: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:timeout, 30_000),
       retry_attempts:
         Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:retry_attempts, 3),
@@ -53,7 +55,7 @@ defmodule HexHub.Upstream do
       {:error, "Upstream is disabled"}
     else
       start_time = System.monotonic_time()
-      url = "#{upstream_config.url}/api/packages/#{package_name}"
+      url = "#{upstream_config.api_url}/api/packages/#{package_name}"
 
       result = make_request_with_retry(url, upstream_config)
 
@@ -84,7 +86,7 @@ defmodule HexHub.Upstream do
       {:error, "Upstream is disabled"}
     else
       start_time = System.monotonic_time()
-      url = "#{upstream_config.url}/tarballs/#{package_name}-#{version}.tar"
+      url = "#{upstream_config.repo_url}/tarballs/#{package_name}-#{version}.tar"
 
       result = make_request_with_retry(url, upstream_config)
 
@@ -121,7 +123,7 @@ defmodule HexHub.Upstream do
       {:error, "Upstream is disabled"}
     else
       start_time = System.monotonic_time()
-      url = "#{upstream_config.url}/docs/#{package_name}-#{version}.tar"
+      url = "#{upstream_config.repo_url}/docs/#{package_name}-#{version}.tar"
 
       result = make_request_with_retry(url, upstream_config)
 
@@ -152,7 +154,7 @@ defmodule HexHub.Upstream do
       {:error, "Upstream is disabled"}
     else
       start_time = System.monotonic_time()
-      url = "#{upstream_config.url}/api/packages/#{package_name}/releases"
+      url = "#{upstream_config.api_url}/api/packages/#{package_name}"
 
       result = make_request_with_retry(url, upstream_config)
 
@@ -161,6 +163,15 @@ defmodule HexHub.Upstream do
         |> System.convert_time_unit(:native, :millisecond)
 
       case result do
+        {:ok, package_data} when is_map(package_data) ->
+          case Map.get(package_data, "releases") do
+            releases when is_list(releases) ->
+              HexHub.Telemetry.track_upstream_request("fetch_releases", duration_ms, 200)
+              {:ok, releases}
+            _ ->
+              {:error, "Invalid package format: missing releases"}
+          end
+
         {:ok, _} ->
           HexHub.Telemetry.track_upstream_request("fetch_releases", duration_ms, 200)
           result
@@ -241,10 +252,28 @@ defmodule HexHub.Upstream do
 
     case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        Logger.debug("Upstream response: binary body, size: #{byte_size(body)}")
         {:ok, body}
 
       {:ok, %{status: 200, body: body}} when is_map(body) ->
+        Logger.debug("Upstream response: map body")
         {:ok, body}
+
+      {:ok, %{status: 200, body: body}} when is_list(body) ->
+        Logger.debug("Upstream response: list body with #{length(body)} items")
+        # Handle hex package format - extract the tarball contents
+        # Keys may be strings or charlists
+        contents_key = "contents.tar.gz"
+        case Enum.find(body, fn {key, _} ->
+          key == contents_key or key == String.to_charlist(contents_key)
+        end) do
+          {_, tarball_data} when is_binary(tarball_data) ->
+            Logger.debug("Found tarball contents, size: #{byte_size(tarball_data)}")
+            {:ok, tarball_data}
+          _ ->
+            Logger.error("Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}")
+            {:error, "Invalid package format: missing contents.tar.gz"}
+        end
 
       {:ok, %{status: 404}} ->
         {:error, "Package not found upstream"}
@@ -256,6 +285,7 @@ defmodule HexHub.Upstream do
         {:error, "Server error: #{status}"}
 
       {:ok, response} ->
+        Logger.error("Unexpected upstream response: #{inspect(response, pretty: true)}")
         {:error, "Unexpected response: #{inspect(response)}"}
 
       {:error, %Req.TransportError{reason: reason}} ->

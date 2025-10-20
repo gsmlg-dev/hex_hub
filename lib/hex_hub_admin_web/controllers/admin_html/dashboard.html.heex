@@ -30,7 +30,7 @@
     <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
     
 <!-- Stats cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <div class="stat shadow bg-base-100">
         <div class="stat-figure text-primary">
           <svg
@@ -90,6 +90,28 @@
         <div class="stat-title">Total Users</div>
         <div class="stat-value text-accent">{@stats.total_users}</div>
       </div>
+
+      <div class="stat shadow bg-base-100">
+        <div class="stat-figure text-info">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            class="inline-block w-8 h-8 stroke-current"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
+        </div>
+        <div class="stat-title">Upstream</div>
+        <div class="stat-value text-info">
+          <%= if @stats.upstream_enabled, do: "Enabled", else: "Disabled" %>
+        </div>
+      </div>
     </div>
     
 <!-- Quick actions -->
@@ -148,7 +170,7 @@
             </svg>
             Manage Users
           </a>
-          <button class="btn" disabled>
+          <a href={~p"/upstream"} class="btn btn-info">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-5 w-5"
@@ -169,8 +191,8 @@
                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            System Settings
-          </button>
+            Upstream Settings
+          </a>
         </div>
       </div>
     </div>

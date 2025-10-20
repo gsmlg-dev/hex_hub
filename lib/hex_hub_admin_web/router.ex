@@ -10,6 +10,13 @@ defmodule HexHubAdminWeb.Router do
     plug :put_secure_browser_headers
   end
 
+  pipeline :browser_api do
+    plug :accepts, ["html", "json"]
+    plug :fetch_session
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -41,6 +48,11 @@ defmodule HexHubAdminWeb.Router do
     get "/users/:username/edit", UserController, :edit
     put "/users/:username", UserController, :update
     delete "/users/:username", UserController, :delete
+
+    get "/upstream", UpstreamController, :index
+    get "/upstream/edit", UpstreamController, :edit
+    put "/upstream", UpstreamController, :update
+    post "/upstream/test-connection", UpstreamController, :test_connection
   end
 
   # Enable LiveDashboard in development
