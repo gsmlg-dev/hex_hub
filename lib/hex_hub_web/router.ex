@@ -63,6 +63,10 @@ defmodule HexHubWeb.Router do
     get "/packages/:name/releases/:version", ReleaseController, :show
     get "/repos", RepositoryController, :list
     get "/repos/:name", RepositoryController, :show
+
+    # Download endpoints (public, with upstream fallback)
+    get "/packages/:name/releases/:version/download", DownloadController, :package
+    get "/packages/:name/releases/:version/docs/download", DownloadController, :docs
   end
 
   # Authenticated API routes

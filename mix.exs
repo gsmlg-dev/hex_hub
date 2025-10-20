@@ -42,7 +42,7 @@ defmodule HexHub.MixProject do
       {:phoenix_live_view, "~> 1.1.0-rc.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
-      {:phoenix_duskmoon, "~> 6.0"},
+      {:phoenix_duskmoon, "~> 7.0"},
       {:tailwind, "~> 0.3", runtime: Mix.env() == :dev},
       {:bun, "~> 1.4", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},

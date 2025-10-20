@@ -1,9 +1,12 @@
 defmodule HexHub.Packages do
   @moduledoc """
   Package management functions with Mnesia storage and file handling.
+  Supports upstream fetching for packages not available locally.
   """
 
+  require Logger
   alias HexHub.Storage
+  alias HexHub.Upstream
 
   @type package :: %{
           name: String.t(),
@@ -106,7 +109,7 @@ defmodule HexHub.Packages do
   end
 
   @doc """
-  Get package by name.
+  Get package by name. Falls back to upstream if not found locally.
   """
   @spec get_package(String.t()) :: {:ok, package()} | {:error, :not_found}
   def get_package(name) do
@@ -127,8 +130,15 @@ defmodule HexHub.Packages do
                {:error, :not_found}
            end
          end) do
-      {:atomic, result} -> result
-      {:aborted, _reason} -> {:error, :not_found}
+      {:atomic, {:ok, package}} ->
+        {:ok, package}
+
+      {:atomic, {:error, :not_found}} ->
+        # Try upstream fetching
+        fetch_package_from_upstream(name)
+
+      {:aborted, _reason} ->
+        {:error, :not_found}
     end
   end
 
@@ -281,7 +291,7 @@ defmodule HexHub.Packages do
   end
 
   @doc """
-  Get package release.
+  Get package release. Falls back to upstream if not found locally.
   """
   @spec get_release(String.t(), String.t()) :: {:ok, release()} | {:error, :not_found}
   def get_release(package_name, version) do
@@ -292,7 +302,8 @@ defmodule HexHub.Packages do
            )
          end) do
       {:atomic, []} ->
-        {:error, :not_found}
+        # Try upstream fetching
+        fetch_release_from_upstream(package_name, version)
 
       {:atomic, releases} when is_list(releases) ->
         # For :bag type, take the most recent one (last written)
@@ -931,6 +942,194 @@ defmodule HexHub.Packages do
          end) do
       {:atomic, packages} -> length(packages)
       {:aborted, _reason} -> 0
+    end
+  end
+
+  @doc """
+  Fetch package from upstream and cache it locally.
+  """
+  @spec fetch_package_from_upstream(String.t()) :: {:ok, package()} | {:error, :not_found}
+  def fetch_package_from_upstream(package_name) do
+    if not Upstream.enabled?() do
+      {:error, :not_found}
+    else
+      case Upstream.fetch_package(package_name) do
+        {:ok, upstream_package} ->
+          # Create package locally with upstream metadata
+          create_package_from_upstream(package_name, upstream_package)
+
+        {:error, _reason} ->
+          Logger.warning("Failed to fetch package #{package_name} from upstream")
+          {:error, :not_found}
+      end
+    end
+  end
+
+  @doc """
+  Fetch release from upstream and cache it locally.
+  """
+  @spec fetch_release_from_upstream(String.t(), String.t()) ::
+          {:ok, release()} | {:error, :not_found}
+  def fetch_release_from_upstream(package_name, version) do
+    if not Upstream.enabled?() do
+      {:error, :not_found}
+    else
+      with {:ok, tarball} <- Upstream.fetch_release_tarball(package_name, version),
+           {:ok, releases} <- Upstream.fetch_releases(package_name),
+           release_info <- Enum.find(releases, fn r -> r["version"] == version end),
+           {:ok, _package} <- fetch_package_from_upstream(package_name),
+           meta <- extract_release_meta(release_info),
+           requirements <- extract_requirements(release_info) do
+        # Cache the tarball
+        case Upstream.cache_package(package_name, version, tarball, meta) do
+          :ok ->
+            # Create release in local database
+            create_release_from_upstream(package_name, version, meta, requirements)
+
+          {:error, _reason} ->
+            Logger.error("Failed to cache release tarball #{package_name}-#{version}")
+            {:error, :not_found}
+        end
+      else
+        {:error, _reason} ->
+          Logger.warning("Failed to fetch release #{package_name}-#{version} from upstream")
+          {:error, :not_found}
+      end
+    end
+  end
+
+  @doc """
+  Download package tarball with upstream fallback.
+  """
+  @spec download_package_with_upstream(String.t(), String.t()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def download_package_with_upstream(package_name, version) do
+    # Try local download first
+    case download_package(package_name, version) do
+      {:ok, tarball} ->
+        {:ok, tarball}
+
+      {:error, _reason} ->
+        # Try fetching from upstream and caching
+        case fetch_release_from_upstream(package_name, version) do
+          {:ok, _release} ->
+            # Now try local download again
+            download_package(package_name, version)
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
+  end
+
+  @doc """
+  Download documentation tarball with upstream fallback.
+  """
+  @spec download_docs_with_upstream(String.t(), String.t()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def download_docs_with_upstream(package_name, version) do
+    # Try local download first
+    case download_docs(package_name, version) do
+      {:ok, docs_tarball} ->
+        {:ok, docs_tarball}
+
+      {:error, _reason} ->
+        # Try fetching from upstream
+        if Upstream.enabled?() do
+          case Upstream.fetch_docs_tarball(package_name, version) do
+            {:ok, docs_tarball} ->
+              # Cache the docs
+              case Upstream.cache_docs(package_name, version, docs_tarball) do
+                :ok ->
+                  {:ok, docs_tarball}
+
+                {:error, _reason} ->
+                  Logger.error("Failed to cache docs #{package_name}-#{version}")
+                  # Still return the docs even if caching fails
+                  {:ok, docs_tarball}
+              end
+
+            {:error, reason} ->
+              {:error, reason}
+          end
+        else
+          {:error, "Documentation not found and upstream is disabled"}
+        end
+    end
+  end
+
+  ## Private helper functions for upstream processing
+
+  defp create_package_from_upstream(package_name, upstream_package) do
+    meta = %{
+      "description" => upstream_package["meta"]["description"],
+      "licenses" => upstream_package["meta"]["licenses"] || [],
+      "links" => upstream_package["meta"]["links"] || %{},
+      "maintainers" => upstream_package["meta"]["maintainers"] || [],
+      "extra" => upstream_package["meta"]["extra"] || %{}
+    }
+
+    repository_name = upstream_package["repository"] || "hexpm"
+
+    create_package(package_name, repository_name, meta, false)
+  end
+
+  defp create_release_from_upstream(package_name, version, meta, requirements) do
+    # Create a minimal release record
+    now = DateTime.utc_now()
+
+    release = {
+      @releases_table,
+      package_name,
+      version,
+      # has_docs - we don't know this yet
+      false,
+      meta,
+      requirements,
+      # retired
+      false,
+      # downloads
+      0,
+      now,
+      now,
+      "/packages/#{package_name}/releases/#{version}",
+      "/packages/#{package_name}/releases/#{version}/package",
+      "/packages/#{package_name}/releases/#{version}",
+      "/packages/#{package_name}/releases/#{version}/docs"
+    }
+
+    case :mnesia.transaction(fn ->
+           :mnesia.write(release)
+         end) do
+      {:atomic, :ok} ->
+        release_map = release_to_map(release)
+        {:ok, release_map}
+
+      {:aborted, reason} ->
+        {:error, "Failed to create release: #{inspect(reason)}"}
+    end
+  end
+
+  defp extract_release_meta(release_info) do
+    %{
+      "app" => release_info["meta"]["app"],
+      "build_tools" => release_info["meta"]["build_tools"] || [],
+      "elixir" => release_info["meta"]["elixir"],
+      "description" => release_info["meta"]["description"],
+      "files" => release_info["meta"]["files"] || %{},
+      "licenses" => release_info["meta"]["licenses"] || [],
+      "links" => release_info["meta"]["links"] || %{},
+      "maintainers" => release_info["meta"]["maintainers"] || []
+    }
+  end
+
+  defp extract_requirements(release_info) do
+    case release_info["requirements"] do
+      requirements when is_map(requirements) ->
+        requirements
+
+      _ ->
+        %{}
     end
   end
 end

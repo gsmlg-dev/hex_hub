@@ -103,6 +103,21 @@ defmodule HexHub.Telemetry do
       ),
       counter("hex_hub.keys.created.total",
         description: "Total API keys created"
+      ),
+
+      # Upstream Metrics
+      counter("hex_hub.upstream.requests.total",
+        tags: [:operation],
+        description: "Total upstream requests"
+      ),
+      summary("hex_hub.upstream.request_duration",
+        tags: [:operation],
+        unit: :millisecond,
+        description: "Upstream request duration"
+      ),
+      counter("hex_hub.upstream.errors.total",
+        tags: [:operation, :status],
+        description: "Total upstream errors"
       )
     ]
   end
@@ -222,5 +237,21 @@ defmodule HexHub.Telemetry do
 
   def track_key_created do
     :telemetry.execute([:hex_hub, :keys, :created], %{count: 1})
+  end
+
+  def track_upstream_request(operation, duration_ms, status_code, error_type \\ nil) do
+    :telemetry.execute([:hex_hub, :upstream, :request_duration], %{duration: duration_ms}, %{
+      operation: operation
+    })
+
+    :telemetry.execute([:hex_hub, :upstream, :requests], %{count: 1}, %{operation: operation})
+
+    if error_type do
+      :telemetry.execute([:hex_hub, :upstream, :errors], %{count: 1}, %{
+        operation: operation,
+        status: status_code,
+        error_type: error_type
+      })
+    end
   end
 end

@@ -22,9 +22,10 @@ defmodule HexHubWeb.API.ReleaseController do
           inserted_at: release.inserted_at,
           updated_at: release.updated_at,
           url: release.url,
-          package_url: release.package_url,
+          package_url: "/api/packages/#{name}/releases/#{version}/download",
           html_url: release.html_url,
-          docs_html_url: release.docs_html_url
+          docs_html_url: release.docs_html_url,
+          docs_url: "/api/packages/#{name}/releases/#{version}/docs/download"
         }
 
         duration_ms =

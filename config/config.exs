@@ -61,5 +61,13 @@ config :logger, :default_formatter,
 
 config :phoenix, :json_library, Jason
 
+# Upstream configuration
+config :hex_hub, :upstream,
+  enabled: true,
+  url: "https://hex.pm",
+  timeout: 30_000,
+  retry_attempts: 3,
+  retry_delay: 1_000
+
 import_config "#{config_env()}.exs"
 import_config "clustering.exs"

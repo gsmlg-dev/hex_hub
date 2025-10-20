@@ -29,3 +29,11 @@ config :ex_aws, :s3,
   host: System.get_env("AWS_S3_HOST"),
   port: if(port = System.get_env("AWS_S3_PORT"), do: String.to_integer(port), else: 443),
   path_style: System.get_env("AWS_S3_PATH_STYLE", "false") == "true"
+
+# Production upstream configuration
+config :hex_hub, :upstream,
+  enabled: System.get_env("UPSTREAM_ENABLED", "true") == "true",
+  url: System.get_env("UPSTREAM_URL", "https://hex.pm"),
+  timeout: String.to_integer(System.get_env("UPSTREAM_TIMEOUT", "30000")),
+  retry_attempts: String.to_integer(System.get_env("UPSTREAM_RETRY_ATTEMPTS", "3")),
+  retry_delay: String.to_integer(System.get_env("UPSTREAM_RETRY_DELAY", "1000"))

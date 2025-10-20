@@ -155,6 +155,13 @@ AWS_REGION=us-east-1
 AWS_S3_HOST=your-s3-host            # For S3-compatible services
 AWS_S3_PORT=9000                     # Custom S3 port
 AWS_S3_PATH_STYLE=true               # Required for MinIO
+
+# Upstream Configuration
+UPSTREAM_ENABLED=true                # Enable upstream package fetching
+UPSTREAM_URL=https://hex.pm          # Upstream hex repository URL
+UPSTREAM_TIMEOUT=30000               # Request timeout in milliseconds
+UPSTREAM_RETRY_ATTEMPTS=3            # Number of retry attempts
+UPSTREAM_RETRY_DELAY=1000            # Delay between retries in milliseconds
 ```
 
 ## API Implementation Status ✅
@@ -265,3 +272,55 @@ _build/prod/rel/hex_hub/bin/hex_hub start
 2. Add configuration to `config/config.exs`
 3. Add tests for new storage type
 4. Update environment variable documentation
+
+### Upstream Package Fetching
+HexHub supports automatic upstream package fetching when packages are not available locally. This allows you to create a transparent caching proxy for hex.pm or any other hex-compatible repository.
+
+#### Upstream Features
+- **Transparent Fallback**: Automatically fetches packages from upstream when not found locally
+- **Permanent Caching**: Once fetched, packages are cached indefinitely for faster access
+- **Configurable Upstream**: Support for any hex-compatible repository
+- **Retry Logic**: Automatic retry with exponential backoff for network failures
+- **Telemetry**: Comprehensive monitoring of upstream requests and performance
+
+#### Upstream Configuration
+```elixir
+# config/config.exs
+config :hex_hub, :upstream,
+  enabled: true,                    # Enable/disable upstream fetching
+  url: "https://hex.pm",           # Upstream repository URL
+  timeout: 30_000,                 # Request timeout (ms)
+  retry_attempts: 3,               # Number of retry attempts
+  retry_delay: 1_000               # Delay between retries (ms)
+```
+
+#### Environment Variables
+- `UPSTREAM_ENABLED`: Enable/disable upstream fetching (default: true)
+- `UPSTREAM_URL`: Upstream hex repository URL (default: https://hex.pm)
+- `UPSTREAM_TIMEOUT`: Request timeout in milliseconds (default: 30000)
+- `UPSTREAM_RETRY_ATTEMPTS`: Number of retry attempts (default: 3)
+- `UPSTREAM_RETRY_DELAY`: Delay between retries in milliseconds (default: 1000)
+
+#### How It Works
+1. **Package Request**: When a package is requested, HexHub first checks local storage
+2. **Upstream Fallback**: If not found locally and upstream is enabled, HexHub fetches from upstream
+3. **Local Caching**: The fetched package is stored locally for future requests
+4. **Telemetry**: All upstream requests are tracked with performance metrics
+
+#### API Endpoints
+- `GET /api/packages/:name` - Package metadata with upstream fallback
+- `GET /api/packages/:name/releases/:version` - Release metadata with upstream fallback
+- `GET /api/packages/:name/releases/:version/download` - Package tarball with upstream fallback
+- `GET /api/packages/:name/releases/:version/docs/download` - Documentation with upstream fallback
+
+#### Example Usage
+```bash
+# Fetch a package that doesn't exist locally
+curl http://localhost:4000/api/packages/phoenix
+
+# Download a package tarball (will fetch from upstream if needed)
+curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/download
+
+# Download documentation (will fetch from upstream if needed)
+curl http://localhost:4000/api/packages/phoenix/releases/1.7.0/docs/download
+```

@@ -16,3 +16,6 @@ HexHub.Mnesia.init()
 File.mkdir_p!("priv/test_storage")
 Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
 Application.put_env(:hex_hub, :storage_type, :local)
+
+# Configure upstream for testing
+Application.put_env(:hex_hub, :upstream, enabled: true, url: "https://test.hex.pm")
