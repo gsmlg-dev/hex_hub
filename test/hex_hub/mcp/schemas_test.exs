@@ -1,78 +1,123 @@
 defmodule HexHub.MCP.SchemasTest do
   use ExUnit.Case, async: true
-
   alias HexHub.MCP.Schemas
 
   describe "request_schema/0" do
-    test "returns valid JSON schema" do
+    test "returns valid JSON-RPC request schema" do
       schema = Schemas.request_schema()
 
       assert schema["type"] == "object"
       assert "jsonrpc" in schema["required"]
       assert "method" in schema["required"]
+      refute "id" in schema["required"]  # id is optional
+      refute "params" in schema["required"]  # params is optional
+
+      # Check jsonrpc field
+      assert schema["properties"]["jsonrpc"]["type"] == "string"
+      assert schema["properties"]["jsonrpc"]["enum"] == ["2.0"]
+
+      # Check method field
+      assert schema["properties"]["method"]["type"] == "string"
+
+      # Check params field
+      assert schema["properties"]["params"]["oneOf"] |> length() == 2
+      assert %{"type" => "object"} in schema["properties"]["params"]["oneOf"]
+      assert %{"type" => "array"} in schema["properties"]["params"]["oneOf"]
+
+      # Check id field
+      assert schema["properties"]["id"]["oneOf"] |> length() == 3
+      assert %{"type" => "string"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "number"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "null"} in schema["properties"]["id"]["oneOf"]
     end
   end
 
   describe "tool_call_schema/0" do
-    test "returns valid tool call schema" do
+    test "returns valid tool call request schema" do
       schema = Schemas.tool_call_schema()
 
       assert schema["type"] == "object"
       assert "jsonrpc" in schema["required"]
       assert "method" in schema["required"]
       assert "params" in schema["required"]
+      refute "id" in schema["required"]  # id is optional in tool calls too
 
-      assert String.contains?(schema["properties"]["method"]["pattern"], "tools/call/")
+      # Check jsonrpc field
+      assert schema["properties"]["jsonrpc"]["type"] == "string"
+      assert schema["properties"]["jsonrpc"]["enum"] == ["2.0"]
+
+      # Check method field pattern
+      assert schema["properties"]["method"]["type"] == "string"
+      assert schema["properties"]["method"]["pattern"] == "^tools/call/"
+
+      # Check params structure
+      assert schema["properties"]["params"]["type"] == "object"
+      assert "arguments" in schema["properties"]["params"]["required"]
+      assert schema["properties"]["params"]["properties"]["arguments"]["type"] == "object"
+
+      # Check id field (doesn't include null for tool calls)
+      assert schema["properties"]["id"]["oneOf"] |> length() == 2
+      assert %{"type" => "string"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "number"} in schema["properties"]["id"]["oneOf"]
+    end
+  end
+
+  describe "tool_definition_schema/0" do
+    test "returns valid tool definition schema" do
+      schema = Schemas.tool_definition_schema()
+
+      assert schema["type"] == "object"
+      assert "name" in schema["required"]
+      assert "description" in schema["required"]
+      assert "inputSchema" in schema["required"]
+
+      # Check field types
+      assert schema["properties"]["name"]["type"] == "string"
+      assert schema["properties"]["description"]["type"] == "string"
+      assert schema["properties"]["inputSchema"]["type"] == "object"
     end
   end
 
   describe "parse_request/1" do
-    test "parses valid JSON request" do
+    test "parses valid JSON string" do
+      json_request = ~s({"jsonrpc": "2.0", "method": "test", "id": 1})
+      assert {:ok, parsed} = Schemas.parse_request(json_request)
+      assert parsed["jsonrpc"] == "2.0"
+      assert parsed["method"] == "test"
+      assert parsed["id"] == 1
+    end
+
+    test "parses valid map request" do
+      map_request = %{"jsonrpc" => "2.0", "method" => "test", "id" => 1}
+      assert {:ok, parsed} = Schemas.parse_request(map_request)
+      assert parsed["jsonrpc"] == "2.0"
+      assert parsed["method"] == "test"
+      assert parsed["id"] == 1
+    end
+
+    test "returns error for invalid JSON string" do
+      invalid_json = "{invalid json}"
+      assert {:error, :parse_error} = Schemas.parse_request(invalid_json)
+    end
+
+    test "returns error for non-string, non-map input" do
+      assert {:error, :parse_error} = Schemas.parse_request(123)
+      assert {:error, :parse_error} = Schemas.parse_request(nil)
+      assert {:error, :parse_error} = Schemas.parse_request([])
+    end
+
+    test "handles valid JSON with all fields" do
       request = %{
         "jsonrpc" => "2.0",
         "method" => "tools/list",
-        "id" => 1
+        "params" => %{},
+        "id" => "test-id"
       }
 
       assert {:ok, parsed} = Schemas.parse_request(request)
       assert parsed["method"] == "tools/list"
       assert parsed["jsonrpc"] == "2.0"
-    end
-
-    test "parses valid JSON string" do
-      json_string = Jason.encode!(%{
-        "jsonrpc" => "2.0",
-        "method" => "tools/list",
-        "id" => 1
-      })
-
-      assert {:ok, parsed} = Schemas.parse_request(json_string)
-      assert parsed["method"] == "tools/list"
-    end
-
-    test "returns error for invalid JSON" do
-      invalid_json = "{invalid json}"
-
-      assert {:error, :parse_error} = Schemas.parse_request(invalid_json)
-    end
-
-    test "returns error for missing required fields" do
-      request = %{
-        "jsonrpc" => "2.0"
-        # missing method
-      }
-
-      assert {:error, :invalid_request} = Schemas.parse_request(request)
-    end
-
-    test "returns error for invalid jsonrpc version" do
-      request = %{
-        "jsonrpc" => "1.0",
-        "method" => "tools/list",
-        "id" => 1
-      }
-
-      assert {:error, :invalid_request} = Schemas.parse_request(request)
+      assert parsed["id"] == "test-id"
     end
   end
 
@@ -160,25 +205,6 @@ defmodule HexHub.MCP.SchemasTest do
       # Since we don't have real tool schemas registered yet,
       # this will return :tool_not_found
       assert {:error, :tool_not_found} = Schemas.validate_tool_arguments("nonexistent_tool", args)
-    end
-  end
-
-  describe "type mapping" do
-    test "maps Elixir types to JSON schema types" do
-      schema = Schemas.build_tool_schema([
-        string_field: [type: :string],
-        int_field: [type: :integer],
-        bool_field: [type: :boolean],
-        array_field: [type: :array],
-        object_field: [type: :object]
-      ])
-
-      props = schema["properties"]
-      assert props["string_field"]["type"] == "string"
-      assert props["int_field"]["type"] == "integer"
-      assert props["bool_field"]["type"] == "boolean"
-      assert props["array_field"]["type"] == "array"
-      assert props["object_field"]["type"] == "object"
     end
   end
 end

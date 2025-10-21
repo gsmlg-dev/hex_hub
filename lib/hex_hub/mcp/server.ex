@@ -98,16 +98,25 @@ defmodule HexHub.MCP.Server do
   # Private functions
 
   defp process_request(request, transport_state, state) do
-    with {:ok, parsed_request} <- Schemas.parse_request(request),
-         {:ok, validated_request} <- Schemas.validate_request(parsed_request),
-         {:ok, result} <- execute_tool(validated_request, transport_state, state) do
-      build_response(validated_request.id, result)
-    else
-      {:error, :parse_error} -> build_error_response(nil, -32700, "Parse error")
-      {:error, :invalid_request} -> build_error_response(nil, -32600, "Invalid Request")
-      {:error, :method_not_found} -> build_error_response(parsed_request.id, -32601, "Method not found")
-      {:error, :invalid_params} -> build_error_response(parsed_request.id, -32602, "Invalid params")
-      {:error, reason} -> build_error_response(parsed_request.id, -32000, "Server error: #{inspect(reason)}")
+    case Schemas.parse_request(request) do
+      {:ok, parsed_request} ->
+        case Schemas.validate_request(parsed_request) do
+          {:ok, validated_request} ->
+            case execute_tool(validated_request, transport_state, state) do
+              {:ok, result} ->
+                build_response(validated_request.id, result)
+              {:error, :method_not_found} ->
+                build_error_response(validated_request.id, -32601, "Method not found")
+              {:error, reason} ->
+                build_error_response(validated_request.id, -32000, "Server error: #{inspect(reason)}")
+            end
+          {:error, :invalid_request} ->
+            build_error_response(parsed_request.id, -32600, "Invalid Request")
+          {:error, reason} ->
+            build_error_response(parsed_request.id, -32600, "Invalid request: #{inspect(reason)}")
+        end
+      {:error, :parse_error} ->
+        build_error_response(nil, -32700, "Parse error")
     end
   end
 

@@ -187,7 +187,12 @@ defmodule HexHubWeb.MCPController do
     # Try Authorization header first
     case Plug.Conn.get_req_header(conn, "authorization") do
       ["Bearer " <> key] -> {:ok, key}
-      ["Basic " << username::binary-size(3), ":", key::binary>> when username == "mcp" -> {:ok, key}
+      ["Basic " <> auth_header] ->
+        # Decode Base64 and check for "mcp:apikey" format
+        case Base.decode64(auth_header) do
+          {:ok, "mcp:" <> key} -> {:ok, key}
+          _ -> {:error, :invalid_api_key}
+        end
       _ ->
         # Try query parameter
         case conn.query_params do

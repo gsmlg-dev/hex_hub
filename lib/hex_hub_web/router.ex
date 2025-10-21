@@ -90,13 +90,14 @@ defmodule HexHubWeb.Router do
     scope "/" do
       pipe_through :api
 
-      if function_exported?(Phoenix.Endpoint, :socket, 3) do
-        socket "/mcp/ws", HexHub.MCP.WebSocket,
-          websocket: [
-            connect_info: [:req_headers, :query_params, :peer_data],
-            timeout: 60_000
-          ]
-      end
+      # Commented out WebSocket for now - needs proper Phoenix.Socket setup
+      # if function_exported?(Phoenix.Endpoint, :socket, 3) do
+      #   socket "/mcp/ws", HexHub.MCP.WebSocket,
+      #     websocket: [
+      #       connect_info: [:req_headers, :query_params, :peer_data],
+      #       timeout: 60_000
+      #     ]
+      # end
     end
   end
 

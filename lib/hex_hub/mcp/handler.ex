@@ -86,11 +86,18 @@ defmodule HexHub.MCP.Handler do
       "tools/list" ->
         handle_list_tools(request)
 
-      method when is_binary(method) and String.starts_with?(method, "tools/call/") ->
-        handle_tool_call(request, transport_state)
+      method when is_binary(method) ->
+        if String.starts_with?(method, "tools/call/") do
+          handle_tool_call(request, transport_state)
+        else
+          case method do
+            "initialize" ->
+              handle_initialize(request)
 
-      "initialize" ->
-        handle_initialize(request)
+            _ ->
+              {:error, :method_not_found, request.id}
+          end
+        end
 
       _ ->
         {:error, :method_not_found, request.id}

@@ -34,7 +34,13 @@ defmodule HexHub.Application do
       # Start the Admin Endpoint (http/https)
       HexHubAdminWeb.Endpoint,
       # Start the MCP server (optional - only if enabled)
-      {HexHub.MCP, []}
+      %{
+        id: HexHub.MCP,
+        start: {HexHub.MCP, :start, [:normal, []]},
+        type: :supervisor,
+        restart: :permanent,
+        shutdown: 5000
+      }
     ]
 
     # Add clustering supervisor only if clustering is enabled
