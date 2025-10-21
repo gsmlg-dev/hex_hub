@@ -187,6 +187,7 @@ AWS_S3_PATH_STYLE=true               # Required for MinIO
 # Upstream Configuration
 UPSTREAM_ENABLED=true                # Enable upstream package fetching
 UPSTREAM_URL=https://hex.pm          # Upstream hex repository URL
+UPSTREAM_API_KEY=your_api_key        # API key for private repositories (optional)
 UPSTREAM_TIMEOUT=30000               # Request timeout in milliseconds
 UPSTREAM_RETRY_ATTEMPTS=3            # Number of retry attempts
 UPSTREAM_RETRY_DELAY=1000            # Delay between retries in milliseconds
@@ -346,9 +347,11 @@ mix test test/hex_hub/mcp/server_test.exs
 HexHub automatically fetches packages from upstream when not found locally, creating a transparent caching proxy for hex.pm or any hex-compatible repository.
 
 **Configuration**: Enable/disable via `UPSTREAM_ENABLED` environment variable
+**API Key Support**: Optional `UPSTREAM_API_KEY` for authenticating with private repositories
 **Behavior**: Packages fetched once are cached permanently for future requests
 **Monitoring**: All upstream requests tracked with telemetry metrics
 **Retry Logic**: Automatic retry with exponential backoff for network failures
+**Authentication**: Uses Bearer token authentication when API key is configured
 
 ### Authentication Patterns
 

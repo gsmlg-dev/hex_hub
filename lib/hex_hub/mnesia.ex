@@ -12,7 +12,8 @@ defmodule HexHub.Mnesia do
     :api_keys,
     :package_downloads,
     :rate_limit,
-    :audit_logs
+    :audit_logs,
+    :upstream_configs
   ]
 
   @doc """
@@ -136,6 +137,23 @@ defmodule HexHub.Mnesia do
          type: :ordered_set,
          ram_copies: [node()],
          index: [:user_id, :resource_type, :timestamp]
+       ]},
+      {:upstream_configs,
+       [
+         attributes: [
+           :id,
+           :enabled,
+           :api_url,
+           :repo_url,
+           :api_key,
+           :timeout,
+           :retry_attempts,
+           :retry_delay,
+           :inserted_at,
+           :updated_at
+         ],
+         type: :set,
+         ram_copies: [node()]
        ]}
     ]
 

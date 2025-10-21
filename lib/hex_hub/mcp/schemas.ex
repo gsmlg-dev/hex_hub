@@ -14,21 +14,10 @@ defmodule HexHub.MCP.Schemas do
       "type" => "object",
       "required" => ["jsonrpc", "method"],
       "properties" => %{
-        "jsonrpc" => %{"type" => "string", "enum" => ["2.0"]},
+        "jsonrpc" => %{"type" => "string"},
         "method" => %{"type" => "string"},
-        "params" => %{
-          "oneOf" => [
-            %{"type" => "object"},
-            %{"type" => "array"}
-          ]
-        },
-        "id" => %{
-          "oneOf" => [
-            %{"type" => "string"},
-            %{"type" => "number"},
-            %{"type" => "null"}
-          ]
-        }
+        "params" => %{"type" => "object"},
+        "id" => %{"type" => "string"}
       }
     }
   end
@@ -99,10 +88,18 @@ defmodule HexHub.MCP.Schemas do
   def validate_request(request) do
     cond do
       is_tool_call?(request) ->
-        validate_against_schema(request, tool_call_schema())
+        case validate_against_schema(request, tool_call_schema()) do
+          :ok -> {:ok, request}
+          {:ok, validated} -> {:ok, validated}
+          {:error, reason} -> {:error, reason}
+        end
 
       true ->
-        validate_against_schema(request, request_schema())
+        case validate_against_schema(request, request_schema()) do
+          :ok -> {:ok, request}
+          {:ok, validated} -> {:ok, validated}
+          {:error, reason} -> {:error, reason}
+        end
     end
   end
 
@@ -163,6 +160,10 @@ defmodule HexHub.MCP.Schemas do
   defp validate_type(data, %{"type" => "array"}) when is_list(data), do: :ok
   defp validate_type(data, %{"type" => "string"}) when is_binary(data), do: :ok
   defp validate_type(data, %{"type" => "number"}) when is_number(data), do: :ok
+  defp validate_type(data, %{"type" => type}) do
+    IO.inspect({data, type}, label: "Type mismatch")
+    {:error, :type_mismatch}
+  end
   defp validate_type(_, _), do: {:error, :type_mismatch}
 
   defp validate_properties(data, %{"type" => "object"} = schema) do
@@ -199,15 +200,15 @@ defmodule HexHub.MCP.Schemas do
       required = Keyword.get(opts, :required, false)
       description = Keyword.get(opts, :description, "")
 
-      {name, %{
+      {to_string(name), %{
         "type" => type_to_json_schema(type),
         "description" => description
       }}
     end)
 
-    required_fields = Enum.filter(params_spec, fn {_name, opts} ->
+    required_fields = Enum.filter(params_spec, fn {name, opts} ->
       Keyword.get(opts, :required, false)
-    end) |> Enum.map(&elem(&1, 0))
+    end) |> Enum.map(fn {name, _opts} -> to_string(name) end)
 
     %{
       "type" => "object",

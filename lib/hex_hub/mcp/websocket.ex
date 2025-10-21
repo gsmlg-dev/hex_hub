@@ -1,24 +1,39 @@
 defmodule HexHub.MCP.WebSocket do
   @moduledoc """
-  Phoenix WebSocket endpoint for MCP connections.
+  Phoenix WebSocket transport for MCP connections.
 
   Provides real-time bidirectional communication for MCP clients
   using the Phoenix WebSocket transport.
   """
 
-  use Phoenix.Socket
+  @behaviour Phoenix.Socket.Transport
   require Logger
-  alias HexHub.MCP.{Handler, Transport}
 
-  ## Channels
-  # No channels needed, we'll handle direct socket communication
-
-  ## Socket params
-  @impl true
-  def connect(_params, socket, connect_info) do
+  @impl Phoenix.Socket.Transport
+  def connect(%{token: token} = _params, connect_info) do
     # Check if MCP is enabled
     unless HexHub.MCP.enabled?() do
-      Logger.warn("MCP connection attempted but MCP is disabled")
+      Logger.warning("MCP connection attempted but MCP is disabled")
+      {:error, :mcp_disabled}
+    end
+
+    # Authenticate using token
+    case validate_api_key(token) do
+      :ok ->
+        Logger.info("MCP WebSocket connection established")
+        {:ok, %{}}
+
+      {:error, reason} ->
+        Logger.warning("MCP authentication failed: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @impl Phoenix.Socket.Transport
+  def connect(_params, connect_info) do
+    # Check if MCP is enabled
+    unless HexHub.MCP.enabled?() do
+      Logger.warning("MCP connection attempted but MCP is disabled")
       {:error, :mcp_disabled}
     end
 
@@ -26,66 +41,50 @@ defmodule HexHub.MCP.WebSocket do
     case authenticate_connection(connect_info) do
       :ok ->
         Logger.info("MCP WebSocket connection established")
-        {:ok, socket}
+        {:ok, %{}}
 
       {:error, reason} ->
-        Logger.warn("MCP authentication failed: #{inspect(reason)}")
+        Logger.warning("MCP authentication failed: #{inspect(reason)}")
         {:error, reason}
     end
   end
 
-  @impl true
-  def id(_socket), do: :mcp_socket
+  @impl Phoenix.Socket.Transport
+  def init(state), do: {:ok, state}
 
-  ## Inbound events
-
-  @impl true
-  def handle_in("mcp_request", payload, socket) do
-    # Handle MCP requests sent as WebSocket messages
-    case HexHub.MCP.Server.handle_request(payload, socket) do
-      {:ok, response} ->
-        {:reply, {:ok, response}, socket}
-
-      {:error, reason} ->
-        {:reply, {:error, format_error(reason)}, socket}
-    end
-  end
-
-  @impl true
-  def handle_in("ping", _payload, socket) do
+  @impl Phoenix.Socket.Transport
+  def handle_in({"ping", _payload}, state) do
     # Simple ping/pong for connection health
-    {:reply, {:ok, %{type: "pong", timestamp: DateTime.utc_now()}}, socket}
+    {:reply, {:ok, %{type: "pong", timestamp: DateTime.utc_now()}}, state}
   end
 
-  @impl true
-  def handle_in(event, payload, socket) do
-    Logger.warn("Unknown MCP WebSocket event: #{event}")
-    {:reply, {:error, %{type: "error", message: "Unknown event: #{event}"}}, socket}
+  def handle_in({event, payload}, state) do
+    Logger.warning("Unknown MCP WebSocket event: #{event}")
+    {:reply, {:error, %{type: "error", message: "Unknown event: #{event}"}}, state}
   end
 
-  ## Connection lifecycle
-
-  @impl true
-  def handle_info({:mcp_broadcast, message}, socket) do
+  @impl Phoenix.Socket.Transport
+  def handle_info({:mcp_broadcast, message}, state) do
     # Handle broadcast messages (if needed for notifications)
-    # For socket-level communication, we might need to use Phoenix.SocketTransport
-    # For now, just log the message
     Logger.debug("MCP broadcast message: #{inspect(message)}")
-    {:noreply, socket}
+    {:ok, state}
   end
 
-  @impl true
-  def handle_info(:heartbeat, socket) do
-    # Send periodic heartbeat - for sockets we might need to use different mechanism
+  @impl Phoenix.Socket.Transport
+  def handle_info(:heartbeat, state) do
+    # Send periodic heartbeat
     Logger.debug("MCP heartbeat sent")
-    {:noreply, socket}
+    {:ok, state}
   end
 
-  @impl true
-  def terminate(reason, _socket) do
+  @impl Phoenix.Socket.Transport
+  def terminate(reason, _state) do
     Logger.info("MCP WebSocket connection terminated: #{inspect(reason)}")
     :ok
   end
+
+  @impl Phoenix.Socket.Transport
+  def id(_transport, _state), do: :mcp_socket
 
   # Private functions
 
@@ -164,69 +163,19 @@ defmodule HexHub.MCP.WebSocket do
         Logger.debug("MCP authenticated as user: #{user.username}")
         :ok
       {:error, reason} ->
-        Logger.warn("MCP API key authentication failed: #{inspect(reason)}")
+        Logger.warning("MCP API key authentication failed: #{inspect(reason)}")
         {:error, :invalid_api_key}
     end
-  end
-
-  defp format_error({:error, reason}) do
-    %{
-      type: "error",
-      code: map_error_code(reason),
-      message: format_error_message(reason)
-    }
-  end
-
-  defp format_error(reason) when is_atom(reason) do
-    %{
-      type: "error",
-      code: map_error_code(reason),
-      message: format_error_message(reason)
-    }
-  end
-
-  defp map_error_code(reason) do
-    error_codes = %{
-      :unauthorized => 401,
-      :forbidden => 403,
-      :not_found => 404,
-      :rate_limited => 429,
-      :invalid_request => 400,
-      :method_not_found => 404,
-      :invalid_params => 422,
-      :internal_error => 500
-    }
-
-    Map.get(error_codes, reason, 500)
-  end
-
-  defp format_error_message(reason) do
-    messages = %{
-      :unauthorized => "Unauthorized",
-      :forbidden => "Forbidden",
-      :not_found => "Not found",
-      :rate_limited => "Rate limit exceeded",
-      :invalid_request => "Invalid request",
-      :method_not_found => "Method not found",
-      :invalid_params => "Invalid parameters",
-      :internal_error => "Internal server error",
-      :mcp_disabled => "MCP server is disabled",
-      :no_auth_provided => "Authentication required",
-      :invalid_api_key => "Invalid API key",
-      :auth_required => "Authentication required"
-    }
-
-    Map.get(messages, reason, "Unknown error")
   end
 
   @doc """
   Start heartbeat process for WebSocket connections.
   """
-  def start_heartbeat(socket) do
+  def start_heartbeat(state) do
     if should_send_heartbeat?() do
       Process.send_after(self(), :heartbeat, heartbeat_interval())
     end
-    socket
+    state
   end
 
   defp should_send_heartbeat? do

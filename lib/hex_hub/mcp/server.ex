@@ -79,9 +79,9 @@ defmodule HexHub.MCP.Server do
   def handle_call(:list_tools, _from, state) do
     tools = Enum.map(state.tools, fn {name, tool} ->
       %{
-        name: name,
-        description: tool.description,
-        inputSchema: tool.input_schema
+        "name" => name,
+        "description" => tool.description,
+        "inputSchema" => tool.input_schema
       }
     end)
     {:reply, {:ok, tools}, state}
@@ -146,19 +146,19 @@ defmodule HexHub.MCP.Server do
 
   defp build_response(id, result) do
     %{
-      jsonrpc: "2.0",
-      id: id,
-      result: result
+      "jsonrpc" => "2.0",
+      "id" => id,
+      "result" => result
     }
   end
 
   defp build_error_response(id, code, message) do
     %{
-      jsonrpc: "2.0",
-      id: id,
-      error: %{
-        code: code,
-        message: message
+      "jsonrpc" => "2.0",
+      "id" => id,
+      "error" => %{
+        "code" => code,
+        "message" => message
       }
     }
   end

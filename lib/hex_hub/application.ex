@@ -20,6 +20,9 @@ defmodule HexHub.Application do
     HexHub.Mnesia.init()
     HexHub.Audit.init()
 
+    # Initialize default upstream configuration if needed
+    HexHub.UpstreamConfig.init_default_config()
+
     children = [
       # Start the Telemetry supervisor
       HexHubWeb.Telemetry,
@@ -32,16 +35,22 @@ defmodule HexHub.Application do
       # Start the Endpoint (http/https)
       HexHubWeb.Endpoint,
       # Start the Admin Endpoint (http/https)
-      HexHubAdminWeb.Endpoint,
-      # Start the MCP server (optional - only if enabled)
-      %{
-        id: HexHub.MCP,
-        start: {HexHub.MCP, :start, [:normal, []]},
-        type: :supervisor,
-        restart: :permanent,
-        shutdown: 5000
-      }
+      HexHubAdminWeb.Endpoint
     ]
+
+    # Add MCP server only if enabled
+    children =
+      if Application.get_env(:hex_hub, :mcp, [])[:enabled] do
+        children ++ [%{
+          id: HexHub.MCP,
+          start: {HexHub.MCP, :start, [:normal, []]},
+          type: :supervisor,
+          restart: :permanent,
+          shutdown: 5000
+        }]
+      else
+        children
+      end
 
     # Add clustering supervisor only if clustering is enabled
     children =

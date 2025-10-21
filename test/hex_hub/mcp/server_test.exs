@@ -195,8 +195,8 @@ defmodule HexHub.MCP.ServerTest do
       # Test tool schemas are consistent
       if length(tools1) > 0 do
         first_tool = List.first(tools1)
-        {:ok, schema} = Server.get_tool_schema(first_tool.name)
-        assert schema.name == first_tool.name
+        {:ok, schema} = Server.get_tool_schema(first_tool["name"])
+        assert schema["name"] == first_tool["name"]
       end
     end
   end

@@ -75,7 +75,7 @@ defmodule HexHubWeb.Router do
   end
 
   # MCP (Model Context Protocol) endpoints
-  if Application.get_env(:hex_hub, :mcp)[:enabled] do
+  if Application.compile_env(:hex_hub, :mcp)[:enabled] do
     scope "/mcp", HexHubWeb do
       pipe_through :api
 
