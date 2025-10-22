@@ -56,19 +56,26 @@ defmodule HexHub.UpstreamConfig do
   """
   @spec update_config(map()) :: :ok | {:error, term()}
   def update_config(params) do
+    # Get existing config to merge with
+    existing_config = get_config()
     current_time = DateTime.utc_now()
 
     # Handle both string and atom keys from form submissions
+    enabled = get_param_bool(params, "enabled", existing_config.enabled)
+
+    # Debug logging
+    Logger.debug("Updating upstream config: enabled=#{enabled}, params.enabled=#{inspect(Map.get(params, "enabled") || Map.get(params, :enabled))}, existing.enabled=#{existing_config.enabled}")
+
     config = %{
       id: "default",
-      enabled: get_param_bool(params, "enabled", true),
-      api_url: get_param_string(params, "api_url", "https://hex.pm"),
-      repo_url: get_param_string(params, "repo_url", "https://repo.hex.pm"),
-      api_key: get_param_string(params, "api_key"),
-      timeout: get_param_int(params, "timeout", 30_000),
-      retry_attempts: get_param_int(params, "retry_attempts", 3),
-      retry_delay: get_param_int(params, "retry_delay", 1_000),
-      inserted_at: current_time,
+      enabled: enabled,
+      api_url: get_param_string(params, "api_url", existing_config.api_url),
+      repo_url: get_param_string(params, "repo_url", existing_config.repo_url),
+      api_key: get_param_string(params, "api_key", existing_config.api_key),
+      timeout: get_param_int(params, "timeout", existing_config.timeout),
+      retry_attempts: get_param_int(params, "retry_attempts", existing_config.retry_attempts),
+      retry_delay: get_param_int(params, "retry_delay", existing_config.retry_delay),
+      inserted_at: existing_config.inserted_at,
       updated_at: current_time
     }
 
@@ -90,7 +97,7 @@ defmodule HexHub.UpstreamConfig do
            :mnesia.write(record)
          end) do
       {:atomic, :ok} ->
-        Logger.info("Upstream configuration updated")
+        Logger.info("Upstream configuration updated: enabled=#{config.enabled}")
         :ok
 
       {:aborted, reason} ->
@@ -142,7 +149,11 @@ defmodule HexHub.UpstreamConfig do
 
   # Helper functions to handle both string and atom keys from form submissions
   defp get_param_string(params, key, default \\ nil) do
-    Map.get(params, key) || Map.get(params, String.to_atom(key)) || default
+    cond do
+      Map.has_key?(params, key) -> Map.get(params, key)
+      Map.has_key?(params, String.to_atom(key)) -> Map.get(params, String.to_atom(key))
+      true -> default
+    end
   end
 
   defp get_param_int(params, key, default) do
@@ -150,11 +161,17 @@ defmodule HexHub.UpstreamConfig do
       nil ->
         default
 
-      value ->
+      value when is_binary(value) ->
         case Integer.parse(value) do
           {int, ""} -> int
           _ -> default
         end
+
+      value when is_integer(value) ->
+        value
+
+      _ ->
+        default
     end
   end
 
@@ -163,6 +180,8 @@ defmodule HexHub.UpstreamConfig do
       nil -> default
       "true" -> true
       "false" -> false
+      true -> true
+      false -> false
       _ -> default
     end
   end

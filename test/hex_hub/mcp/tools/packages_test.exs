@@ -1,11 +1,11 @@
 defmodule HexHub.MCP.Tools.PackagesTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias HexHub.MCP.Tools.Packages
 
   # Mock the HexHub.Packages module for testing
   defmodule MockPackages do
-    def search_packages(query, opts) do
+    def search_packages(_query, _opts) do
       {:ok,
        [
          %{
@@ -31,7 +31,7 @@ defmodule HexHub.MCP.Tools.PackagesTest do
        }}
     end
 
-    def list_packages(opts) do
+    def list_packages(_opts) do
       {:ok,
        [
          %{

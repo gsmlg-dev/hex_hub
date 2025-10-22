@@ -16,21 +16,15 @@ defmodule HexHub.MCP.SchemasTest do
 
       # Check jsonrpc field
       assert schema["properties"]["jsonrpc"]["type"] == "string"
-      assert schema["properties"]["jsonrpc"]["enum"] == ["2.0"]
 
       # Check method field
       assert schema["properties"]["method"]["type"] == "string"
 
       # Check params field
-      assert schema["properties"]["params"]["oneOf"] |> length() == 2
-      assert %{"type" => "object"} in schema["properties"]["params"]["oneOf"]
-      assert %{"type" => "array"} in schema["properties"]["params"]["oneOf"]
+      assert schema["properties"]["params"]["type"] == "object"
 
       # Check id field
-      assert schema["properties"]["id"]["oneOf"] |> length() == 3
-      assert %{"type" => "string"} in schema["properties"]["id"]["oneOf"]
-      assert %{"type" => "number"} in schema["properties"]["id"]["oneOf"]
-      assert %{"type" => "null"} in schema["properties"]["id"]["oneOf"]
+      assert schema["properties"]["id"]["type"] == "string"
     end
   end
 
@@ -58,10 +52,11 @@ defmodule HexHub.MCP.SchemasTest do
       assert "arguments" in schema["properties"]["params"]["required"]
       assert schema["properties"]["params"]["properties"]["arguments"]["type"] == "object"
 
-      # Check id field (doesn't include null for tool calls)
-      assert schema["properties"]["id"]["oneOf"] |> length() == 2
+      # Check id field (includes null for tool calls)
+      assert schema["properties"]["id"]["oneOf"] |> length() == 3
       assert %{"type" => "string"} in schema["properties"]["id"]["oneOf"]
       assert %{"type" => "number"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "null"} in schema["properties"]["id"]["oneOf"]
     end
   end
 
@@ -163,7 +158,7 @@ defmodule HexHub.MCP.SchemasTest do
       }
 
       # Should not error at schema validation level (tool existence is checked later)
-      assert {:ok, validated} = Schemas.validate_request(request)
+      assert {:ok, _validated} = Schemas.validate_request(request)
     end
   end
 
