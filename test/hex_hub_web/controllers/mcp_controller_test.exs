@@ -24,7 +24,8 @@ defmodule HexHubWeb.MCPControllerTest do
 
       # Should return 200 or appropriate status based on actual implementation
       assert response_status = response(conn, :status)
-      assert response_status in [200, 400, 500]  # Accept various possible responses
+      # Accept various possible responses
+      assert response_status in [200, 400, 500]
 
       # Clean up
       Application.delete_env(:hex_hub, :mcp)
@@ -153,11 +154,12 @@ defmodule HexHubWeb.MCPControllerTest do
       Application.put_env(:hex_hub, :mcp, enabled: true, require_auth: true)
 
       # Create a test user and API key
-      {:ok, user} = HexHub.Users.create_user(%{
-        username: "mcp_test_user",
-        email: "mcp_test@example.com",
-        password: "test_password123"
-      })
+      {:ok, user} =
+        HexHub.Users.create_user(%{
+          username: "mcp_test_user",
+          email: "mcp_test@example.com",
+          password: "test_password123"
+        })
 
       {:ok, api_key} = HexHub.APIKeys.create_key(user, "MCP Test Key", [:read])
 
@@ -176,7 +178,8 @@ defmodule HexHubWeb.MCPControllerTest do
 
       # Should accept the valid API key
       assert response_status = response(conn, :status)
-      assert response_status in [200, 400, 500]  # Various responses possible
+      # Various responses possible
+      assert response_status in [200, 400, 500]
 
       # Test without authentication
       conn =
@@ -196,11 +199,12 @@ defmodule HexHubWeb.MCPControllerTest do
       Application.put_env(:hex_hub, :mcp, enabled: true, require_auth: true)
 
       # Create a test user and API key
-      {:ok, user} = HexHub.Users.create_user(%{
-        username: "mcp_basic_test_user",
-        email: "mcp_basic_test@example.com",
-        password: "test_password123"
-      })
+      {:ok, user} =
+        HexHub.Users.create_user(%{
+          username: "mcp_basic_test_user",
+          email: "mcp_basic_test@example.com",
+          password: "test_password123"
+        })
 
       {:ok, api_key} = HexHub.APIKeys.create_key(user, "MCP Basic Test Key", [:read])
 
@@ -212,6 +216,7 @@ defmodule HexHubWeb.MCPControllerTest do
 
       # Test with Basic auth (mcp:api_key)
       basic_auth = Base.encode64("mcp:#{api_key.key}")
+
       conn =
         conn
         |> put_req_header("content-type", "application/json")
@@ -220,7 +225,8 @@ defmodule HexHubWeb.MCPControllerTest do
 
       # Should accept the valid API key via Basic auth
       assert response_status = response(conn, :status)
-      assert response_status in [200, 400, 500]  # Various responses possible
+      # Various responses possible
+      assert response_status in [200, 400, 500]
 
       # Clean up
       Application.delete_env(:hex_hub, :mcp)
@@ -230,11 +236,12 @@ defmodule HexHubWeb.MCPControllerTest do
       Application.put_env(:hex_hub, :mcp, enabled: true, require_auth: true)
 
       # Create a test user and API key
-      {:ok, user} = HexHub.Users.create_user(%{
-        username: "mcp_query_test_user",
-        email: "mcp_query_test@example.com",
-        password: "test_password123"
-      })
+      {:ok, user} =
+        HexHub.Users.create_user(%{
+          username: "mcp_query_test_user",
+          email: "mcp_query_test@example.com",
+          password: "test_password123"
+        })
 
       {:ok, api_key} = HexHub.APIKeys.create_key(user, "MCP Query Test Key", [:read])
 
@@ -252,7 +259,8 @@ defmodule HexHubWeb.MCPControllerTest do
 
       # Should accept the valid API key via query parameter
       assert response_status = response(conn, :status)
-      assert response_status in [200, 400, 500]  # Various responses possible
+      # Various responses possible
+      assert response_status in [200, 400, 500]
 
       # Clean up
       Application.delete_env(:hex_hub, :mcp)
@@ -271,7 +279,11 @@ defmodule HexHubWeb.MCPControllerTest do
       assert response(conn, 204)
       assert get_resp_header(conn, "access-control-allow-origin") == ["*"]
       assert get_resp_header(conn, "access-control-allow-methods") == ["GET, POST, OPTIONS"]
-      assert get_resp_header(conn, "access-control-allow-headers") == ["Content-Type, Authorization"]
+
+      assert get_resp_header(conn, "access-control-allow-headers") == [
+               "Content-Type, Authorization"
+             ]
+
       assert get_resp_header(conn, "access-control-max-age") == ["86400"]
     end
   end

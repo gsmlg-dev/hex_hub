@@ -160,10 +160,12 @@ defmodule HexHub.MCP.Schemas do
   defp validate_type(data, %{"type" => "array"}) when is_list(data), do: :ok
   defp validate_type(data, %{"type" => "string"}) when is_binary(data), do: :ok
   defp validate_type(data, %{"type" => "number"}) when is_number(data), do: :ok
+
   defp validate_type(data, %{"type" => type}) do
     IO.inspect({data, type}, label: "Type mismatch")
     {:error, :type_mismatch}
   end
+
   defp validate_type(_, _), do: {:error, :type_mismatch}
 
   defp validate_properties(data, %{"type" => "object"} = schema) do
@@ -172,13 +174,16 @@ defmodule HexHub.MCP.Schemas do
 
     # Check required fields
     missing_fields = Enum.reject(required_fields, &Map.has_key?(data, &1))
+
     if length(missing_fields) > 0 do
       {:error, :missing_required_fields}
     else
       # Validate each property that has a schema
       Enum.reduce_while(data, :ok, fn {key, value}, _acc ->
         case Map.get(properties, key) do
-          nil -> {:cont, :ok}
+          nil ->
+            {:cont, :ok}
+
           prop_schema ->
             case validate_schema_basic(value, prop_schema) do
               :ok -> {:cont, :ok}
@@ -195,20 +200,24 @@ defmodule HexHub.MCP.Schemas do
   Build tool input schema for Elixir types
   """
   def build_tool_schema(params_spec) do
-    properties = Enum.into(params_spec, %{}, fn {name, opts} ->
-      type = Keyword.get(opts, :type, :string)
-      required = Keyword.get(opts, :required, false)
-      description = Keyword.get(opts, :description, "")
+    properties =
+      Enum.into(params_spec, %{}, fn {name, opts} ->
+        type = Keyword.get(opts, :type, :string)
+        _required = Keyword.get(opts, :required, false)
+        description = Keyword.get(opts, :description, "")
 
-      {to_string(name), %{
-        "type" => type_to_json_schema(type),
-        "description" => description
-      }}
-    end)
+        {to_string(name),
+         %{
+           "type" => type_to_json_schema(type),
+           "description" => description
+         }}
+      end)
 
-    required_fields = Enum.filter(params_spec, fn {name, opts} ->
-      Keyword.get(opts, :required, false)
-    end) |> Enum.map(fn {name, _opts} -> to_string(name) end)
+    required_fields =
+      Enum.filter(params_spec, fn {_name, opts} ->
+        Keyword.get(opts, :required, false)
+      end)
+      |> Enum.map(fn {name, _opts} -> to_string(name) end)
 
     %{
       "type" => "object",

@@ -339,4 +339,50 @@ defmodule HexHub.Storage do
       {:error, "S3 bucket not configured"}
     end
   end
+
+  @doc """
+  Check if a file exists in storage.
+  """
+  @spec exists?(String.t()) :: boolean()
+  def exists?(key) do
+    storage_type = get_storage_type()
+    exists_in_storage?(storage_type, key)
+  end
+
+  # Private helper functions
+
+  defp exists_in_storage?(:local, key) do
+    file_path = Path.join([storage_path(), key])
+    File.exists?(file_path)
+  end
+
+  defp exists_in_storage?(:s3, key) do
+    bucket = get_s3_bucket()
+
+    if bucket do
+      config = [
+        access_key_id: Application.get_env(:ex_aws, :access_key_id),
+        secret_access_key: Application.get_env(:ex_aws, :secret_access_key),
+        region: Application.get_env(:ex_aws, :region, "us-east-1"),
+        scheme: Application.get_env(:ex_aws, :s3)[:scheme] || "https://",
+        host: Application.get_env(:ex_aws, :s3)[:host],
+        port: Application.get_env(:ex_aws, :s3)[:port] || 443
+      ]
+
+      case ExAws.S3.head_object(bucket, key) |> ExAws.request(config) do
+        {:ok, _} -> true
+        {:error, _} -> false
+      end
+    else
+      false
+    end
+  end
+
+  @doc """
+  Get file content from storage.
+  """
+  @spec get(String.t()) :: {:ok, binary()} | {:error, String.t()}
+  def get(key) do
+    download(key)
+  end
 end

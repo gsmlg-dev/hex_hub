@@ -97,7 +97,8 @@ defmodule HexHub.MCP.ToolsTest do
 
       assert tool.description =~ "List packages"
       assert tool.input_schema["type"] == "object"
-      refute "page" in tool.input_schema["required"]  # Optional parameters
+      # Optional parameters
+      refute "page" in tool.input_schema["required"]
       refute "per_page" in tool.input_schema["required"]
     end
 
@@ -223,30 +224,35 @@ defmodule HexHub.MCP.ToolsTest do
 
       # Check package management handlers
       package_tools = ["search_packages", "get_package", "list_packages", "get_package_metadata"]
+
       for tool_name <- package_tools do
         assert Map.has_key?(tools, tool_name)
       end
 
       # Check release management handlers
       release_tools = ["list_releases", "get_release", "download_release", "compare_releases"]
+
       for tool_name <- release_tools do
         assert Map.has_key?(tools, tool_name)
       end
 
       # Check documentation handlers
       doc_tools = ["get_documentation", "list_documentation_versions", "search_documentation"]
+
       for tool_name <- doc_tools do
         assert Map.has_key?(tools, tool_name)
       end
 
       # Check dependency handlers
       dep_tools = ["resolve_dependencies", "get_dependency_tree", "check_compatibility"]
+
       for tool_name <- dep_tools do
         assert Map.has_key?(tools, tool_name)
       end
 
       # Check repository handlers
       repo_tools = ["list_repositories", "get_repository_info", "toggle_package_visibility"]
+
       for tool_name <- repo_tools do
         assert Map.has_key?(tools, tool_name)
       end

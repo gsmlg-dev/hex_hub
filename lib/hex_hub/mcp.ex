@@ -57,7 +57,8 @@ defmodule HexHub.MCP do
   Returns the rate limit for MCP requests.
   """
   def rate_limit do
-    config()[:rate_limit] || 1000  # requests per hour
+    # requests per hour
+    config()[:rate_limit] || 1000
   end
 
   @doc """

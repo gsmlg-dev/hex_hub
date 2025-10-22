@@ -32,7 +32,10 @@ defmodule HexHub.UpstreamConfig do
         # Return default configuration if none exists
         get_default_config()
 
-      [{:upstream_configs, "default", enabled, api_url, repo_url, api_key, timeout, retry_attempts, retry_delay, inserted_at, updated_at}] ->
+      [
+        {:upstream_configs, "default", enabled, api_url, repo_url, api_key, timeout,
+         retry_attempts, retry_delay, inserted_at, updated_at}
+      ] ->
         %{
           id: "default",
           enabled: enabled,
@@ -55,15 +58,16 @@ defmodule HexHub.UpstreamConfig do
   def update_config(params) do
     current_time = DateTime.utc_now()
 
+    # Handle both string and atom keys from form submissions
     config = %{
       id: "default",
-      enabled: Map.get(params, :enabled, true),
-      api_url: Map.get(params, :api_url, "https://hex.pm"),
-      repo_url: Map.get(params, :repo_url, "https://repo.hex.pm"),
-      api_key: Map.get(params, :api_key),
-      timeout: Map.get(params, :timeout, 30_000),
-      retry_attempts: Map.get(params, :retry_attempts, 3),
-      retry_delay: Map.get(params, :retry_delay, 1_000),
+      enabled: get_param_bool(params, "enabled", true),
+      api_url: get_param_string(params, "api_url", "https://hex.pm"),
+      repo_url: get_param_string(params, "repo_url", "https://repo.hex.pm"),
+      api_key: get_param_string(params, "api_key"),
+      timeout: get_param_int(params, "timeout", 30_000),
+      retry_attempts: get_param_int(params, "retry_attempts", 3),
+      retry_delay: get_param_int(params, "retry_delay", 1_000),
       inserted_at: current_time,
       updated_at: current_time
     }
@@ -83,8 +87,8 @@ defmodule HexHub.UpstreamConfig do
     }
 
     case :mnesia.transaction(fn ->
-      :mnesia.write(record)
-    end) do
+           :mnesia.write(record)
+         end) do
       {:atomic, :ok} ->
         Logger.info("Upstream configuration updated")
         :ok
@@ -120,6 +124,7 @@ defmodule HexHub.UpstreamConfig do
     case :mnesia.dirty_read(:upstream_configs, "default") do
       [] ->
         update_config(%{})
+
       [_] ->
         :ok
     end
@@ -134,6 +139,33 @@ defmodule HexHub.UpstreamConfig do
   end
 
   # Private functions
+
+  # Helper functions to handle both string and atom keys from form submissions
+  defp get_param_string(params, key, default \\ nil) do
+    Map.get(params, key) || Map.get(params, String.to_atom(key)) || default
+  end
+
+  defp get_param_int(params, key, default) do
+    case get_param_string(params, key) do
+      nil ->
+        default
+
+      value ->
+        case Integer.parse(value) do
+          {int, ""} -> int
+          _ -> default
+        end
+    end
+  end
+
+  defp get_param_bool(params, key, default) do
+    case get_param_string(params, key) do
+      nil -> default
+      "true" -> true
+      "false" -> false
+      _ -> default
+    end
+  end
 
   defp get_default_config do
     current_time = DateTime.utc_now()

@@ -8,15 +8,15 @@ defmodule HexHub.StorageConfig do
   Get the current storage configuration.
   """
   @spec config() :: %{
-    storage_type: atom(),
-    storage_path: String.t(),
-    s3_bucket: String.t() | nil,
-    s3_region: String.t() | nil,
-    s3_host: String.t() | nil,
-    s3_port: integer() | nil,
-    s3_scheme: String.t(),
-    s3_path_style: boolean()
-  }
+          storage_type: atom(),
+          storage_path: String.t(),
+          s3_bucket: String.t() | nil,
+          s3_region: String.t() | nil,
+          s3_host: String.t() | nil,
+          s3_port: integer() | nil,
+          s3_scheme: String.t(),
+          s3_path_style: boolean()
+        }
   def config do
     ex_aws_config = Application.get_env(:ex_aws, []) || []
     s3_config = Keyword.get(ex_aws_config, :s3, [])
@@ -70,11 +70,11 @@ defmodule HexHub.StorageConfig do
 
       # Validate configuration
       if storage_type == :s3 and (s3_bucket == nil or s3_bucket == "") do
-        throw {:error, "S3 bucket is required when using S3 storage"}
+        throw({:error, "S3 bucket is required when using S3 storage"})
       end
 
       if storage_type == :s3 and (s3_host == nil or s3_host == "") do
-        throw {:error, "S3 host is required when using S3 storage"}
+        throw({:error, "S3 host is required when using S3 storage"})
       end
 
       # Update hex_hub configuration

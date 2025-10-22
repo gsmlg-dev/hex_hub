@@ -9,7 +9,7 @@ defmodule HexHub.MCP.Tools.Documentation do
   require Logger
 
   alias HexHub.{Packages, Storage}
-  alias HexHub.MCP.Tools.Packages, as: PackageTools
+  # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
   Get documentation for a package.
@@ -21,10 +21,11 @@ defmodule HexHub.MCP.Tools.Documentation do
     Logger.debug("MCP getting documentation for: #{name}#{if version, do: " v#{version}"}")
 
     # Determine which version to use
-    target_version = case version do
-      nil -> get_latest_version_with_docs(name)
-      v -> v
-    end
+    target_version =
+      case version do
+        nil -> get_latest_version_with_docs(name)
+        v -> v
+      end
 
     case target_version do
       nil ->
@@ -54,7 +55,7 @@ defmodule HexHub.MCP.Tools.Documentation do
             end
 
           false ->
-            Logger.warn("MCP documentation not found for: #{name} v#{version}")
+            Logger.warning("MCP documentation not found for: #{name} v#{version}")
             {:error, :documentation_not_found}
         end
     end
@@ -72,7 +73,8 @@ defmodule HexHub.MCP.Tools.Documentation do
 
     case Packages.list_releases(name) do
       releases when is_list(releases) ->
-        doc_versions = releases
+        doc_versions =
+          releases
           |> Enum.filter(& &1.has_docs)
           |> Enum.map(&format_doc_version/1)
 
@@ -104,10 +106,11 @@ defmodule HexHub.MCP.Tools.Documentation do
     Logger.debug("MCP searching documentation for: #{name} with query: #{query}")
 
     # Determine which version to search
-    target_version = case version do
-      nil -> get_latest_version_with_docs(name)
-      v -> v
-    end
+    target_version =
+      case version do
+        nil -> get_latest_version_with_docs(name)
+        v -> v
+      end
 
     case target_version do
       nil ->
@@ -148,7 +151,9 @@ defmodule HexHub.MCP.Tools.Documentation do
         |> Enum.map(& &1.version)
         |> Enum.sort_by(&Version.compare/2, :desc)
         |> List.first()
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 
@@ -157,21 +162,20 @@ defmodule HexHub.MCP.Tools.Documentation do
 
     case Storage.get(doc_key) do
       {:ok, doc_data} ->
-        case extract_page_from_tarball(doc_data, page) do
-          {:ok, content} -> {:ok, content}
-          {:error, reason} -> {:error, reason}
-        end
+        {:ok, content} = extract_page_from_tarball(doc_data, page)
+        {:ok, content}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp extract_page_from_tarball(tarball_data, page) do
+  defp extract_page_from_tarball(_tarball_data, page) do
     # Extract and read a specific page from the documentation tarball
     # This would need to implement tarball extraction
     # For now, return a placeholder
-    {:ok, "<html><body><h1>Documentation for #{page}</h1><p>Content placeholder</p></body></html>"}
+    {:ok,
+     "<html><body><h1>Documentation for #{page}</h1><p>Content placeholder</p></body></html>"}
   end
 
   defp list_documentation_pages(name, version) do
@@ -179,17 +183,16 @@ defmodule HexHub.MCP.Tools.Documentation do
 
     case Storage.get(doc_key) do
       {:ok, doc_data} ->
-        case list_pages_in_tarball(doc_data) do
-          {:ok, pages} -> pages
-          {:error, _} -> ["index.html"] # fallback
-        end
+        {:ok, pages} = list_pages_in_tarball(doc_data)
+        pages
 
       {:error, _} ->
-        ["index.html"] # fallback
+        # fallback
+        ["index.html"]
     end
   end
 
-  defp list_pages_in_tarball(tarball_data) do
+  defp list_pages_in_tarball(_tarball_data) do
     # List all HTML pages in the documentation tarball
     # This would need to implement tarball listing
     # For now, return a placeholder list
@@ -201,21 +204,16 @@ defmodule HexHub.MCP.Tools.Documentation do
 
     case Storage.get(doc_key) do
       {:ok, doc_data} ->
-        case search_text_in_tarball(doc_data, query) do
-          {:ok, results} ->
-            formatted_results = Enum.map(results, &format_search_result/1)
-            {:ok, formatted_results}
-
-          {:error, reason} ->
-            {:error, reason}
-        end
+        {:ok, results} = search_text_in_tarball(doc_data, query)
+        formatted_results = Enum.map(results, &format_search_result/1)
+        {:ok, formatted_results}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp search_text_in_tarball(tarball_data, query) do
+  defp search_text_in_tarball(_tarball_data, query) do
     # Search for text within all files in the documentation tarball
     # This would need to implement text search within tarball
     # For now, return placeholder results
@@ -315,21 +313,24 @@ defmodule HexHub.MCP.Tools.Documentation do
 
   defp validate_fields(args, required, optional) do
     # Check required fields
-    missing_required = Enum.filter(required, fn field ->
-      not Map.has_key?(args, field) or is_nil(Map.get(args, field))
-    end)
+    missing_required =
+      Enum.filter(required, fn field ->
+        not Map.has_key?(args, field) or is_nil(Map.get(args, field))
+      end)
 
     if length(missing_required) > 0 do
       {:error, {:missing_required_fields, missing_required}}
     else
       # Check for unknown fields
       known_fields = required ++ optional
-      unknown_fields = Enum.filter(Map.keys(args), fn field ->
-        field not in known_fields
-      end)
+
+      unknown_fields =
+        Enum.filter(Map.keys(args), fn field ->
+          field not in known_fields
+        end)
 
       if length(unknown_fields) > 0 do
-        Logger.warn("Unknown fields in args: #{inspect(unknown_fields)}")
+        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
       end
 
       :ok
@@ -388,11 +389,15 @@ defmodule HexHub.MCP.Tools.Documentation do
   Log documentation operation for telemetry.
   """
   def log_documentation_operation(operation, package_name, version, metadata \\ %{}) do
-    :telemetry.execute([:hex_hub, :mcp, :documentation], %{
-      operation: operation,
-      package_name: package_name,
-      version: version
-    }, metadata)
+    :telemetry.execute(
+      [:hex_hub, :mcp, :documentation],
+      %{
+        operation: operation,
+        package_name: package_name,
+        version: version
+      },
+      metadata
+    )
   end
 
   @doc """
@@ -414,6 +419,7 @@ defmodule HexHub.MCP.Tools.Documentation do
         # This would need Storage to support size queries
         # For now, return 0
         0
+
       false ->
         {:error, :documentation_not_found}
     end

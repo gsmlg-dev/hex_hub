@@ -41,13 +41,16 @@ defmodule HexHub.Application do
     # Add MCP server only if enabled
     children =
       if Application.get_env(:hex_hub, :mcp, [])[:enabled] do
-        children ++ [%{
-          id: HexHub.MCP,
-          start: {HexHub.MCP, :start, [:normal, []]},
-          type: :supervisor,
-          restart: :permanent,
-          shutdown: 5000
-        }]
+        children ++
+          [
+            %{
+              id: HexHub.MCP,
+              start: {HexHub.MCP, :start, [:normal, []]},
+              type: :supervisor,
+              restart: :permanent,
+              shutdown: 5000
+            }
+          ]
       else
         children
       end

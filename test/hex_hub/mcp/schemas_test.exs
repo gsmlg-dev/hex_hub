@@ -9,8 +9,10 @@ defmodule HexHub.MCP.SchemasTest do
       assert schema["type"] == "object"
       assert "jsonrpc" in schema["required"]
       assert "method" in schema["required"]
-      refute "id" in schema["required"]  # id is optional
-      refute "params" in schema["required"]  # params is optional
+      # id is optional
+      refute "id" in schema["required"]
+      # params is optional
+      refute "params" in schema["required"]
 
       # Check jsonrpc field
       assert schema["properties"]["jsonrpc"]["type"] == "string"
@@ -40,7 +42,8 @@ defmodule HexHub.MCP.SchemasTest do
       assert "jsonrpc" in schema["required"]
       assert "method" in schema["required"]
       assert "params" in schema["required"]
-      refute "id" in schema["required"]  # id is optional in tool calls too
+      # id is optional in tool calls too
+      refute "id" in schema["required"]
 
       # Check jsonrpc field
       assert schema["properties"]["jsonrpc"]["type"] == "string"

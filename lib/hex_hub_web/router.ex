@@ -51,9 +51,9 @@ defmodule HexHubWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
-    get "/packages", PackageController, :index
-    get "/packages/:name", PackageController, :show
-    get "/packages/:name/docs", PackageController, :docs
+    get "/browse", PackageController, :index
+    get "/package/:name", PackageController, :show
+    get "/package/:name/docs", PackageController, :docs
   end
 
   # Health check endpoints for monitoring

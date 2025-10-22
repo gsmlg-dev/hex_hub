@@ -178,6 +178,7 @@ defmodule HexHub.Upstream do
             releases when is_list(releases) ->
               HexHub.Telemetry.track_upstream_request("fetch_releases", duration_ms, 200)
               {:ok, releases}
+
             _ ->
               {:error, "Invalid package format: missing releases"}
           end
@@ -257,10 +258,11 @@ defmodule HexHub.Upstream do
       {"user-agent", "HexHub/0.1.0 (Upstream-Mode)"}
     ]
 
-    headers = case config.api_key do
-      nil -> base_headers
-      api_key -> [{"authorization", "Bearer #{api_key}"} | base_headers]
-    end
+    headers =
+      case config.api_key do
+        nil -> base_headers
+        api_key -> [{"authorization", "Bearer #{api_key}"} | base_headers]
+      end
 
     req_opts = [
       receive_timeout: config.timeout,
@@ -281,14 +283,19 @@ defmodule HexHub.Upstream do
         # Handle hex package format - extract the tarball contents
         # Keys may be strings or charlists
         contents_key = "contents.tar.gz"
+
         case Enum.find(body, fn {key, _} ->
-          key == contents_key or key == String.to_charlist(contents_key)
-        end) do
+               key == contents_key or key == String.to_charlist(contents_key)
+             end) do
           {_, tarball_data} when is_binary(tarball_data) ->
             Logger.debug("Found tarball contents, size: #{byte_size(tarball_data)}")
             {:ok, tarball_data}
+
           _ ->
-            Logger.error("Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}")
+            Logger.error(
+              "Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}"
+            )
+
             {:error, "Invalid package format: missing contents.tar.gz"}
         end
 

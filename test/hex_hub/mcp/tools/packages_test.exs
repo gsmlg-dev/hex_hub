@@ -6,64 +6,69 @@ defmodule HexHub.MCP.Tools.PackagesTest do
   # Mock the HexHub.Packages module for testing
   defmodule MockPackages do
     def search_packages(query, opts) do
-      {:ok, [
-        %{
-          name: "ecto",
-          repository: "hexpm",
-          meta: ~s({"description": "Database wrapper for Elixir"}),
-          downloads: 1000000,
-          inserted_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           name: "ecto",
+           repository: "hexpm",
+           meta: ~s({"description": "Database wrapper for Elixir"}),
+           downloads: 1_000_000,
+           inserted_at: DateTime.utc_now(),
+           updated_at: DateTime.utc_now()
+         }
+       ]}
     end
 
     def get_package(name, repository \\ nil) do
-      {:ok, %{
-        name: name,
-        repository: repository || "hexpm",
-        meta: ~s({"description": "A test package"}),
-        downloads: 1000,
-        inserted_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now()
-      }}
+      {:ok,
+       %{
+         name: name,
+         repository: repository || "hexpm",
+         meta: ~s({"description": "A test package"}),
+         downloads: 1000,
+         inserted_at: DateTime.utc_now(),
+         updated_at: DateTime.utc_now()
+       }}
     end
 
     def list_packages(opts) do
-      {:ok, [
-        %{
-          name: "package1",
-          repository: "hexpm",
-          meta: ~s({"description": "First package"}),
-          downloads: 500,
-          inserted_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           name: "package1",
+           repository: "hexpm",
+           meta: ~s({"description": "First package"}),
+           downloads: 500,
+           inserted_at: DateTime.utc_now(),
+           updated_at: DateTime.utc_now()
+         }
+       ]}
     end
 
     def list_releases(name) do
-      {:ok, [
-        %{
-          package_name: name,
-          version: "1.0.0",
-          has_docs: true,
-          inserted_at: DateTime.utc_now(),
-          retirement: nil
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           package_name: name,
+           version: "1.0.0",
+           has_docs: true,
+           inserted_at: DateTime.utc_now(),
+           retirement: nil
+         }
+       ]}
     end
 
     def get_release(name, version) do
-      {:ok, %{
-        package_name: name,
-        version: version,
-        metadata: ~s({"elixir": "~> 1.12"}),
-        requirements: ~s({"jason": "~> 1.0"}),
-        has_docs: true,
-        inserted_at: DateTime.utc_now(),
-        retirement: nil
-      }}
+      {:ok,
+       %{
+         package_name: name,
+         version: version,
+         metadata: ~s({"elixir": "~> 1.12"}),
+         requirements: ~s({"jason": "~> 1.0"}),
+         has_docs: true,
+         inserted_at: DateTime.utc_now(),
+         retirement: nil
+       }}
     end
   end
 
@@ -85,11 +90,11 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert {:ok, result} = Packages.search_packages(args)
 
       assert %{
-        "packages" => packages,
-        "total" => total,
-        "query" => query,
-        "filters" => filters
-      } = result
+               "packages" => packages,
+               "total" => total,
+               "query" => query,
+               "filters" => filters
+             } = result
 
       assert length(packages) == 1
       assert total == 1
@@ -100,7 +105,7 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert package["name"] == "ecto"
       assert package["repository"] == "hexpm"
       assert is_map(package["description"])
-      assert package["downloads"] == 1000000
+      assert package["downloads"] == 1_000_000
     end
 
     test "searches packages with limit and filters" do
@@ -111,7 +116,8 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       }
 
       assert {:ok, result} = Packages.search_packages(args)
-      assert result["limit"] == nil  # Not implemented in mock
+      # Not implemented in mock
+      assert result["limit"] == nil
       assert result["filters"] == %{"repository" => "hexpm"}
     end
 
@@ -129,12 +135,12 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert {:ok, result} = Packages.get_package(args)
 
       assert %{
-        "package" => package,
-        "releases" => releases,
-        "total_releases" => total_releases,
-        "latest_version" => latest_version,
-        "repository" => repository
-      } = result
+               "package" => package,
+               "releases" => releases,
+               "total_releases" => total_releases,
+               "latest_version" => latest_version,
+               "repository" => repository
+             } = result
 
       assert package["name"] == "ecto"
       assert length(releases) == 1
@@ -167,11 +173,11 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert {:ok, result} = Packages.list_packages(args)
 
       assert %{
-        "packages" => packages,
-        "pagination" => pagination,
-        "sort" => sort,
-        "order" => order
-      } = result
+               "packages" => packages,
+               "pagination" => pagination,
+               "sort" => sort,
+               "order" => order
+             } = result
 
       assert length(packages) == 1
       assert pagination["page"] == 1
@@ -207,13 +213,13 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert {:ok, result} = Packages.get_package_metadata(args)
 
       assert %{
-        "name" => name,
-        "version" => version,
-        "metadata" => metadata,
-        "requirements" => requirements,
-        "has_docs" => has_docs,
-        "retirement_info" => retirement_info
-      } = result
+               "name" => name,
+               "version" => version,
+               "metadata" => metadata,
+               "requirements" => requirements,
+               "has_docs" => has_docs,
+               "retirement_info" => retirement_info
+             } = result
 
       assert name == "ecto"
       assert version == "1.0.0"
@@ -244,7 +250,9 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert :ok = Packages.validate_search_args(valid_args)
 
       invalid_args = %{"limit" => 10}
-      assert {:error, {:missing_required_fields, ["query"]}} = Packages.validate_search_args(invalid_args)
+
+      assert {:error, {:missing_required_fields, ["query"]}} =
+               Packages.validate_search_args(invalid_args)
     end
 
     test "validate_get_package_args/1" do
@@ -252,7 +260,9 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert :ok = Packages.validate_get_package_args(valid_args)
 
       invalid_args = %{"repository" => "hexpm"}
-      assert {:error, {:missing_required_fields, ["name"]}} = Packages.validate_get_package_args(invalid_args)
+
+      assert {:error, {:missing_required_fields, ["name"]}} =
+               Packages.validate_get_package_args(invalid_args)
     end
 
     test "validate_metadata_args/1" do
@@ -260,7 +270,9 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       assert :ok = Packages.validate_metadata_args(valid_args)
 
       invalid_args = %{"version" => "1.0.0"}
-      assert {:error, {:missing_required_fields, ["name"]}} = Packages.validate_metadata_args(invalid_args)
+
+      assert {:error, {:missing_required_fields, ["name"]}} =
+               Packages.validate_metadata_args(invalid_args)
     end
   end
 
@@ -269,12 +281,12 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       stats = Packages.get_package_stats()
 
       assert %{
-        total_packages: _,
-        total_releases: _,
-        total_downloads: _,
-        recent_packages: _,
-        packages_with_docs: _
-      } = stats
+               total_packages: _,
+               total_releases: _,
+               total_downloads: _,
+               recent_packages: _,
+               packages_with_docs: _
+             } = stats
 
       assert is_number(stats.total_packages)
       assert is_number(stats.total_releases)
@@ -299,8 +311,8 @@ defmodule HexHub.MCP.Tools.PackagesTest do
       args = %{"query" => "ecto"}
 
       assert capture_log(fn ->
-        assert {:error, :database_error} = Packages.search_packages(args)
-      end) =~ "MCP package search failed"
+               assert {:error, :database_error} = Packages.search_packages(args)
+             end) =~ "MCP package search failed"
     end
   end
 end

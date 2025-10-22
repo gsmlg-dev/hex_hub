@@ -88,7 +88,12 @@ defmodule HexHubWeb.API.DownloadController do
           (System.monotonic_time() - start_time)
           |> System.convert_time_unit(:native, :millisecond)
 
-        HexHub.Telemetry.track_api_request("downloads.tarball", duration_ms, 400, "invalid_tarball")
+        HexHub.Telemetry.track_api_request(
+          "downloads.tarball",
+          duration_ms,
+          400,
+          "invalid_tarball"
+        )
 
         conn
         |> put_status(:bad_request)
@@ -135,9 +140,6 @@ defmodule HexHubWeb.API.DownloadController do
 
   # Private helper functions
 
-  @doc """
-  Parse tarball name in format "package-name-version.tar" to extract name and version.
-  """
   defp parse_tarball_name(tarball_name) do
     # Remove .tar extension if present
     base_name = String.replace_suffix(tarball_name, ".tar", "")

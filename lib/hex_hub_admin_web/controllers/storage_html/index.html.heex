@@ -1,5 +1,5 @@
 <Layouts.app flash={@flash}>
-
+  
 <!-- Page content -->
   <div class="p-6">
     <div class="flex justify-between items-center mb-6">
@@ -9,138 +9,175 @@
       </.link>
     </div>
 
-  <div class="grid gap-6">
-    <!-- Status Card -->
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Storage Status</h2>
-        <div class="flex items-center gap-2">
-          <span class="badge badge-success">
-            <%= String.capitalize(to_string(@storage_config.storage_type)) %>
-          </span>
-          <form action="/storage/test-connection" method="post" class="inline">
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-            <button type="submit" class="btn btn-sm btn-outline" id="test-storage-connection-btn">
-              Test Connection
-            </button>
-          </form>
+    <div class="grid gap-6">
+      <!-- Status Card -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">Storage Status</h2>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success">
+              {String.capitalize(to_string(@storage_config.storage_type))}
+            </span>
+            <form action="/storage/test-connection" method="post" class="inline">
+              <input
+                type="hidden"
+                name="_csrf_token"
+                value={Plug.CSRFProtection.get_csrf_token()}
+              />
+              <button
+                type="submit"
+                class="btn btn-sm btn-outline"
+                id="test-storage-connection-btn"
+              >
+                Test Connection
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+      
+<!-- Configuration Card -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">Current Configuration</h2>
 
-    <!-- Configuration Card -->
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Current Configuration</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="label">Storage Type</label>
-            <div class="input-group">
-              <input type="text" class="input input-bordered" value={String.capitalize(to_string(@storage_config.storage_type))} readonly />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="label">Storage Type</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="input input-bordered"
+                  value={String.capitalize(to_string(@storage_config.storage_type))}
+                  readonly
+                />
+              </div>
             </div>
+
+            <div>
+              <label class="label">Storage Path</label>
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="input input-bordered"
+                  value={@storage_config.storage_path}
+                  readonly
+                />
+              </div>
+            </div>
+
+            <%= if @storage_config.storage_type == :s3 do %>
+              <div>
+                <label class="label">S3 Bucket</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="input input-bordered"
+                    value={@storage_config.s3_bucket}
+                    readonly
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="label">S3 Region</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="input input-bordered"
+                    value={@storage_config.s3_region}
+                    readonly
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="label">S3 Host</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="input input-bordered"
+                    value={@storage_config.s3_host}
+                    readonly
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="label">S3 Port</label>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    class="input input-bordered"
+                    value={@storage_config.s3_port}
+                    readonly
+                  />
+                </div>
+              </div>
+            <% end %>
           </div>
-
-          <div>
-            <label class="label">Storage Path</label>
-            <div class="input-group">
-              <input type="text" class="input input-bordered" value={@storage_config.storage_path} readonly />
-            </div>
-          </div>
-
-          <%= if @storage_config.storage_type == :s3 do %>
-            <div>
-              <label class="label">S3 Bucket</label>
-              <div class="input-group">
-                <input type="text" class="input input-bordered" value={@storage_config.s3_bucket} readonly />
-              </div>
-            </div>
-
-            <div>
-              <label class="label">S3 Region</label>
-              <div class="input-group">
-                <input type="text" class="input input-bordered" value={@storage_config.s3_region} readonly />
-              </div>
-            </div>
-
-            <div>
-              <label class="label">S3 Host</label>
-              <div class="input-group">
-                <input type="text" class="input input-bordered" value={@storage_config.s3_host} readonly />
-              </div>
-            </div>
-
-            <div>
-              <label class="label">S3 Port</label>
-              <div class="input-group">
-                <input type="text" class="input input-bordered" value={@storage_config.s3_port} readonly />
-              </div>
-            </div>
-          <% end %>
         </div>
       </div>
-    </div>
-
-    <!-- Usage Information -->
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="card-title">Storage Information</h2>
-        <div class="prose max-w-none">
-          <%= if @storage_config.storage_type == :local do %>
-            <p class="text-sm">
-              <strong>Local Storage</strong>: Files are stored in the local filesystem at the configured path.
-            </p>
-            <p class="text-sm">
-              <strong>Storage Path</strong>: The directory where package files and documentation are stored.
-            </p>
-          <% else %>
-            <p class="text-sm">
-              <strong>S3 Storage</strong>: Files are stored in an S3-compatible object storage service.
-            </p>
-            <p class="text-sm">
-              <strong>S3 Bucket</strong>: The bucket name where files are stored.
-            </p>
-            <p class="text-sm">
-              <strong>S3 Region</strong>: The AWS region where the bucket is located.
-            </p>
-            <p class="text-sm">
-              <strong>S3 Host</strong>: The S3 endpoint hostname for custom S3-compatible services.
-            </p>
-            <p class="text-sm">
-              <strong>S3 Port</strong>: The port for the S3 endpoint (default: 443 for HTTPS).
-            </p>
-          <% end %>
+      
+<!-- Usage Information -->
+      <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h2 class="card-title">Storage Information</h2>
+          <div class="prose max-w-none">
+            <%= if @storage_config.storage_type == :local do %>
+              <p class="text-sm">
+                <strong>Local Storage</strong>: Files are stored in the local filesystem at the configured path.
+              </p>
+              <p class="text-sm">
+                <strong>Storage Path</strong>: The directory where package files and documentation are stored.
+              </p>
+            <% else %>
+              <p class="text-sm">
+                <strong>S3 Storage</strong>: Files are stored in an S3-compatible object storage service.
+              </p>
+              <p class="text-sm">
+                <strong>S3 Bucket</strong>: The bucket name where files are stored.
+              </p>
+              <p class="text-sm">
+                <strong>S3 Region</strong>: The AWS region where the bucket is located.
+              </p>
+              <p class="text-sm">
+                <strong>S3 Host</strong>: The S3 endpoint hostname for custom S3-compatible services.
+              </p>
+              <p class="text-sm">
+                <strong>S3 Port</strong>: The port for the S3 endpoint (default: 443 for HTTPS).
+              </p>
+            <% end %>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  </div>
+  <script>
+    // Handle test connection form submission with AJAX
+    document.getElementById('test-storage-connection-btn')?.addEventListener('click', function(e) {
+      e.preventDefault();
+      const form = e.target.closest('form');
 
-<script>
-  // Handle test connection form submission with AJAX
-  document.getElementById('test-storage-connection-btn')?.addEventListener('click', function(e) {
-    e.preventDefault();
-    const form = e.target.closest('form');
-
-    fetch(form.action, {
-      method: form.method,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams(new FormData(form))
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.status === 'success') {
-        alert('✅ ' + data.message);
-      } else {
-        alert('❌ ' + data.message);
-      }
-    })
-    .catch(error => {
-      alert('❌ Error testing storage connection: ' + error.message);
+      fetch(form.action, {
+        method: form.method,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(new FormData(form))
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          alert('✅ ' + data.message);
+        } else {
+          alert('❌ ' + data.message);
+        }
+      })
+      .catch(error => {
+        alert('❌ Error testing storage connection: ' + error.message);
+      });
     });
-  });
-</script>
+  </script>
 </Layouts.app>

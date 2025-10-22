@@ -106,11 +106,13 @@ defmodule HexHub.MCP.HandlerTest do
 
       # This may return error if tool execution fails, but should not be a parsing error
       result = Handler.handle_request(request)
+
       case result do
         {:ok, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-3"
           assert Map.has_key?(response, "result")
+
         {:error, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-3"
@@ -125,20 +127,24 @@ defmodule HexHub.MCP.HandlerTest do
         "jsonrpc" => "2.0",
         "method" => "tools/call/search_packages",
         "id" => "test-4",
-        "params" => %{
-          # Missing "arguments" field
-        }
+        "params" =>
+          %{
+            # Missing "arguments" field
+          }
       }
 
       result = Handler.handle_request(request)
+
       case result do
         {:ok, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-4"
+
         {:error, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-4"
-          assert response["error"]["code"] in [-32602, -32000]  # Invalid params or server error
+          # Invalid params or server error
+          assert response["error"]["code"] in [-32602, -32000]
       end
     end
   end

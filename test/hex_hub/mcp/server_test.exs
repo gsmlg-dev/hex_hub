@@ -44,6 +44,7 @@ defmodule HexHub.MCP.ServerTest do
       case Server.list_tools() do
         {:ok, tools} ->
           assert is_list(tools)
+
           if length(tools) > 0 do
             tool = List.first(tools)
             assert Map.has_key?(tool, :name)
@@ -53,6 +54,7 @@ defmodule HexHub.MCP.ServerTest do
             assert is_binary(tool.description)
             assert is_map(tool.inputSchema)
           end
+
         {:error, reason} ->
           # Server may not be fully initialized
           assert reason in [:tool_not_found, :server_error]
@@ -70,6 +72,7 @@ defmodule HexHub.MCP.ServerTest do
           assert is_binary(tool.description)
           assert is_map(tool.input_schema)
           assert is_function(tool.handler)
+
         {:error, :tool_not_found} ->
           # Tool may not be registered
           :ok
@@ -101,6 +104,7 @@ defmodule HexHub.MCP.ServerTest do
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-1"
           assert Map.has_key?(response, "result")
+
         {:error, response} ->
           assert response["jsonrpc"] == "2.0"
           assert Map.has_key?(response, "error")
@@ -124,9 +128,11 @@ defmodule HexHub.MCP.ServerTest do
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-2"
           assert Map.has_key?(response["result"])
+
           if Map.has_key?(response["result"], "tools") do
             assert is_list(response["result"]["tools"])
           end
+
         {:error, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-2"
@@ -173,6 +179,7 @@ defmodule HexHub.MCP.ServerTest do
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-3"
           assert Map.has_key?(response, "result")
+
         {:error, response} ->
           assert response["jsonrpc"] == "2.0"
           assert response["id"] == "test-3"
@@ -208,7 +215,8 @@ defmodule HexHub.MCP.ServerTest do
       :ok
     else
       {:ok, _pid} = Server.start_link()
-      :timer.sleep(50)  # Give server time to initialize
+      # Give server time to initialize
+      :timer.sleep(50)
     end
   end
 end

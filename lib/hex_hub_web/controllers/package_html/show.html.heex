@@ -106,7 +106,7 @@
           <h3 class="font-semibold mb-3">Quick Actions</h3>
 
           <div class="space-y-2">
-            <a href={~p"/packages/#{@package.name}/docs"} class="btn btn-primary w-full">
+            <a href={~p"/package/#{@package.name}/docs"} class="btn btn-primary w-full">
               <%= if Enum.any?(@releases, & &1.has_docs) do %>
                 View Documentation
               <% else %>

@@ -9,13 +9,13 @@ defmodule HexHub.MCP.Server do
   use GenServer
   require Logger
 
-  alias HexHub.MCP.{Transport, Tools, Schemas}
+  alias HexHub.MCP.Tools
 
   @type state :: %{
-    tools: map(),
-    transport: pid() | nil,
-    config: map()
-  }
+          tools: map(),
+          transport: pid() | nil,
+          config: map()
+        }
 
   defstruct [:tools, :transport, :config]
 
@@ -77,13 +77,15 @@ defmodule HexHub.MCP.Server do
 
   @impl true
   def handle_call(:list_tools, _from, state) do
-    tools = Enum.map(state.tools, fn {name, tool} ->
-      %{
-        "name" => name,
-        "description" => tool.description,
-        "inputSchema" => tool.input_schema
-      }
-    end)
+    tools =
+      Enum.map(state.tools, fn {name, tool} ->
+        %{
+          "name" => name,
+          "description" => tool.description,
+          "inputSchema" => tool.input_schema
+        }
+      end)
+
     {:reply, {:ok, tools}, state}
   end
 
@@ -98,23 +100,32 @@ defmodule HexHub.MCP.Server do
   # Private functions
 
   defp process_request(request, transport_state, state) do
-    case Schemas.parse_request(request) do
+    case HexHub.MCP.Schemas.parse_request(request) do
       {:ok, parsed_request} ->
-        case Schemas.validate_request(parsed_request) do
+        case HexHub.MCP.Schemas.validate_request(parsed_request) do
           {:ok, validated_request} ->
             case execute_tool(validated_request, transport_state, state) do
               {:ok, result} ->
                 build_response(validated_request.id, result)
+
               {:error, :method_not_found} ->
                 build_error_response(validated_request.id, -32601, "Method not found")
+
               {:error, reason} ->
-                build_error_response(validated_request.id, -32000, "Server error: #{inspect(reason)}")
+                build_error_response(
+                  validated_request.id,
+                  -32000,
+                  "Server error: #{inspect(reason)}"
+                )
             end
+
           {:error, :invalid_request} ->
             build_error_response(parsed_request.id, -32600, "Invalid Request")
+
           {:error, reason} ->
             build_error_response(parsed_request.id, -32600, "Invalid request: #{inspect(reason)}")
         end
+
       {:error, :parse_error} ->
         build_error_response(nil, -32700, "Parse error")
     end
@@ -124,7 +135,9 @@ defmodule HexHub.MCP.Server do
     tool_name = String.replace_prefix(request.method, "tools/call/", "")
 
     case Map.get(state.tools, tool_name) do
-      nil -> {:error, :method_not_found}
+      nil ->
+        {:error, :method_not_found}
+
       tool ->
         try do
           args = Map.get(request.params || %{}, "arguments", %{})

@@ -65,61 +65,72 @@ defmodule HexHubAdminWeb.UpstreamController do
     errors = []
 
     # Required fields
-    errors = if is_nil(params[:enabled]) and is_nil(config[:enabled]) do
-      [{"enabled", "is required"} | errors]
-    else
-      errors
-    end
+    errors =
+      if is_nil(params[:enabled]) and is_nil(config[:enabled]) do
+        [{"enabled", "is required"} | errors]
+      else
+        errors
+      end
 
-    errors = if is_nil(params[:api_url]) and is_nil(config[:api_url]) do
-      [{"api_url", "is required"} | errors]
-    else
-      errors
-    end
+    errors =
+      if is_nil(params[:api_url]) and is_nil(config[:api_url]) do
+        [{"api_url", "is required"} | errors]
+      else
+        errors
+      end
 
-    errors = if is_nil(params[:repo_url]) and is_nil(config[:repo_url]) do
-      [{"repo_url", "is required"} | errors]
-    else
-      errors
-    end
+    errors =
+      if is_nil(params[:repo_url]) and is_nil(config[:repo_url]) do
+        [{"repo_url", "is required"} | errors]
+      else
+        errors
+      end
 
     # Format validation
     api_url = params[:api_url] || config[:api_url] || ""
     repo_url = params[:repo_url] || config[:repo_url] || ""
 
-    errors = if api_url != "" and not String.match?(api_url, ~r/^https?:\/\//) do
-      [{"api_url", "must be a valid URL"} | errors]
-    else
-      errors
-    end
+    errors =
+      if api_url != "" and not String.match?(api_url, ~r/^https?:\/\//) do
+        [{"api_url", "must be a valid URL"} | errors]
+      else
+        errors
+      end
 
-    errors = if repo_url != "" and not String.match?(repo_url, ~r/^https?:\/\//) do
-      [{"repo_url", "must be a valid URL"} | errors]
-    else
-      errors
-    end
+    errors =
+      if repo_url != "" and not String.match?(repo_url, ~r/^https?:\/\//) do
+        [{"repo_url", "must be a valid URL"} | errors]
+      else
+        errors
+      end
 
     # Number validation
     timeout = params[:timeout] || config[:timeout] || 30_000
-    errors = if not is_number(timeout) or timeout <= 1000 or timeout >= 300_000 do
-      [{"timeout", "must be between 1000 and 300000"} | errors]
-    else
-      errors
-    end
+
+    errors =
+      if not is_number(timeout) or timeout <= 1000 or timeout >= 300_000 do
+        [{"timeout", "must be between 1000 and 300000"} | errors]
+      else
+        errors
+      end
 
     retry_attempts = params[:retry_attempts] || config[:retry_attempts] || 3
-    errors = if not is_number(retry_attempts) or retry_attempts <= 0 or retry_attempts >= 10 do
-      [{"retry_attempts", "must be between 1 and 9"} | errors]
-    else
-      errors
-    end
+
+    errors =
+      if not is_number(retry_attempts) or retry_attempts <= 0 or retry_attempts >= 10 do
+        [{"retry_attempts", "must be between 1 and 9"} | errors]
+      else
+        errors
+      end
 
     retry_delay = params[:retry_delay] || config[:retry_delay] || 1_000
-    errors = if not is_number(retry_delay) or retry_delay <= 100 or retry_delay >= 60_000 do
-      [{"retry_delay", "must be between 100 and 60000"} | errors]
-    else
-      errors
-    end
+
+    errors =
+      if not is_number(retry_delay) or retry_delay <= 100 or retry_delay >= 60_000 do
+        [{"retry_delay", "must be between 100 and 60000"} | errors]
+      else
+        errors
+      end
 
     # Return changeset-like structure
     %{
@@ -137,10 +148,11 @@ defmodule HexHubAdminWeb.UpstreamController do
       {"user-agent", "HexHub/0.1.0 (Connection-Test)"}
     ]
 
-    headers = case config.api_key do
-      nil -> headers
-      api_key -> [{"authorization", "Bearer #{api_key}"} | headers]
-    end
+    headers =
+      case config.api_key do
+        nil -> headers
+        api_key -> [{"authorization", "Bearer #{api_key}"} | headers]
+      end
 
     req_opts = [
       receive_timeout: 5000,

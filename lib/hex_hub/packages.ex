@@ -983,6 +983,7 @@ defmodule HexHub.Packages do
           Logger.debug("✅ Step 2: Got #{length(releases)} releases")
 
           release_info = Enum.find(releases, fn r -> r["version"] == version end)
+
           if release_info do
             Logger.debug("✅ Step 3: Found release info for version #{version}")
 
@@ -1001,7 +1002,10 @@ defmodule HexHub.Packages do
                   create_release_from_upstream(package_name, version, meta, requirements)
 
                 {:error, reason} ->
-                  Logger.error("❌ Step 6 failed: Failed to cache release tarball #{package_name}-#{version}: #{reason}")
+                  Logger.error(
+                    "❌ Step 6 failed: Failed to cache release tarball #{package_name}-#{version}: #{reason}"
+                  )
+
                   {:error, :not_found}
               end
             else
