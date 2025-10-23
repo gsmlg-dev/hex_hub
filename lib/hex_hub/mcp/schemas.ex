@@ -17,7 +17,13 @@ defmodule HexHub.MCP.Schemas do
         "jsonrpc" => %{"type" => "string"},
         "method" => %{"type" => "string"},
         "params" => %{"type" => "object"},
-        "id" => %{"type" => "string"}
+        "id" => %{
+          "oneOf" => [
+            %{"type" => "string"},
+            %{"type" => "number"},
+            %{"type" => "null"}
+          ]
+        }
       }
     }
   end
@@ -44,7 +50,8 @@ defmodule HexHub.MCP.Schemas do
         "id" => %{
           "oneOf" => [
             %{"type" => "string"},
-            %{"type" => "number"}
+            %{"type" => "number"},
+            %{"type" => "null"}
           ]
         }
       }
@@ -160,6 +167,18 @@ defmodule HexHub.MCP.Schemas do
   defp validate_type(data, %{"type" => "array"}) when is_list(data), do: :ok
   defp validate_type(data, %{"type" => "string"}) when is_binary(data), do: :ok
   defp validate_type(data, %{"type" => "number"}) when is_number(data), do: :ok
+  defp validate_type(data, %{"type" => "integer"}) when is_integer(data), do: :ok
+  defp validate_type(data, %{"type" => "boolean"}) when is_boolean(data), do: :ok
+  defp validate_type(nil, %{"type" => "null"}), do: :ok
+
+  # Handle oneOf schemas (e.g., for id field that can be string, number, or null)
+  defp validate_type(data, %{"oneOf" => schemas}) when is_list(schemas) do
+    if Enum.any?(schemas, fn schema -> validate_type(data, schema) == :ok end) do
+      :ok
+    else
+      {:error, :type_mismatch}
+    end
+  end
 
   defp validate_type(data, %{"type" => type}) do
     IO.inspect({data, type}, label: "Type mismatch")

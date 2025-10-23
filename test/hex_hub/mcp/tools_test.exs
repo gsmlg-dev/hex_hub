@@ -50,9 +50,9 @@ defmodule HexHub.MCP.ToolsTest do
   describe "register_tool/2" do
     test "registers a tool with name and handler" do
       handler_fn = fn args, _context -> {:ok, args} end
-      tool = Tools.register_tool("test_tool", handler_fn)
+      tool = Tools.register_tool("search_packages", handler_fn)
 
-      assert tool.name == "test_tool"
+      assert tool.name == "search_packages"
       assert is_binary(tool.description)
       assert is_map(tool.input_schema)
       assert tool.handler == handler_fn
@@ -198,10 +198,10 @@ defmodule HexHub.MCP.ToolsTest do
   describe "tool struct" do
     test "defines correct struct fields" do
       handler_fn = fn args, _context -> {:ok, args} end
-      tool = Tools.register_tool("test_tool", handler_fn)
+      tool = Tools.register_tool("get_package", handler_fn)
 
       assert %Tools{name: name, description: desc, input_schema: schema, handler: handler} = tool
-      assert name == "test_tool"
+      assert name == "get_package"
       assert is_binary(desc)
       assert is_map(schema)
       assert is_function(handler)

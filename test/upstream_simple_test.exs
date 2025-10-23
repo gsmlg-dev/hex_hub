@@ -1,6 +1,8 @@
 defmodule HexHub.UpstreamSimpleTest do
   use ExUnit.Case, async: false
 
+  # This test modifies shared Mnesia state and must run in isolation
+
   alias HexHub.{Upstream, UpstreamConfig}
 
   setup do
@@ -65,6 +67,7 @@ defmodule HexHub.UpstreamSimpleTest do
 
       # Verify the config was actually updated
       config = UpstreamConfig.get_config()
+
       if config.enabled != false do
         raise "Failed to disable upstream. Current enabled state: #{config.enabled}"
       end

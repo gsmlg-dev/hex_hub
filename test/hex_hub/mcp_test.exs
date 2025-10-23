@@ -128,20 +128,22 @@ defmodule HexHub.MCPTest do
     test "starts supervisor when MCP is enabled" do
       Application.put_env(:hex_hub, :mcp, enabled: true)
 
-      # Note: This test may fail if there are dependencies not properly started
-      # In a real test environment, you'd need to ensure proper test setup
-      try do
-        result = MCP.start(:normal, [])
-        assert {:ok, pid} = result
-        assert is_pid(pid)
+      # Check if MCP server is already running (from test_helper.exs)
+      case Process.whereis(HexHub.MCP.Server) do
+        nil ->
+          # Server not running, try to start it
+          result = MCP.start(:normal, [])
+          assert {:ok, pid} = result
+          assert is_pid(pid)
 
-        # Clean up
-        if Process.alive?(pid) do
-          GenServer.stop(pid)
-        end
-      rescue
-        _ ->
-          # This is expected in test environment without full supervision tree
+          # Clean up
+          if Process.alive?(pid) do
+            GenServer.stop(pid)
+          end
+
+        _pid ->
+          # Server already running from test setup, which is expected
+          # This means MCP can successfully start, which is what we're testing
           :ok
       end
 

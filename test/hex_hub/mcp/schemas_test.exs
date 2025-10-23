@@ -23,8 +23,11 @@ defmodule HexHub.MCP.SchemasTest do
       # Check params field
       assert schema["properties"]["params"]["type"] == "object"
 
-      # Check id field
-      assert schema["properties"]["id"]["type"] == "string"
+      # Check id field (supports string, number, or null)
+      assert schema["properties"]["id"]["oneOf"] |> length() == 3
+      assert %{"type" => "string"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "number"} in schema["properties"]["id"]["oneOf"]
+      assert %{"type" => "null"} in schema["properties"]["id"]["oneOf"]
     end
   end
 

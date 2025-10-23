@@ -72,15 +72,23 @@ defmodule HexHub.MCP.Server do
   @impl true
   def handle_call({:handle_request, request, transport_state}, _from, state) do
     response = process_request(request, transport_state, state)
-    {:reply, response, state}
+    # Wrap response in tuple for test compatibility
+    result =
+      case response do
+        %{"error" => _} -> {:error, response}
+        _ -> {:ok, response}
+      end
+
+    {:reply, result, state}
   end
 
   @impl true
   def handle_call(:list_tools, _from, state) do
     tools =
-      Enum.map(state.tools, fn {name, tool} ->
+      Enum.map(state.tools, fn {_name, tool} ->
+        # Return map with both string keys (for JSON-RPC) and the tool struct data
         %{
-          "name" => name,
+          "name" => tool.name,
           "description" => tool.description,
           "inputSchema" => tool.input_schema
         }
@@ -104,35 +112,56 @@ defmodule HexHub.MCP.Server do
       {:ok, parsed_request} ->
         case HexHub.MCP.Schemas.validate_request(parsed_request) do
           {:ok, validated_request} ->
+            # Get request ID from either map with string keys or atom keys
+            request_id = get_request_id(validated_request)
+
             case execute_tool(validated_request, transport_state, state) do
               {:ok, result} ->
-                build_response(validated_request.id, result)
+                build_response(request_id, result)
 
               {:error, :method_not_found} ->
-                build_error_response(validated_request.id, -32601, "Method not found")
+                build_error_response(request_id, -32601, "Method not found")
 
               {:error, reason} ->
                 build_error_response(
-                  validated_request.id,
+                  request_id,
                   -32000,
                   "Server error: #{inspect(reason)}"
                 )
             end
 
           {:error, :invalid_request} ->
-            build_error_response(parsed_request.id, -32600, "Invalid Request")
+            build_error_response(get_request_id(parsed_request), -32600, "Invalid Request")
 
           {:error, reason} ->
-            build_error_response(parsed_request.id, -32600, "Invalid request: #{inspect(reason)}")
+            build_error_response(
+              get_request_id(parsed_request),
+              -32600,
+              "Invalid request: #{inspect(reason)}"
+            )
         end
+
+      {:error, :invalid_request} ->
+        build_error_response(nil, -32600, "Invalid Request")
 
       {:error, :parse_error} ->
         build_error_response(nil, -32700, "Parse error")
     end
   end
 
+  defp get_request_id(request) when is_map(request) do
+    Map.get(request, "id") || Map.get(request, :id)
+  end
+
+  defp get_request_id(_), do: nil
+
   defp execute_tool(request, transport_state, state) do
-    tool_name = String.replace_prefix(request.method, "tools/call/", "")
+    method =
+      if is_map(request) and Map.has_key?(request, "method"),
+        do: request["method"],
+        else: Map.get(request, :method, "")
+
+    tool_name = String.replace_prefix(method, "tools/call/", "")
 
     case Map.get(state.tools, tool_name) do
       nil ->
@@ -158,9 +187,12 @@ defmodule HexHub.MCP.Server do
   end
 
   defp build_response(id, result) do
+    # Support both map and struct results
+    normalized_id = if is_map(id) and Map.has_key?(id, "id"), do: id["id"], else: id
+
     %{
       "jsonrpc" => "2.0",
-      "id" => id,
+      "id" => normalized_id,
       "result" => result
     }
   end

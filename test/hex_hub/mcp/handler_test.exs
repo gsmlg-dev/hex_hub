@@ -41,7 +41,7 @@ defmodule HexHub.MCP.HandlerTest do
       {:ok, response} = Handler.handle_request(request)
       assert response["jsonrpc"] == "2.0"
       assert response["id"] == "test-2"
-      assert Map.has_key?(response["result"])
+      assert Map.has_key?(response, "result")
       assert Map.has_key?(response["result"], "tools")
       assert is_list(response["result"]["tools"])
     end

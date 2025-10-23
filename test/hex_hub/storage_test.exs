@@ -4,6 +4,12 @@ defmodule HexHub.StorageTest do
   setup do
     # Ensure we start with local storage for each test
     Application.put_env(:hex_hub, :storage_type, :local)
+    Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
+
+    # Create necessary subdirectories
+    File.mkdir_p!("priv/test_storage/packages")
+    File.mkdir_p!("priv/test_storage/docs")
+
     :ok
   end
 

@@ -64,7 +64,9 @@ defmodule HexHub.UpstreamConfig do
     enabled = get_param_bool(params, "enabled", existing_config.enabled)
 
     # Debug logging
-    Logger.debug("Updating upstream config: enabled=#{enabled}, params.enabled=#{inspect(Map.get(params, "enabled") || Map.get(params, :enabled))}, existing.enabled=#{existing_config.enabled}")
+    Logger.debug(
+      "Updating upstream config: enabled=#{enabled}, params.enabled=#{inspect(Map.get(params, "enabled") || Map.get(params, :enabled))}, existing.enabled=#{existing_config.enabled}"
+    )
 
     config = %{
       id: "default",
@@ -138,11 +140,22 @@ defmodule HexHub.UpstreamConfig do
   end
 
   @doc """
-  Reset upstream configuration to defaults.
+  Reset upstream configuration to defaults by deleting the stored config.
+  This forces get_config/0 to return default values.
   """
   @spec reset_to_defaults() :: :ok | {:error, term()}
   def reset_to_defaults do
-    update_config(%{})
+    case :mnesia.transaction(fn ->
+           :mnesia.delete({:upstream_configs, "default"})
+         end) do
+      {:atomic, :ok} ->
+        Logger.info("Upstream configuration reset to defaults")
+        :ok
+
+      {:aborted, reason} ->
+        Logger.error("Failed to reset upstream configuration: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   # Private functions

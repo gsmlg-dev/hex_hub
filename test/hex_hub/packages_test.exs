@@ -1,10 +1,19 @@
 defmodule HexHub.PackagesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   alias HexHub.Packages
 
   setup do
     Packages.reset_test_store()
+
+    # Ensure storage directories exist for docs upload tests
+    File.mkdir_p!("priv/test_storage/packages")
+    File.mkdir_p!("priv/test_storage/docs")
+
+    # Ensure storage is configured correctly
+    Application.put_env(:hex_hub, :storage_type, :local)
+    Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
+
     :ok
   end
 

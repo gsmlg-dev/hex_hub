@@ -47,12 +47,12 @@ defmodule HexHub.MCP.ServerTest do
 
           if length(tools) > 0 do
             tool = List.first(tools)
-            assert Map.has_key?(tool, :name)
-            assert Map.has_key?(tool, :description)
-            assert Map.has_key?(tool, :inputSchema)
-            assert is_binary(tool.name)
-            assert is_binary(tool.description)
-            assert is_map(tool.inputSchema)
+            assert Map.has_key?(tool, "name")
+            assert Map.has_key?(tool, "description")
+            assert Map.has_key?(tool, "inputSchema")
+            assert is_binary(tool["name"])
+            assert is_binary(tool["description"])
+            assert is_map(tool["inputSchema"])
           end
 
         {:error, reason} ->
@@ -203,7 +203,7 @@ defmodule HexHub.MCP.ServerTest do
       if length(tools1) > 0 do
         first_tool = List.first(tools1)
         {:ok, schema} = Server.get_tool_schema(first_tool["name"])
-        assert schema["name"] == first_tool["name"]
+        assert schema.name == first_tool["name"]
       end
     end
   end

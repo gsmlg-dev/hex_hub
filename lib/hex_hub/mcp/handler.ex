@@ -104,7 +104,7 @@ defmodule HexHub.MCP.Handler do
   defp execute_request(request, transport_state) do
     case Map.get(request, "method") do
       "tools/list" ->
-        handle_list_tools(request)
+        {:ok, handle_list_tools(request)}
 
       method when is_binary(method) ->
         if String.starts_with?(method, "tools/call/") do
@@ -112,25 +112,25 @@ defmodule HexHub.MCP.Handler do
         else
           case method do
             "initialize" ->
-              handle_initialize(request)
+              {:ok, handle_initialize(request)}
 
             _ ->
-              {:error, :method_not_found, Map.get(request, "id")}
+              format_error_response(:method_not_found, Map.get(request, "id"))
           end
         end
 
       _ ->
-        {:error, :method_not_found, Map.get(request, "id")}
+        format_error_response(:method_not_found, Map.get(request, "id"))
     end
   end
 
   defp handle_list_tools(request) do
     case Server.list_tools() do
       {:ok, tools} ->
-        {:ok, build_response(Map.get(request, "id"), %{tools: tools})}
+        build_response(Map.get(request, "id"), %{"tools" => tools})
 
       {:error, reason} ->
-        {:error, reason, Map.get(request, "id")}
+        format_error_response(reason, Map.get(request, "id"))
     end
   end
 
@@ -149,15 +149,15 @@ defmodule HexHub.MCP.Handler do
                 {:ok, build_response(Map.get(request, "id"), result)}
 
               {:error, reason} ->
-                {:error, reason, Map.get(request, "id")}
+                format_error_response(reason, Map.get(request, "id"))
             end
 
           {:error, reason} ->
-            {:error, reason, Map.get(request, "id")}
+            format_error_response(reason, Map.get(request, "id"))
         end
 
       {:error, _} ->
-        {:error, :tool_not_found, Map.get(request, "id")}
+        format_error_response(:tool_not_found, Map.get(request, "id"))
     end
   end
 
@@ -177,7 +177,7 @@ defmodule HexHub.MCP.Handler do
       }
     }
 
-    {:ok, build_response(Map.get(request, "id"), init_result)}
+    build_response(Map.get(request, "id"), init_result)
   end
 
   defp validate_tool_arguments(tool, args) do
@@ -237,12 +237,12 @@ defmodule HexHub.MCP.Handler do
     Map.get(error_mapping, reason, {-32000, "Unknown error"})
   end
 
-  defp get_request_id(request) do
-    case request do
-      %{id: id} -> id
-      _ -> nil
-    end
+  defp get_request_id(request) when is_map(request) do
+    # Support both string and atom keys for request ID
+    Map.get(request, "id") || Map.get(request, :id)
   end
+
+  defp get_request_id(_), do: nil
 
   defp log_request_result(request, result, duration) do
     case result do
@@ -393,9 +393,15 @@ defmodule HexHub.MCP.Handler do
     case Server.list_tools() do
       {:ok, tools} ->
         Enum.map(tools, fn tool ->
+          # Extract name from either string key or atom key
+          name = if is_map(tool), do: tool["name"] || Map.get(tool, :name), else: nil
+
+          description =
+            if is_map(tool), do: tool["description"] || Map.get(tool, :description), else: nil
+
           %{
-            name: tool.name,
-            description: tool.description,
+            name: name,
+            description: description,
             # All tools are enabled by default
             enabled: true,
             # Would need to track tool usage

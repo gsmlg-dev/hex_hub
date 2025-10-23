@@ -18,8 +18,7 @@ defmodule HexHub.StorageConfig do
           s3_path_style: boolean()
         }
   def config do
-    ex_aws_config = Application.get_env(:ex_aws, []) || []
-    s3_config = Keyword.get(ex_aws_config, :s3, [])
+    s3_config = Application.get_env(:ex_aws, :s3, [])
 
     %{
       storage_type: Application.get_env(:hex_hub, :storage_type, :local),
@@ -91,9 +90,10 @@ defmodule HexHub.StorageConfig do
         path_style: s3_path_style
       }
 
-      current_ex_aws = Application.get_env(:ex_aws, []) || []
-      updated_ex_aws = Keyword.merge(current_ex_aws, s3: s3_config)
-      Application.put_env(:ex_aws, updated_ex_aws, [])
+      # Get current ExAws configuration
+      current_s3_config = Application.get_env(:ex_aws, :s3, [])
+      updated_s3_config = Keyword.merge(current_s3_config, Enum.into(s3_config, []))
+      Application.put_env(:ex_aws, :s3, updated_s3_config)
 
       :ok
     catch
