@@ -43,7 +43,7 @@ The application is ready for production use. See the [development plan](DEVELOPM
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/hex_hub.git
+git clone https://github.com/gsmlg-dev/hex_hub.git
 cd hex_hub
 
 # Install dependencies
@@ -101,7 +101,7 @@ Add to your `mix.exs`:
 ```elixir
 defp deps do
   [
-    {:my_package, "~> 1.0", repo: "your-org", organization: "your-org"}
+    {:my_package, "~> 1.0", repo: "gsmlg-dev", organization: "gsmlg-dev"}
   ]
 end
 ```
@@ -111,7 +111,7 @@ Configure your repository:
 ```elixir
 # In config/config.exs
 config :hex, repos: [
-  "your-org": "https://your-domain.com"
+  "gsmlg-dev": "https://your-domain.com"
 ]
 ```
 
@@ -362,6 +362,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- [GitHub Issues](https://github.com/your-org/hex_hub/issues)
+- [GitHub Issues](https://github.com/gsmlg-dev/hex_hub/issues)
 - [Documentation](https://your-docs-site.com)
 - [Community Discord](https://discord.gg/your-server)
