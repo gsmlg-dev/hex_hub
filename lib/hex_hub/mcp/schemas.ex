@@ -180,8 +180,7 @@ defmodule HexHub.MCP.Schemas do
     end
   end
 
-  defp validate_type(data, %{"type" => type}) do
-    IO.inspect({data, type}, label: "Type mismatch")
+  defp validate_type(_data, %{"type" => _type}) do
     {:error, :type_mismatch}
   end
 

@@ -12,8 +12,6 @@ defmodule HexHub.MCP.Tools.PackagesTest do
   #
   # For now, we keep only basic validation tests that don't require database access.
 
-  import ExUnit.CaptureLog
-
   describe "validation functions" do
     test "validate_search_args/1" do
       valid_args = %{"query" => "ecto", "limit" => 10}

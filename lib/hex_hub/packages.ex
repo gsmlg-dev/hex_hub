@@ -310,7 +310,7 @@ defmodule HexHub.Packages do
         release =
           Enum.max_by(releases, fn release_tuple ->
             case release_tuple do
-              {@releases_table, _, _, _, _, _, _, _, updated_at, _, _, _, _} -> updated_at
+              {@releases_table, _, _, _, _, _, _, _, _, updated_at, _, _, _, _} -> updated_at
               # fallback
               _ -> DateTime.utc_now()
             end
@@ -370,6 +370,9 @@ defmodule HexHub.Packages do
                          {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
                           downloads, inserted_at, _updated_at, url, package_url, html_url,
                           docs_html_url} = release_tuple
+
+                         # Delete the old record first (required for :bag tables)
+                         :mnesia.delete_object(release_tuple)
 
                          updated_release = {
                            @releases_table,
@@ -464,6 +467,9 @@ defmodule HexHub.Packages do
                      {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
                       downloads, inserted_at, _updated_at, url, package_url, html_url,
                       docs_html_url} = release_tuple
+
+                     # Delete the old record first (required for :bag tables)
+                     :mnesia.delete_object(release_tuple)
 
                      updated_release = {
                        @releases_table,
