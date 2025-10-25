@@ -1,6 +1,11 @@
 defmodule HexHubWeb.API.PackageController do
   use HexHubWeb, :controller
 
+  alias HexHub.RegistryFormat
+  alias HexHubWeb.Plugs.HexFormat
+
+  plug HexFormat
+
   def list(conn, params) do
     start_time = System.monotonic_time()
     search = params["search"]
@@ -90,7 +95,15 @@ defmodule HexHubWeb.API.PackageController do
 
         HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200)
 
-        json(conn, format_package_for_show(package))
+        # Format response based on client type (Hex client vs browser/API)
+        data = case conn.assigns[:hex_format] do
+          :etf ->
+            RegistryFormat.format_package_for_registry(package)
+          _ ->
+            format_package_for_show(package)
+        end
+
+        HexFormat.send_hex_response(conn, data)
 
       {:error, :not_found} ->
         duration_ms =
