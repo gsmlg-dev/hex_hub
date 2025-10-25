@@ -145,9 +145,8 @@ defmodule HexHubWeb.MCPControllerTest do
     end
   end
 
-  # Authentication tests removed - require functions that don't exist yet
-  # TODO: Re-add when HexHub.Users.create_user/1 and HexHub.ApiKeys.create_key/3 are implemented
-
-  # CORS and error handling tests removed - need additional controller support
-  # TODO: Re-add when CORS handling is properly implemented in the controller
+  # Note: Authentication tests can be added using HexHub.Users.create_user/3
+  # and HexHub.ApiKeys.generate_key/3
+  #
+  # Note: CORS and error handling tests can be added when needed
 end

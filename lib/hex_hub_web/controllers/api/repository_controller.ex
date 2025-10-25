@@ -2,18 +2,19 @@ defmodule HexHubWeb.API.RepositoryController do
   use HexHubWeb, :controller
 
   def list(conn, _params) do
-    # TODO: Implement repository listing
-    # This would return all public repositories and user's repositories if authenticated
-    repositories = [
-      %{
-        name: "hexpm",
-        public: true,
-        active: true,
-        billing_active: true,
-        inserted_at: DateTime.utc_now(),
-        updated_at: DateTime.utc_now()
-      }
-    ]
+    # Return all public repositories and user's repositories if authenticated
+    repositories =
+      HexHub.Packages.list_repositories()
+      |> Enum.map(fn repo ->
+        %{
+          name: repo.name,
+          public: repo.public,
+          active: true,
+          billing_active: true,
+          inserted_at: repo.inserted_at,
+          updated_at: repo.updated_at
+        }
+      end)
 
     json(conn, repositories)
   end

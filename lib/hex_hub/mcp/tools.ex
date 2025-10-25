@@ -8,6 +8,14 @@ defmodule HexHub.MCP.Tools do
 
   require Logger
 
+  alias HexHub.MCP.Tools.{
+    Dependencies,
+    Documentation,
+    Packages,
+    Releases,
+    Repositories
+  }
+
   defstruct [:name, :description, :input_schema, :handler]
 
   @type t :: %__MODULE__{
@@ -262,48 +270,30 @@ defmodule HexHub.MCP.Tools do
 
   # Tool handlers (will be implemented in separate modules)
 
-  defp search_packages_handler(args, _context),
-    do: HexHub.MCP.Tools.Packages.search_packages(args)
+  defp search_packages_handler(args, _context), do: Packages.search_packages(args)
+  defp get_package_handler(args, _context), do: Packages.get_package(args)
+  defp list_packages_handler(args, _context), do: Packages.list_packages(args)
+  defp get_package_metadata_handler(args, _context), do: Packages.get_package_metadata(args)
 
-  defp get_package_handler(args, _context), do: HexHub.MCP.Tools.Packages.get_package(args)
-  defp list_packages_handler(args, _context), do: HexHub.MCP.Tools.Packages.list_packages(args)
+  defp list_releases_handler(args, _context), do: Releases.list_releases(args)
+  defp get_release_handler(args, _context), do: Releases.get_release(args)
+  defp download_release_handler(args, _context), do: Releases.download_release(args)
+  defp compare_releases_handler(args, _context), do: Releases.compare_releases(args)
 
-  defp get_package_metadata_handler(args, _context),
-    do: HexHub.MCP.Tools.Packages.get_package_metadata(args)
-
-  defp list_releases_handler(args, _context), do: HexHub.MCP.Tools.Releases.list_releases(args)
-  defp get_release_handler(args, _context), do: HexHub.MCP.Tools.Releases.get_release(args)
-
-  defp download_release_handler(args, _context),
-    do: HexHub.MCP.Tools.Releases.download_release(args)
-
-  defp compare_releases_handler(args, _context),
-    do: HexHub.MCP.Tools.Releases.compare_releases(args)
-
-  defp get_documentation_handler(args, _context),
-    do: HexHub.MCP.Tools.Documentation.get_documentation(args)
+  defp get_documentation_handler(args, _context), do: Documentation.get_documentation(args)
 
   defp list_documentation_versions_handler(args, _context),
-    do: HexHub.MCP.Tools.Documentation.list_documentation_versions(args)
+    do: Documentation.list_documentation_versions(args)
 
-  defp search_documentation_handler(args, _context),
-    do: HexHub.MCP.Tools.Documentation.search_documentation(args)
+  defp search_documentation_handler(args, _context), do: Documentation.search_documentation(args)
 
-  defp resolve_dependencies_handler(args, _context),
-    do: HexHub.MCP.Tools.Dependencies.resolve_dependencies(args)
+  defp resolve_dependencies_handler(args, _context), do: Dependencies.resolve_dependencies(args)
+  defp get_dependency_tree_handler(args, _context), do: Dependencies.get_dependency_tree(args)
+  defp check_compatibility_handler(args, _context), do: Dependencies.check_compatibility(args)
 
-  defp get_dependency_tree_handler(args, _context),
-    do: HexHub.MCP.Tools.Dependencies.get_dependency_tree(args)
-
-  defp check_compatibility_handler(args, _context),
-    do: HexHub.MCP.Tools.Dependencies.check_compatibility(args)
-
-  defp list_repositories_handler(args, _context),
-    do: HexHub.MCP.Tools.Repositories.list_repositories(args)
-
-  defp get_repository_info_handler(args, _context),
-    do: HexHub.MCP.Tools.Repositories.get_repository_info(args)
+  defp list_repositories_handler(args, _context), do: Repositories.list_repositories(args)
+  defp get_repository_info_handler(args, _context), do: Repositories.get_repository_info(args)
 
   defp toggle_package_visibility_handler(args, _context),
-    do: HexHub.MCP.Tools.Repositories.toggle_package_visibility(args)
+    do: Repositories.toggle_package_visibility(args)
 end

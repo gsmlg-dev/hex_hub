@@ -9,7 +9,7 @@ defmodule HexHub.MCP.Server do
   use GenServer
   require Logger
 
-  alias HexHub.MCP.Tools
+  alias HexHub.MCP.{Schemas, Tools}
 
   @type state :: %{
           tools: map(),
@@ -108,9 +108,9 @@ defmodule HexHub.MCP.Server do
   # Private functions
 
   defp process_request(request, transport_state, state) do
-    case HexHub.MCP.Schemas.parse_request(request) do
+    case Schemas.parse_request(request) do
       {:ok, parsed_request} ->
-        case HexHub.MCP.Schemas.validate_request(parsed_request) do
+        case Schemas.validate_request(parsed_request) do
           {:ok, validated_request} ->
             # Get request ID from either map with string keys or atom keys
             request_id = get_request_id(validated_request)
