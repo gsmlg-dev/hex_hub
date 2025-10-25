@@ -96,12 +96,14 @@ defmodule HexHubWeb.API.PackageController do
         HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200)
 
         # Format response based on client type (Hex client vs browser/API)
-        data = case conn.assigns[:hex_format] do
-          :etf ->
-            RegistryFormat.format_package_for_registry(package)
-          _ ->
-            format_package_for_show(package)
-        end
+        data =
+          case conn.assigns[:hex_format] do
+            :etf ->
+              RegistryFormat.format_package_for_registry(package)
+
+            _ ->
+              format_package_for_show(package)
+          end
 
         HexFormat.send_hex_response(conn, data)
 

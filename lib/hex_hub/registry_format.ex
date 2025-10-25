@@ -123,8 +123,8 @@ defmodule HexHub.RegistryFormat do
     accept = Plug.Conn.get_req_header(conn, "accept") |> List.first() || ""
 
     String.contains?(user_agent, "Hex/") or
-    String.contains?(user_agent, "hex_core") or
-    String.contains?(accept, "application/vnd.hex+erlang")
+      String.contains?(user_agent, "hex_core") or
+      String.contains?(accept, "application/vnd.hex+erlang")
   end
 
   @doc """
