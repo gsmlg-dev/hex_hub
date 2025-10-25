@@ -8,8 +8,9 @@ on:
 
 jobs:
   test:
+    name: Test
     runs-on: ubuntu-latest
-    
+
     services:
       mailhog:
         image: mailhog/mailhog:latest

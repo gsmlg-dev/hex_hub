@@ -5,8 +5,8 @@ on:
     branches: [ '*' ]
 
 jobs:
-  test:
-    name: Build and test
+  ci:
+    name: Check Format and Lint
     runs-on: ubuntu-latest
 
     steps:
