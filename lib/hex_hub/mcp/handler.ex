@@ -94,10 +94,6 @@ defmodule HexHub.MCP.Handler do
 
       {:error, :invalid_request} ->
         {:error, :invalid_request_format}
-
-      {:error, reason} ->
-        Logger.warning("Parse error: #{inspect(reason)}")
-        {:error, reason}
     end
   end
 
@@ -272,7 +268,7 @@ defmodule HexHub.MCP.Handler do
 
   defp get_error_code(response) do
     case response do
-      %{error: %{code: code}} -> code
+      %{"error" => %{"code" => code}} -> code
       _ -> -32000
     end
   end

@@ -174,7 +174,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp find_suitable_version(package, requirement, elixir_version) do
     case Packages.list_releases(package) do
-      releases when is_list(releases) ->
+      {:ok, releases} ->
         suitable_versions =
           releases
           |> Enum.map(& &1.version)
@@ -182,7 +182,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
             Version.match?(version, requirement) and
               compatible_with_elixir?(package, version, elixir_version)
           end)
-          |> Enum.sort_by(&Version.compare/2, :desc)
+          |> Enum.sort(&(Version.compare(&1, &2) == :gt))
 
         case suitable_versions do
           [version | _] -> {:ok, version}
@@ -281,8 +281,6 @@ defmodule HexHub.MCP.Tools.Dependencies do
       end
     end
   end
-
-  defp parse_release_requirements(nil), do: %{}
 
   defp parse_release_requirements(requirements) when is_map(requirements), do: requirements
 

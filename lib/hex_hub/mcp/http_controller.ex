@@ -165,21 +165,6 @@ defmodule HexHub.MCP.HTTPController do
           }
         })
         |> halt()
-
-      {:error, reason} ->
-        Logger.warning("MCP authentication failed: #{inspect(reason)}")
-
-        conn
-        |> put_status(:unauthorized)
-        |> json(%{
-          jsonrpc: "2.0",
-          id: nil,
-          error: %{
-            code: -32001,
-            message: "Authentication failed"
-          }
-        })
-        |> halt()
     end
   end
 

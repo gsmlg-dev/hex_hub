@@ -20,7 +20,7 @@ defmodule HexHub.MCP.Tools.Releases do
     Logger.debug("MCP listing releases for package: #{name}")
 
     case Packages.list_releases(name) do
-      releases when is_list(releases) ->
+      {:ok, releases} ->
         filtered_releases =
           if include_retired do
             releases
@@ -182,14 +182,16 @@ defmodule HexHub.MCP.Tools.Releases do
     }
   end
 
-  defp parse_requirements(nil), do: %{}
+  defp parse_requirements(requirements) when is_map(requirements), do: requirements
 
-  defp parse_requirements(requirements) do
-    case Jason.decode(requirements || "{}") do
+  defp parse_requirements(requirements) when is_binary(requirements) do
+    case Jason.decode(requirements) do
       {:ok, reqs} -> reqs
       {:error, _} -> %{}
     end
   end
+
+  defp parse_requirements(_), do: %{}
 
   defp get_retirement_info(release) do
     case release.retirement do

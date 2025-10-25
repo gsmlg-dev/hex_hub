@@ -72,7 +72,7 @@ defmodule HexHub.MCP.Tools.Documentation do
     Logger.debug("MCP listing documentation versions for: #{name}")
 
     case Packages.list_releases(name) do
-      releases when is_list(releases) ->
+      {:ok, releases} ->
         doc_versions =
           releases
           |> Enum.filter(& &1.has_docs)
@@ -145,11 +145,11 @@ defmodule HexHub.MCP.Tools.Documentation do
 
   defp get_latest_version_with_docs(name) do
     case Packages.list_releases(name) do
-      releases when is_list(releases) ->
+      {:ok, releases} ->
         releases
         |> Enum.filter(& &1.has_docs)
         |> Enum.map(& &1.version)
-        |> Enum.sort_by(&Version.compare/2, :desc)
+        |> Enum.sort(&(Version.compare(&1, &2) == :gt))
         |> List.first()
 
       _ ->
