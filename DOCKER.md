@@ -60,7 +60,7 @@ docker run -p 4000:4000 \
 version: '3.8'
 services:
   hex_hub:
-    image: ghcr.io/your-org/hex_hub:latest
+    image: ghcr.io/gsmlg-dev/hex_hub:latest
     ports:
       - "4000:4000"
     environment:
@@ -76,7 +76,7 @@ services:
 version: '3.8'
 services:
   hex_hub1:
-    image: ghcr.io/your-org/hex_hub:latest
+    image: ghcr.io/gsmlg-dev/hex_hub:latest
     ports:
       - "4000:4000"
     environment:
@@ -88,7 +88,7 @@ services:
       - hex_hub_storage:/app/priv/storage
 
   hex_hub2:
-    image: ghcr.io/your-org/hex_hub:latest
+    image: ghcr.io/gsmlg-dev/hex_hub:latest
     ports:
       - "4001:4000"
     environment:
@@ -172,7 +172,7 @@ spec:
     spec:
       containers:
       - name: hex-hub
-        image: ghcr.io/your-org/hex_hub:latest
+        image: ghcr.io/gsmlg-dev/hex_hub:latest
         ports:
         - containerPort: 4000
         env:

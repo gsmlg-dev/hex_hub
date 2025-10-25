@@ -8,7 +8,7 @@ defmodule HexHub.MCP.Transport do
 
   require Logger
 
-  alias HexHub.MCP.{Server, Schemas}
+  alias HexHub.MCP.Server
 
   @doc """
   Initialize the transport layer.
@@ -60,7 +60,7 @@ defmodule HexHub.MCP.Transport do
   @doc """
   Handle HTTP POST requests for JSON-RPC.
   """
-  def handle_http_request(conn, params) do
+  def handle_http_request(_conn, params) do
     request_json = Jason.encode!(params)
 
     case Server.handle_request(request_json, nil) do
@@ -80,6 +80,7 @@ defmodule HexHub.MCP.Transport do
       case extract_api_key(conn) do
         {:ok, api_key} ->
           validate_api_key(api_key)
+
         {:error, _} ->
           {:error, :unauthorized}
       end
@@ -91,7 +92,7 @@ defmodule HexHub.MCP.Transport do
   @doc """
   Apply rate limiting to requests.
   """
-  def check_rate_limit(conn, _opts) do
+  def check_rate_limit(_conn, _opts) do
     # Implement rate limiting based on client IP or API key
     # For now, just return :ok
     :ok
@@ -121,15 +122,17 @@ defmodule HexHub.MCP.Transport do
     }
 
     code = Map.get(error_codes, reason, -32000)
-    message = case reason do
-      :unauthorized -> "Unauthorized"
-      :rate_limited -> "Rate limit exceeded"
-      :invalid_request -> "Invalid request"
-      :method_not_found -> "Method not found"
-      :invalid_params -> "Invalid parameters"
-      :internal_error -> "Internal server error"
-      _ -> "Unknown error"
-    end
+
+    message =
+      case reason do
+        :unauthorized -> "Unauthorized"
+        :rate_limited -> "Rate limit exceeded"
+        :invalid_request -> "Invalid request"
+        :method_not_found -> "Method not found"
+        :invalid_params -> "Invalid parameters"
+        :internal_error -> "Internal server error"
+        _ -> "Unknown error"
+      end
 
     %{
       jsonrpc: "2.0",
@@ -162,26 +165,22 @@ defmodule HexHub.MCP.Transport do
     case Base.decode64(auth) do
       {:ok, "mcp:" <> key} -> {:ok, key}
       {:ok, _} -> {:error, :invalid_auth_format}
-      {:error, _} -> {:error, :invalid_base64}
     end
   end
 
   defp extract_from_query_params(conn) do
     # Fallback to query parameters
-    case Plug.Conn.fetch_query_params(conn) do
-      {:ok, conn} ->
-        case conn.query_params do
-          %{"api_key" => key} -> {:ok, key}
-          _ -> {:error, :no_api_key}
-        end
-      {:error, _} ->
-        {:error, :invalid_query_params}
+    conn = Plug.Conn.fetch_query_params(conn)
+
+    case conn.query_params do
+      %{"api_key" => key} -> {:ok, key}
+      _ -> {:error, :no_api_key}
     end
   end
 
   defp validate_api_key(api_key) do
     # Use existing HexHub API key validation
-    case HexHub.APIKeys.authenticate(api_key) do
+    case HexHub.ApiKeys.validate_key(api_key) do
       {:ok, _user} -> :ok
       {:error, _reason} -> {:error, :unauthorized}
     end
@@ -230,10 +229,13 @@ defmodule HexHub.MCP.Transport do
     case error do
       :connection_closed ->
         {:stop, :normal, state}
+
       :timeout ->
         {:stop, :timeout, state}
+
       :protocol_error ->
         {:stop, :protocol_error, state}
+
       _ ->
         {:stop, :error, state}
     end

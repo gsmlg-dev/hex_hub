@@ -109,7 +109,7 @@
         </div>
         <div class="stat-title">Upstream</div>
         <div class="stat-value text-info">
-          <%= if @stats.upstream_enabled, do: "Enabled", else: "Disabled" %>
+          {if @stats.upstream_enabled, do: "Enabled", else: "Disabled"}
         </div>
       </div>
 
@@ -131,7 +131,7 @@
         </div>
         <div class="stat-title">Storage</div>
         <div class="stat-value text-warning">
-          <%= String.capitalize(to_string(@stats.storage_type)) %>
+          {String.capitalize(to_string(@stats.storage_type))}
         </div>
       </div>
     </div>

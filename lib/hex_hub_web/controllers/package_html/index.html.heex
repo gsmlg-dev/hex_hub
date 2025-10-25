@@ -12,7 +12,7 @@
     
 <!-- Search -->
     <div class="mb-6">
-      <.dm_form method="get" action="/packages" class="max-w-md mx-auto">
+      <.dm_form method="get" action="/browse" class="max-w-md mx-auto">
         <div class="join w-full">
           <input
             type="text"
@@ -81,7 +81,7 @@
             <div class="flex items-start justify-between">
               <div>
                 <h2 class="card-title text-lg">
-                  <a href={~p"/packages/#{package.name}"} class="link link-primary">
+                  <a href={~p"/package/#{package.name}"} class="link link-primary">
                     {package.name}
                   </a>
                 </h2>

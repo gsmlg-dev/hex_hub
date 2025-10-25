@@ -9,7 +9,7 @@ defmodule HexHub.MCP.Tools.Packages do
   require Logger
 
   alias HexHub.{Packages, Repositories}
-  alias HexHub.MCP.Schemas
+  # alias HexHub.MCP.Schemas # Unused alias removed
 
   @doc """
   Search for packages by name, description, or metadata.
@@ -21,13 +21,14 @@ defmodule HexHub.MCP.Tools.Packages do
     Logger.debug("MCP searching packages with query: #{query}")
 
     case Packages.search_packages(query, [limit: limit] ++ build_search_opts(filters)) do
-      {:ok, packages} ->
+      {:ok, packages, total} ->
         result = %{
           packages: Enum.map(packages, &format_package/1),
-          total: length(packages),
+          total: total,
           query: query,
           filters: filters
         }
+
         {:ok, result}
 
       {:error, reason} ->
@@ -44,14 +45,14 @@ defmodule HexHub.MCP.Tools.Packages do
   Get detailed information about a specific package.
   """
   def get_package(%{"name" => name} = args) do
-    repository = Map.get(args, "repository")
+    _repository = Map.get(args, "repository")
 
     Logger.debug("MCP getting package info for: #{name}")
 
-    case Packages.get_package(name, repository) do
+    case Packages.get_package(name) do
       {:ok, package} ->
         # Get additional metadata
-        releases = Packages.list_releases(name)
+        {:ok, releases} = Packages.list_releases(name)
         formatted_package = format_package(package)
         formatted_releases = Enum.map(releases, &format_release/1)
 
@@ -94,13 +95,13 @@ defmodule HexHub.MCP.Tools.Packages do
     ]
 
     case Packages.list_packages(opts) do
-      {:ok, packages} ->
+      {:ok, packages, total} ->
         result = %{
           packages: Enum.map(packages, &format_package/1),
           pagination: %{
             page: page,
             per_page: per_page,
-            total_packages: length(packages) # Would need actual count from database
+            total_packages: total
           },
           sort: sort,
           order: order
@@ -198,6 +199,7 @@ defmodule HexHub.MCP.Tools.Packages do
   end
 
   defp get_latest_version([]), do: nil
+
   defp get_latest_version(releases) do
     releases
     |> Enum.map(& &1.version)
@@ -213,6 +215,7 @@ defmodule HexHub.MCP.Tools.Packages do
           url: repo.url,
           public: repo.public
         }
+
       {:error, _} ->
         %{
           name: repository_name,
@@ -223,6 +226,7 @@ defmodule HexHub.MCP.Tools.Packages do
   end
 
   defp parse_requirements(nil), do: %{}
+
   defp parse_requirements(requirements) do
     case Jason.decode(requirements || "{}") do
       {:ok, reqs} -> reqs
@@ -232,7 +236,9 @@ defmodule HexHub.MCP.Tools.Packages do
 
   defp get_retirement_info(release) do
     case release.retirement do
-      nil -> nil
+      nil ->
+        nil
+
       retirement ->
         %{
           reason: retirement.reason,
@@ -302,21 +308,24 @@ defmodule HexHub.MCP.Tools.Packages do
 
   defp validate_fields(args, required, optional) do
     # Check required fields
-    missing_required = Enum.filter(required, fn field ->
-      not Map.has_key?(args, field) or is_nil(Map.get(args, field))
-    end)
+    missing_required =
+      Enum.filter(required, fn field ->
+        not Map.has_key?(args, field) or is_nil(Map.get(args, field))
+      end)
 
     if length(missing_required) > 0 do
       {:error, {:missing_required_fields, missing_required}}
     else
       # Check for unknown fields
       known_fields = required ++ optional
-      unknown_fields = Enum.filter(Map.keys(args), fn field ->
-        field not in known_fields
-      end)
+
+      unknown_fields =
+        Enum.filter(Map.keys(args), fn field ->
+          field not in known_fields
+        end)
 
       if length(unknown_fields) > 0 do
-        Logger.warn("Unknown fields in args: #{inspect(unknown_fields)}")
+        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
         # Don't error on unknown fields, just warn
       end
 
@@ -370,9 +379,13 @@ defmodule HexHub.MCP.Tools.Packages do
   Log package operation for telemetry.
   """
   def log_package_operation(operation, package_name, metadata \\ %{}) do
-    :telemetry.execute([:hex_hub, :mcp, :packages], %{
-      operation: operation,
-      package_name: package_name
-    }, metadata)
+    :telemetry.execute(
+      [:hex_hub, :mcp, :packages],
+      %{
+        operation: operation,
+        package_name: package_name
+      },
+      metadata
+    )
   end
 end

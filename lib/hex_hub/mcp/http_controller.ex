@@ -152,6 +152,7 @@ defmodule HexHub.MCP.HTTPController do
     case HexHub.MCP.Transport.authenticate_request(conn, []) do
       :ok ->
         conn
+
       {:error, :unauthorized} ->
         conn
         |> put_status(:unauthorized)
@@ -164,8 +165,10 @@ defmodule HexHub.MCP.HTTPController do
           }
         })
         |> halt()
+
       {:error, reason} ->
-        Logger.warn("MCP authentication failed: #{inspect(reason)}")
+        Logger.warning("MCP authentication failed: #{inspect(reason)}")
+
         conn
         |> put_status(:unauthorized)
         |> json(%{
@@ -184,18 +187,6 @@ defmodule HexHub.MCP.HTTPController do
     case HexHub.MCP.Transport.check_rate_limit(conn, []) do
       :ok ->
         conn
-      {:error, :rate_limited} ->
-        conn
-        |> put_status(:too_many_requests)
-        |> json(%{
-          jsonrpc: "2.0",
-          id: nil,
-          error: %{
-            code: -32002,
-            message: "Rate limit exceeded"
-          }
-        })
-        |> halt()
     end
   end
 
@@ -305,6 +296,7 @@ defmodule HexHub.MCP.HTTPController do
         # Get process start time (this would need to be stored at startup)
         # For now, return a placeholder
         "unknown"
+
       _ ->
         "unknown"
     end

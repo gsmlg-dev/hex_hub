@@ -8,31 +8,33 @@ defmodule HexHub.Upstream do
   """
 
   require Logger
-  alias HexHub.Storage
+  alias HexHub.{Storage, UpstreamConfig}
 
   @type upstream_config :: %{
           enabled: boolean(),
           api_url: String.t(),
           repo_url: String.t(),
+          api_key: String.t() | nil,
           timeout: integer(),
           retry_attempts: integer(),
           retry_delay: integer()
         }
 
   @doc """
-  Get the current upstream configuration.
+  Get the current upstream configuration from the database.
   """
   @spec config() :: upstream_config()
   def config do
+    db_config = UpstreamConfig.get_config()
+
     %{
-      enabled: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:enabled, true),
-      api_url: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:api_url, "https://hex.pm"),
-      repo_url: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:repo_url, "https://repo.hex.pm"),
-      timeout: Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:timeout, 30_000),
-      retry_attempts:
-        Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:retry_attempts, 3),
-      retry_delay:
-        Application.get_env(:hex_hub, :upstream, []) |> Keyword.get(:retry_delay, 1_000)
+      enabled: db_config.enabled,
+      api_url: db_config.api_url,
+      repo_url: db_config.repo_url,
+      api_key: db_config.api_key,
+      timeout: db_config.timeout,
+      retry_attempts: db_config.retry_attempts,
+      retry_delay: db_config.retry_delay
     }
   end
 
@@ -41,7 +43,15 @@ defmodule HexHub.Upstream do
   """
   @spec enabled?() :: boolean()
   def enabled? do
-    config().enabled
+    UpstreamConfig.enabled?()
+  end
+
+  @doc """
+  Check if upstream API key is configured.
+  """
+  @spec api_key_configured?() :: boolean()
+  def api_key_configured? do
+    UpstreamConfig.api_key_configured?()
   end
 
   @doc """
@@ -168,6 +178,7 @@ defmodule HexHub.Upstream do
             releases when is_list(releases) ->
               HexHub.Telemetry.track_upstream_request("fetch_releases", duration_ms, 200)
               {:ok, releases}
+
             _ ->
               {:error, "Invalid package format: missing releases"}
           end
@@ -242,12 +253,20 @@ defmodule HexHub.Upstream do
   end
 
   defp make_request(url, config) do
+    # Build headers with optional API key
+    base_headers = [
+      {"user-agent", "HexHub/0.1.0 (Upstream-Mode)"}
+    ]
+
+    headers =
+      case config.api_key do
+        nil -> base_headers
+        api_key -> [{"authorization", "Bearer #{api_key}"} | base_headers]
+      end
+
     req_opts = [
       receive_timeout: config.timeout,
-      # Add user agent for upstream identification
-      headers: [
-        {"user-agent", "HexHub/0.1.0 (Upstream-Mode)"}
-      ]
+      headers: headers
     ]
 
     case Req.get(url, req_opts) do
@@ -264,14 +283,19 @@ defmodule HexHub.Upstream do
         # Handle hex package format - extract the tarball contents
         # Keys may be strings or charlists
         contents_key = "contents.tar.gz"
+
         case Enum.find(body, fn {key, _} ->
-          key == contents_key or key == String.to_charlist(contents_key)
-        end) do
+               key == contents_key or key == String.to_charlist(contents_key)
+             end) do
           {_, tarball_data} when is_binary(tarball_data) ->
             Logger.debug("Found tarball contents, size: #{byte_size(tarball_data)}")
             {:ok, tarball_data}
+
           _ ->
-            Logger.error("Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}")
+            Logger.error(
+              "Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}"
+            )
+
             {:error, "Invalid package format: missing contents.tar.gz"}
         end
 

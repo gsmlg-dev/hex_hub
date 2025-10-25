@@ -6,6 +6,15 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
     setup %{conn: conn} do
       # Reset packages test store
       Packages.reset_test_store()
+
+      # Ensure storage directories exist
+      File.mkdir_p!("priv/test_storage/packages")
+      File.mkdir_p!("priv/test_storage/docs")
+
+      # Configure storage
+      Application.put_env(:hex_hub, :storage_type, :local)
+      Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
+
       %{api_key: api_key} = setup_authenticated_user()
       %{conn: authenticated_conn(conn, api_key)}
     end

@@ -9,6 +9,7 @@ HexHub is a **complete private hex package manager and hexdocs server** built wi
 ### Architecture Highlights
 
 **Dual Web Interface**: Main public API (`hex_hub_web`) + Admin dashboard (`hex_hub_admin_web`)
+**MCP Server**: Complete Model Context Protocol implementation for AI client integration
 **Mnesia Database**: No external database required, with clustering support for high availability
 **Storage Abstraction**: Local filesystem or S3-compatible storage via `HexHub.Storage`
 **Upstream Integration**: Transparent fallback to hex.pm or any hex-compatible repository
@@ -17,6 +18,7 @@ HexHub is a **complete private hex package manager and hexdocs server** built wi
 ## Key Architecture
 
 - **Phoenix Framework 1.8.0-rc.4**: Web layer with LiveView for real-time features
+- **MCP Server**: Model Context Protocol server for AI client integration
 - **Mnesia**: In-memory distributed database (no PostgreSQL required)
 - **Tailwind CSS + DaisyUI**: Modern styling with responsive design
 - **Bun**: JavaScript bundling and build tooling
@@ -104,6 +106,18 @@ lib/
 │   ├── controllers/           # Admin CRUD operations
 │   ├── components/            # Admin LiveView components
 │   └── router.ex             # Admin routes
+├── hex_hub/mcp/               # MCP (Model Context Protocol) server
+│   ├── server.ex              # Main MCP server implementation
+│   ├── handler.ex             # JSON-RPC message handling
+│   ├── transport.ex           # HTTP/WebSocket transport layer
+│   ├── tools/                 # MCP tool implementations
+│   │   ├── packages.ex        # Package management tools
+│   │   ├── releases.ex        # Release management tools
+│   │   ├── documentation.ex   # Documentation access tools
+│   │   ├── dependencies.ex    # Dependency resolution tools
+│   │   └── repositories.ex    # Repository management tools
+│   ├── schemas.ex             # MCP JSON schemas
+│   └── supervisor.ex          # MCP server supervision
 ```
 
 ## Key Files
@@ -115,6 +129,7 @@ lib/
 - `lib/hex_hub/mnesia.ex` - Mnesia database setup and table definitions
 - `lib/hex_hub/clustering.ex` - Cluster management logic
 - `lib/hex_hub/storage.ex` - Storage abstraction (local/S3)
+- `lib/hex_hub/mcp/server.ex` - MCP server implementation
 - `scripts/cluster.sh` - Cluster management script
 
 ## Important Development Notes
@@ -172,6 +187,7 @@ AWS_S3_PATH_STYLE=true               # Required for MinIO
 # Upstream Configuration
 UPSTREAM_ENABLED=true                # Enable upstream package fetching
 UPSTREAM_URL=https://hex.pm          # Upstream hex repository URL
+UPSTREAM_API_KEY=your_api_key        # API key for private repositories (optional)
 UPSTREAM_TIMEOUT=30000               # Request timeout in milliseconds
 UPSTREAM_RETRY_ATTEMPTS=3            # Number of retry attempts
 UPSTREAM_RETRY_DELAY=1000            # Delay between retries in milliseconds
@@ -257,6 +273,8 @@ _build/prod/rel/hex_hub/bin/hex_hub start
 - `/health/ready` - Kubernetes readiness
 - `/health/live` - Kubernetes liveness
 - `/api/cluster/status` - Cluster status
+- `/mcp/http` - MCP HTTP endpoint
+- `/mcp/ws` - MCP WebSocket endpoint
 
 ## Performance Characteristics
 
@@ -311,14 +329,29 @@ Tests automatically reset Mnesia between runs:
 HexHub.Mnesia.reset_test_store()  # Clean test database
 ```
 
+### MCP Server Testing
+MCP functionality includes comprehensive test coverage:
+```elixir
+# Run MCP-specific tests
+mix test test/hex_hub/mcp/
+
+# Test MCP tools
+mix test test/hex_hub/mcp/tools/
+
+# Test MCP server integration
+mix test test/hex_hub/mcp/server_test.exs
+```
+
 ### Upstream Package Fetching
 
 HexHub automatically fetches packages from upstream when not found locally, creating a transparent caching proxy for hex.pm or any hex-compatible repository.
 
 **Configuration**: Enable/disable via `UPSTREAM_ENABLED` environment variable
+**API Key Support**: Optional `UPSTREAM_API_KEY` for authenticating with private repositories
 **Behavior**: Packages fetched once are cached permanently for future requests
 **Monitoring**: All upstream requests tracked with telemetry metrics
 **Retry Logic**: Automatic retry with exponential backoff for network failures
+**Authentication**: Uses Bearer token authentication when API key is configured
 
 ### Authentication Patterns
 
@@ -330,6 +363,21 @@ curl -H "Authorization: Bearer YOUR_API_KEY" /api/packages
 **Permission Levels**: Read/write access separated by API key permissions
 **Rate Limiting**: Configurable per-endpoint rate limiting
 **Security**: All secrets hashed with bcrypt
+
+### MCP Server Development
+
+The MCP (Model Context Protocol) server provides AI clients with comprehensive package management capabilities:
+
+**Architecture**: JSON-RPC server with HTTP/WebSocket transport
+**Tools Available**: Package search, release management, documentation access, dependency resolution, repository management
+**Configuration**: Enable via `config :hex_hub, :mcp, enabled: true`
+**Deployment**: See `MCP_DEPLOYMENT.md` for detailed configuration and usage
+
+**Key MCP Files**:
+- `lib/hex_hub/mcp/server.ex` - Main MCP server GenServer
+- `lib/hex_hub/mcp/handler.ex` - JSON-RPC request handling
+- `lib/hex_hub/mcp/transport.ex` - HTTP/WebSocket transport layer
+- `lib/hex_hub/mcp/tools/` - MCP tool implementations
 
 ### Development Patterns
 

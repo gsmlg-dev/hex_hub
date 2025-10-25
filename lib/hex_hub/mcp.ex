@@ -11,15 +11,20 @@ defmodule HexHub.MCP do
 
   use Application
 
-  import Supervisor, only: [child_spec: 2]
-
   def start(_type, _args) do
     unless Application.get_env(:hex_hub, :mcp)[:enabled] do
       :ignore
     else
       children = [
         {Phoenix.PubSub, name: HexHub.MCP.PubSub},
-        HexHub.MCP.DynamicSupervisor
+        {HexHub.MCP.DynamicSupervisor, []},
+        # Start the MCP server
+        %{
+          id: HexHub.MCP.Server,
+          start: {HexHub.MCP.Server, :start_link, [[]]},
+          restart: :transient,
+          type: :worker
+        }
       ]
 
       opts = [strategy: :one_for_one, name: HexHub.MCP.Supervisor]
@@ -52,7 +57,8 @@ defmodule HexHub.MCP do
   Returns the rate limit for MCP requests.
   """
   def rate_limit do
-    config()[:rate_limit] || 1000  # requests per hour
+    # requests per hour
+    config()[:rate_limit] || 1000
   end
 
   @doc """

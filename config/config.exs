@@ -36,7 +36,7 @@ config :hex_hub, :mcp,
   debug: System.get_env("MCP_DEBUG", "false") == "true"
 
 config :bun,
-  version: "1.2.16",
+  version: "1.2.13",
   hex_hub: [
     args: ~w(build assets/js/app.js --outdir=priv/static/assets),
     cd: Path.expand("..", __DIR__),
@@ -49,7 +49,7 @@ config :bun,
   ]
 
 config :tailwind,
-  version: "4.1.7",
+  version: "4.1.11",
   hex_hub: [
     args: ~w(
       --input=assets/css/app.css
@@ -71,7 +71,7 @@ config :logger, :default_formatter,
 
 config :phoenix, :json_library, Jason
 
-# Upstream configuration
+# Upstream configuration (stored in Mnesia database)
 config :hex_hub, :upstream,
   enabled: true,
   api_url: "https://hex.pm",

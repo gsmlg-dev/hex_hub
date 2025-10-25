@@ -36,7 +36,9 @@ defmodule HexHub.MCP.DynamicSupervisor do
   """
   def stop_server do
     case Process.whereis(HexHub.MCP.Server) do
-      nil -> :ok
+      nil ->
+        :ok
+
       pid ->
         DynamicSupervisor.terminate_child(__MODULE__, pid)
     end

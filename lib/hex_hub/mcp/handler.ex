@@ -18,12 +18,14 @@ defmodule HexHub.MCP.Handler do
 
     Logger.debug("MCP handling request: #{inspect(request)}")
 
-    result = case parse_and_validate_request(request) do
-      {:ok, validated_request} ->
-        execute_request(validated_request, transport_state)
-      {:error, reason} ->
-        format_error_response(reason, get_request_id(request))
-    end
+    result =
+      case parse_and_validate_request(request) do
+        {:ok, validated_request} ->
+          execute_request(validated_request, transport_state)
+
+        {:error, reason} ->
+          format_error_response(reason, get_request_id(request))
+      end
 
     end_time = System.monotonic_time(:millisecond)
     duration = end_time - start_time
@@ -53,6 +55,7 @@ defmodule HexHub.MCP.Handler do
       {:ok, _pid} ->
         Logger.info("MCP Server started successfully")
         :ok
+
       {:error, reason} ->
         Logger.error("Failed to start MCP Server: #{inspect(reason)}")
         {:error, reason}
@@ -71,83 +74,110 @@ defmodule HexHub.MCP.Handler do
   # Private helper functions
 
   defp parse_and_validate_request(request) do
-    with {:ok, parsed} <- Schemas.parse_request(request),
-         {:ok, validated} <- Schemas.validate_request(parsed) do
-      {:ok, validated}
+    Logger.debug("Parsing request: #{inspect(request)}")
+
+    with {:ok, parsed} <- Schemas.parse_request(request) do
+      Logger.debug("Parsed request: #{inspect(parsed)}")
+
+      case Schemas.validate_request(parsed) do
+        {:ok, validated} ->
+          Logger.debug("Validated request: #{inspect(validated)}")
+          {:ok, validated}
+
+        {:error, reason} ->
+          Logger.warning("Validation failed: #{inspect(reason)}")
+          {:error, reason}
+      end
     else
-      {:error, :parse_error} -> {:error, :invalid_json}
-      {:error, :invalid_request} -> {:error, :invalid_request_format}
-      {:error, reason} -> {:error, reason}
+      {:error, :parse_error} ->
+        {:error, :invalid_json}
+
+      {:error, :invalid_request} ->
+        {:error, :invalid_request_format}
+
+      {:error, reason} ->
+        Logger.warning("Parse error: #{inspect(reason)}")
+        {:error, reason}
     end
   end
 
   defp execute_request(request, transport_state) do
-    case request.method do
+    case Map.get(request, "method") do
       "tools/list" ->
-        handle_list_tools(request)
+        {:ok, handle_list_tools(request)}
 
-      method when is_binary(method) and String.starts_with?(method, "tools/call/") ->
-        handle_tool_call(request, transport_state)
+      method when is_binary(method) ->
+        if String.starts_with?(method, "tools/call/") do
+          handle_tool_call(request, transport_state)
+        else
+          case method do
+            "initialize" ->
+              {:ok, handle_initialize(request)}
 
-      "initialize" ->
-        handle_initialize(request)
+            _ ->
+              format_error_response(:method_not_found, Map.get(request, "id"))
+          end
+        end
 
       _ ->
-        {:error, :method_not_found, request.id}
+        format_error_response(:method_not_found, Map.get(request, "id"))
     end
   end
 
   defp handle_list_tools(request) do
     case Server.list_tools() do
       {:ok, tools} ->
-        {:ok, build_response(request.id, %{tools: tools})}
+        build_response(Map.get(request, "id"), %{"tools" => tools})
+
       {:error, reason} ->
-        {:error, reason, request.id}
+        format_error_response(reason, Map.get(request, "id"))
     end
   end
 
   defp handle_tool_call(request, transport_state) do
-    tool_name = String.replace_prefix(request.method, "tools/call/", "")
+    method = Map.get(request, "method", "")
+    tool_name = String.replace_prefix(method, "tools/call/", "")
 
     case Server.get_tool_schema(tool_name) do
       {:ok, tool} ->
-        args = Map.get(request.params || %{}, "arguments", %{})
+        args = Map.get(Map.get(request, "params", %{}), "arguments", %{})
 
         case validate_tool_arguments(tool, args) do
           :ok ->
             case execute_tool(tool, args, transport_state) do
               {:ok, result} ->
-                {:ok, build_response(request.id, result)}
+                {:ok, build_response(Map.get(request, "id"), result)}
+
               {:error, reason} ->
-                {:error, reason, request.id}
+                format_error_response(reason, Map.get(request, "id"))
             end
 
           {:error, reason} ->
-            {:error, reason, request.id}
+            format_error_response(reason, Map.get(request, "id"))
         end
 
       {:error, _} ->
-        {:error, :tool_not_found, request.id}
+        format_error_response(:tool_not_found, Map.get(request, "id"))
     end
   end
 
   defp handle_initialize(request) do
     # Handle MCP initialization
     init_result = %{
-      protocolVersion: "2024-11-05",
-      capabilities: %{
-        tools: %{
-          listChanged: true
+      "protocolVersion" => "2024-11-05",
+      "capabilities" => %{
+        "tools" => %{
+          "listChanged" => true
         },
-        logging: %{}
+        "logging" => %{}
       },
-      serverInfo: %{
-        name: "HexHub MCP Server",
-        version: "1.0.0"
+      "serverInfo" => %{
+        "name" => "HexHub MCP Server",
+        "version" => "1.0.0"
       }
     }
 
-    {:ok, build_response(request.id, init_result)}
+    build_response(Map.get(request, "id"), init_result)
   end
 
   defp validate_tool_arguments(tool, args) do
@@ -171,23 +201,24 @@ defmodule HexHub.MCP.Handler do
 
   defp build_response(id, result) do
     %{
-      jsonrpc: "2.0",
-      id: id,
-      result: result
+      "jsonrpc" => "2.0",
+      "id" => id,
+      "result" => result
     }
   end
 
   defp format_error_response(reason, request_id) do
     {code, message} = map_error_to_mcp_error(reason)
 
-    {:error, %{
-      jsonrpc: "2.0",
-      id: request_id,
-      error: %{
-        code: code,
-        message: message
-      }
-    }}
+    {:error,
+     %{
+       "jsonrpc" => "2.0",
+       "id" => request_id,
+       "error" => %{
+         "code" => code,
+         "message" => message
+       }
+     }}
   end
 
   defp map_error_to_mcp_error(reason) do
@@ -206,16 +237,16 @@ defmodule HexHub.MCP.Handler do
     Map.get(error_mapping, reason, {-32000, "Unknown error"})
   end
 
-  defp get_request_id(request) do
-    case request do
-      %{id: id} -> id
-      _ -> nil
-    end
+  defp get_request_id(request) when is_map(request) do
+    # Support both string and atom keys for request ID
+    Map.get(request, "id") || Map.get(request, :id)
   end
+
+  defp get_request_id(_), do: nil
 
   defp log_request_result(request, result, duration) do
     case result do
-      {:ok, response} ->
+      {:ok, _response} ->
         Logger.info("MCP request completed", %{
           method: get_method(request),
           duration_ms: duration,
@@ -223,7 +254,7 @@ defmodule HexHub.MCP.Handler do
         })
 
       {:error, response} ->
-        Logger.warn("MCP request failed", %{
+        Logger.warning("MCP request failed", %{
           method: get_method(request),
           duration_ms: duration,
           status: "error",
@@ -362,11 +393,19 @@ defmodule HexHub.MCP.Handler do
     case Server.list_tools() do
       {:ok, tools} ->
         Enum.map(tools, fn tool ->
+          # Extract name from either string key or atom key
+          name = if is_map(tool), do: tool["name"] || Map.get(tool, :name), else: nil
+
+          description =
+            if is_map(tool), do: tool["description"] || Map.get(tool, :description), else: nil
+
           %{
-            name: tool.name,
-            description: tool.description,
-            enabled: true, # All tools are enabled by default
-            last_used: nil # Would need to track tool usage
+            name: name,
+            description: description,
+            # All tools are enabled by default
+            enabled: true,
+            # Would need to track tool usage
+            last_used: nil
           }
         end)
 
@@ -402,6 +441,7 @@ defmodule HexHub.MCP.Handler do
       :ok ->
         Logger.info("MCP Handler reloaded successfully")
         :ok
+
       {:error, reason} ->
         Logger.error("MCP Handler reload failed: #{inspect(reason)}")
         {:error, reason}

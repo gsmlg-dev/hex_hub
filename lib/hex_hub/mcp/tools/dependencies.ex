@@ -9,7 +9,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   require Logger
 
   alias HexHub.Packages
-  alias HexHub.MCP.Tools.Packages, as: PackageTools
+  # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
   Resolve Mix-style dependencies for a project.
@@ -118,14 +118,16 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp parse_requirements(requirements) when is_map(requirements) do
     # Parse Mix-style requirements map
-    parsed = Enum.map(requirements, fn {package, requirement} ->
-      case parse_requirement_string(requirement) do
-        {:ok, parsed_req} -> {package, parsed_req}
-        {:error, reason} -> {:error, {package, reason}}
-      end
-    end)
+    parsed =
+      Enum.map(requirements, fn {package, requirement} ->
+        case parse_requirement_string(requirement) do
+          {:ok, parsed_req} -> {package, parsed_req}
+          {:error, reason} -> {:error, {package, reason}}
+        end
+      end)
 
     errors = Enum.filter(parsed, &match?({:error, _}, &1))
+
     if length(errors) > 0 do
       {:error, {:invalid_requirements, errors}}
     else
@@ -139,10 +141,8 @@ defmodule HexHub.MCP.Tools.Dependencies do
     # Parse requirement strings like "~> 1.2.0", ">= 1.0.0", etc.
     try do
       # Use Mix's requirement parsing if available
-      case Version.parse_requirement(req_string) do
-        {:ok, requirement} -> {:ok, requirement}
-        {:error, reason} -> {:error, reason}
-      end
+      {:ok, requirement} = Version.parse_requirement(req_string)
+      {:ok, requirement}
     rescue
       _ -> {:error, :invalid_requirement_format}
     end
@@ -155,14 +155,16 @@ defmodule HexHub.MCP.Tools.Dependencies do
     # This is a simplified version - a real implementation would use
     # pubgrub or similar dependency resolution algorithm
 
-    resolved = Enum.map(requirements, fn {package, requirement} ->
-      case find_suitable_version(package, requirement, elixir_version) do
-        {:ok, version} -> {package, version}
-        {:error, reason} -> {:error, {package, reason}}
-      end
-    end)
+    resolved =
+      Enum.map(requirements, fn {package, requirement} ->
+        case find_suitable_version(package, requirement, elixir_version) do
+          {:ok, version} -> {package, version}
+          {:error, reason} -> {:error, {package, reason}}
+        end
+      end)
 
     errors = Enum.filter(resolved, &match?({:error, _}, &1))
+
     if length(errors) > 0 do
       {:error, {:resolution_failed, errors}}
     else
@@ -173,11 +175,12 @@ defmodule HexHub.MCP.Tools.Dependencies do
   defp find_suitable_version(package, requirement, elixir_version) do
     case Packages.list_releases(package) do
       releases when is_list(releases) ->
-        suitable_versions = releases
+        suitable_versions =
+          releases
           |> Enum.map(& &1.version)
           |> Enum.filter(fn version ->
             Version.match?(version, requirement) and
-            compatible_with_elixir?(package, version, elixir_version)
+              compatible_with_elixir?(package, version, elixir_version)
           end)
           |> Enum.sort_by(&Version.compare/2, :desc)
 
@@ -200,20 +203,22 @@ defmodule HexHub.MCP.Tools.Dependencies do
         elixir_req = Map.get(metadata, "elixir")
 
         case elixir_req do
-          nil -> true # No Elixir requirement specified
+          # No Elixir requirement specified
+          nil ->
+            true
+
           req ->
             try do
-              case Version.parse_requirement(req) do
-                {:ok, requirement} -> Version.match?(elixir_version, requirement)
-                {:error, _} -> true # Invalid requirement, assume compatible
-              end
+              {:ok, requirement} = Version.parse_requirement(req)
+              Version.match?(elixir_version, requirement)
             rescue
               _ -> true
             end
         end
 
       {:error, _} ->
-        true # Assume compatible if we can't check
+        # Assume compatible if we can't check
+        true
     end
   end
 
@@ -228,7 +233,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
     end)
   end
 
-  defp find_conflicts(resolution) do
+  defp find_conflicts(_resolution) do
     # Find version conflicts between dependencies
     # This would analyze the resolution for conflicts
     []
@@ -236,7 +241,8 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp get_resolution_time do
     # Return time taken for resolution (placeholder)
-    50 # milliseconds
+    # milliseconds
+    50
   end
 
   defp build_dependency_tree(name, version, max_depth, current_depth \\ 0) do
@@ -246,17 +252,20 @@ defmodule HexHub.MCP.Tools.Dependencies do
       case Packages.get_release(name, version) do
         {:ok, release} ->
           requirements = parse_release_requirements(release.requirements)
-          dependencies = Enum.map(requirements, fn {dep_name, req} ->
-            case find_suitable_version(dep_name, req, get_current_elixir_version()) do
-              {:ok, dep_version} ->
-                case build_dependency_tree(dep_name, dep_version, max_depth, current_depth + 1) do
-                  {:ok, dep_tree} -> dep_tree
-                  {:error, _} -> %{name: dep_name, error: true}
-                end
-              {:error, _} ->
-                %{name: dep_name, version: req, unresolved: true}
-            end
-          end)
+
+          dependencies =
+            Enum.map(requirements, fn {dep_name, req} ->
+              case find_suitable_version(dep_name, req, get_current_elixir_version()) do
+                {:ok, dep_version} ->
+                  case build_dependency_tree(dep_name, dep_version, max_depth, current_depth + 1) do
+                    {:ok, dep_tree} -> dep_tree
+                    {:error, _} -> %{name: dep_name, error: true}
+                  end
+
+                {:error, _} ->
+                  %{name: dep_name, version: req, unresolved: true}
+              end
+            end)
 
           tree = %{
             name: name,
@@ -274,6 +283,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   end
 
   defp parse_release_requirements(nil), do: %{}
+
   defp parse_release_requirements(requirements) do
     case Jason.decode(requirements || "{}") do
       {:ok, reqs} -> reqs
@@ -292,7 +302,9 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp calculate_max_depth(tree) do
     case Map.get(tree, :dependencies, []) do
-      [] -> Map.get(tree, :depth, 0)
+      [] ->
+        Map.get(tree, :depth, 0)
+
       deps ->
         deps
         |> Enum.map(&calculate_max_depth/1)
@@ -308,6 +320,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp count_leaf_nodes(tree) do
     deps = Map.get(tree, :dependencies, [])
+
     if length(deps) == 0 do
       1
     else
@@ -317,29 +330,37 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp calculate_avg_branching(tree) do
     deps = Map.get(tree, :dependencies, [])
+
     if length(deps) == 0 do
       0
     else
-      total_deps = Enum.sum(Enum.map(deps, fn dep ->
-        length(Map.get(dep, :dependencies, []))
-      end))
+      total_deps =
+        Enum.sum(
+          Enum.map(deps, fn dep ->
+            length(Map.get(dep, :dependencies, []))
+          end)
+        )
+
       total_deps / length(deps)
     end
   end
 
   defp count_total_dependencies(tree) do
-    count_nodes(tree) - 1 # Exclude root package
+    # Exclude root package
+    count_nodes(tree) - 1
   end
 
   defp parse_package_list(packages) when is_list(packages) do
-    parsed = Enum.map(packages, fn package ->
-      case parse_package_entry(package) do
-        {:ok, parsed} -> parsed
-        {:error, reason} -> {:error, reason}
-      end
-    end)
+    parsed =
+      Enum.map(packages, fn package ->
+        case parse_package_entry(package) do
+          {:ok, parsed} -> parsed
+          {:error, reason} -> {:error, reason}
+        end
+      end)
 
     errors = Enum.filter(parsed, &match?({:error, _}, &1))
+
     if length(errors) > 0 do
       {:error, {:invalid_packages, errors}}
     else
@@ -355,22 +376,25 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp analyze_compatibility(packages, elixir_version) do
     # Analyze compatibility between the specified packages
-    compatibility_matrix = Enum.map(packages, fn {name1, version1} ->
-      compat_with_others = Enum.map(packages, fn {name2, version2} ->
-        if name1 == name2 do
-          {name2, %{compatible: true, same_package: true}}
-        else
-          compatibility = check_package_compatibility(name1, version1, name2, version2)
-          {name2, compatibility}
-        end
-      end)
+    compatibility_matrix =
+      Enum.map(packages, fn {name1, version1} ->
+        compat_with_others =
+          Enum.map(packages, fn {name2, version2} ->
+            if name1 == name2 do
+              {name2, %{compatible: true, same_package: true}}
+            else
+              compatibility = check_package_compatibility(name1, version1, name2, version2)
+              {name2, compatibility}
+            end
+          end)
 
-      {name1, %{
-        version: version1,
-        elixir_compatible: compatible_with_elixir?(name1, version1, elixir_version),
-        compatibility_with_others: Enum.into(compat_with_others, %{})
-      }}
-    end)
+        {name1,
+         %{
+           version: version1,
+           elixir_compatible: compatible_with_elixir?(name1, version1, elixir_version),
+           compatibility_with_others: Enum.into(compat_with_others, %{})
+         }}
+      end)
 
     %{
       matrix: Enum.into(compatibility_matrix, %{}),
@@ -379,11 +403,12 @@ defmodule HexHub.MCP.Tools.Dependencies do
     }
   end
 
-  defp check_package_compatibility(name1, version1, name2, version2) do
+  defp check_package_compatibility(_name1, _version1, _name2, _version2) do
     # Check if two package versions are compatible
     # This would check for known conflicts, dependency overlaps, etc.
     %{
-      compatible: true, # Simplified - would need real compatibility checking
+      # Simplified - would need real compatibility checking
+      compatible: true,
       conflicts: [],
       warnings: [],
       notes: []
@@ -392,15 +417,21 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp calculate_overall_compatibility(matrix) do
     # Calculate overall compatibility score
-    total_checks = Enum.sum(Enum.map(matrix, fn {_name, data} ->
-      map_size(data.compatibility_with_others)
-    end))
+    total_checks =
+      Enum.sum(
+        Enum.map(matrix, fn {_name, data} ->
+          map_size(data.compatibility_with_others)
+        end)
+      )
 
-    compatible_checks = Enum.sum(Enum.map(matrix, fn {_name, data} ->
-      Enum.count(data.compatibility_with_others, fn {_other, compat} ->
-        compat.compatible
-      end)
-    end))
+    compatible_checks =
+      Enum.sum(
+        Enum.map(matrix, fn {_name, data} ->
+          Enum.count(data.compatibility_with_others, fn {_other, compat} ->
+            compat.compatible
+          end)
+        end)
+      )
 
     if total_checks > 0 do
       compatible_checks / total_checks
@@ -414,30 +445,41 @@ defmodule HexHub.MCP.Tools.Dependencies do
     recommendations = []
 
     # Add recommendations based on compatibility score
-    if compatibility_result.overall_compatibility < 0.8 do
-      recommendations = ["Consider updating packages for better compatibility" | recommendations]
-    end
+    recommendations =
+      if compatibility_result.overall_compatibility < 0.8 do
+        ["Consider updating packages for better compatibility" | recommendations]
+      else
+        recommendations
+      end
 
     recommendations
   end
 
   defp extract_warnings(compatibility_result) do
     # Extract warnings from compatibility analysis
-    warnings = []
-
-    Enum.each(compatibility_result.matrix, fn {_name, data} ->
-      unless data.elixir_compatible do
-        warnings = ["Package #{data.name} may not be compatible with Elixir #{compatibility_result.elixir_version}" | warnings]
-      end
-
-      Enum.each(data.compatibility_with_others, fn {other, compat} ->
-        unless compat.compatible do
-          warnings = ["Potential incompatibility between packages" | warnings]
+    elixir_warnings =
+      Enum.flat_map(compatibility_result.matrix, fn {_name, data} ->
+        if data.elixir_compatible do
+          []
+        else
+          [
+            "Package #{data.name} may not be compatible with Elixir #{compatibility_result.elixir_version}"
+          ]
         end
       end)
-    end)
 
-    warnings
+    compat_warnings =
+      Enum.flat_map(compatibility_result.matrix, fn {_name, data} ->
+        Enum.flat_map(data.compatibility_with_others, fn {_other, compat} ->
+          if compat.compatible do
+            []
+          else
+            ["Potential incompatibility between packages"]
+          end
+        end)
+      end)
+
+    elixir_warnings ++ compat_warnings
   end
 
   defp get_package_checksum(name, version) do
@@ -494,21 +536,24 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp validate_fields(args, required, optional) do
     # Check required fields
-    missing_required = Enum.filter(required, fn field ->
-      not Map.has_key?(args, field) or is_nil(Map.get(args, field))
-    end)
+    missing_required =
+      Enum.filter(required, fn field ->
+        not Map.has_key?(args, field) or is_nil(Map.get(args, field))
+      end)
 
     if length(missing_required) > 0 do
       {:error, {:missing_required_fields, missing_required}}
     else
       # Check for unknown fields
       known_fields = required ++ optional
-      unknown_fields = Enum.filter(Map.keys(args), fn field ->
-        field not in known_fields
-      end)
+
+      unknown_fields =
+        Enum.filter(Map.keys(args), fn field ->
+          field not in known_fields
+        end)
 
       if length(unknown_fields) > 0 do
-        Logger.warn("Unknown fields in args: #{inspect(unknown_fields)}")
+        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
       end
 
       :ok
@@ -558,8 +603,12 @@ defmodule HexHub.MCP.Tools.Dependencies do
   Log dependency operation for telemetry.
   """
   def log_dependency_operation(operation, metadata \\ %{}) do
-    :telemetry.execute([:hex_hub, :mcp, :dependencies], %{
-      operation: operation
-    }, metadata)
+    :telemetry.execute(
+      [:hex_hub, :mcp, :dependencies],
+      %{
+        operation: operation
+      },
+      metadata
+    )
   end
 end

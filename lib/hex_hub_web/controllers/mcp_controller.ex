@@ -42,6 +42,7 @@ defmodule HexHubWeb.MCPController do
         })
 
         status = determine_error_status(response)
+
         conn
         |> put_status(status)
         |> json(response)
@@ -147,6 +148,7 @@ defmodule HexHubWeb.MCPController do
     case extract_and_validate_api_key(conn) do
       :ok ->
         conn
+
       {:error, reason} ->
         conn
         |> put_status(:unauthorized)
@@ -175,6 +177,7 @@ defmodule HexHubWeb.MCPController do
       case extract_api_key(conn) do
         {:ok, api_key} ->
           validate_api_key(api_key)
+
         {:error, reason} ->
           {:error, reason}
       end
@@ -186,8 +189,16 @@ defmodule HexHubWeb.MCPController do
   defp extract_api_key(conn) do
     # Try Authorization header first
     case Plug.Conn.get_req_header(conn, "authorization") do
-      ["Bearer " <> key] -> {:ok, key}
-      ["Basic " << username::binary-size(3), ":", key::binary>> when username == "mcp" -> {:ok, key}
+      ["Bearer " <> key] ->
+        {:ok, key}
+
+      ["Basic " <> auth_header] ->
+        # Decode Base64 and check for "mcp:apikey" format
+        case Base.decode64(auth_header) do
+          {:ok, "mcp:" <> key} -> {:ok, key}
+          _ -> {:error, :invalid_api_key}
+        end
+
       _ ->
         # Try query parameter
         case conn.query_params do
@@ -198,7 +209,7 @@ defmodule HexHubWeb.MCPController do
   end
 
   defp validate_api_key(api_key) do
-    case HexHub.APIKeys.authenticate(api_key) do
+    case HexHub.ApiKeys.validate_key(api_key) do
       {:ok, _user} -> :ok
       {:error, _reason} -> {:error, :invalid_api_key}
     end
@@ -286,14 +297,19 @@ defmodule HexHubWeb.MCPController do
     case response do
       %{error: %{code: code}} when code in [-32700, -32600, -32601, -32602] ->
         :bad_request
+
       %{error: %{code: -32001}} ->
         :unauthorized
+
       %{error: %{code: -32002}} ->
         :too_many_requests
+
       %{error: %{code: -32003}} ->
         :forbidden
+
       %{error: %{code: -32004}} ->
         :not_found
+
       _ ->
         :internal_server_error
     end

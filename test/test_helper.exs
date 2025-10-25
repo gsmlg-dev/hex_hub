@@ -19,3 +19,12 @@ Application.put_env(:hex_hub, :storage_type, :local)
 
 # Configure upstream for testing
 Application.put_env(:hex_hub, :upstream, enabled: true, url: "https://test.hex.pm")
+
+# Configure MCP for testing
+Application.put_env(:hex_hub, :mcp, enabled: true, require_auth: false)
+
+# Start HexHub application for testing
+{:ok, _} = Application.ensure_all_started(:hex_hub)
+
+# Ensure MCP server is started for tests
+HexHub.MCP.Server.start_link([])

@@ -64,17 +64,6 @@ defmodule HexHubWeb.API.PackageController do
             conn
             |> put_resp_content_type("application/vnd.hex+erlang")
             |> text(format_installs_result(result))
-
-          {:error, reason} ->
-            duration_ms =
-              (System.monotonic_time() - start_time)
-              |> System.convert_time_unit(:native, :millisecond)
-
-            HexHub.Telemetry.track_api_request("packages.installs", duration_ms, 400, "resolution_error")
-
-            conn
-            |> put_status(:bad_request)
-            |> json(%{message: "Dependency resolution failed: #{reason}"})
         end
 
       {:error, reason} ->
@@ -191,11 +180,14 @@ defmodule HexHubWeb.API.PackageController do
           case Jason.decode(json_string) do
             {:ok, requirements} when is_map(requirements) ->
               {:ok, requirements}
+
             {:ok, _} ->
               {:error, "Requirements must be a map"}
+
             {:error, reason} ->
               {:error, "Invalid JSON: #{reason}"}
           end
+
         :error ->
           {:error, "Invalid base64 encoding"}
       end
@@ -224,7 +216,7 @@ defmodule HexHubWeb.API.PackageController do
     {:ok, %{packages: packages}}
   end
 
-  defp format_installs_result(result) do
+  defp format_installs_result(_result) do
     # Format the result as Erlang terms that Mix can understand
     # Return a simple success tuple that indicates packages can be fetched from upstream
     "{:ok, %{packages: [], checksums: %{}}}"

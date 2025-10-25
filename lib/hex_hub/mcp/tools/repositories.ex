@@ -9,7 +9,6 @@ defmodule HexHub.MCP.Tools.Repositories do
   require Logger
 
   alias HexHub.{Repositories, Packages}
-  alias HexHub.MCP.Tools.Packages, as: PackageTools
 
   @doc """
   List all available repositories.
@@ -19,27 +18,23 @@ defmodule HexHub.MCP.Tools.Repositories do
 
     Logger.debug("MCP listing repositories (include_private: #{include_private})")
 
-    case Repositories.list_repositories() do
-      {:ok, repositories} ->
-        filtered_repos = if include_private do
-          repositories
-        else
-          Enum.filter(repositories, & &1.public)
-        end
+    repositories = Repositories.list_repositories()
 
-        result = %{
-          repositories: Enum.map(filtered_repos, &format_repository/1),
-          total_repositories: length(filtered_repos),
-          include_private: include_private,
-          default_repository: get_default_repository()
-        }
+    filtered_repos =
+      if include_private do
+        repositories
+      else
+        Enum.filter(repositories, & &1.public)
+      end
 
-        {:ok, result}
+    result = %{
+      repositories: Enum.map(filtered_repos, &format_repository/1),
+      total_repositories: length(filtered_repos),
+      include_private: include_private,
+      default_repository: get_default_repository()
+    }
 
-      {:error, reason} ->
-        Logger.error("MCP list repositories failed: #{inspect(reason)}")
-        {:error, reason}
-    end
+    {:ok, result}
   end
 
   @doc """
@@ -58,7 +53,7 @@ defmodule HexHub.MCP.Tools.Repositories do
           repository: format_repository(repository),
           statistics: %{
             total_packages: package_count,
-            total_downloads: repository.downloads || 0,
+            total_downloads: 0,
             recent_packages: length(recent_packages)
           },
           recent_packages: Enum.map(recent_packages, &format_basic_package/1),
@@ -147,16 +142,18 @@ defmodule HexHub.MCP.Tools.Repositories do
   end
 
   defp get_default_repository do
-    "hexpm" # Default Hex repository
+    # Default Hex repository
+    "hexpm"
   end
 
-  defp get_package_count_for_repository(repository_name) do
+  defp get_package_count_for_repository(_repository_name) do
     # Count packages in the specified repository
     # This would require a database query
-    :mnesia.table_info(:packages, :size) # Simplified
+    # Simplified
+    :mnesia.table_info(:packages, :size)
   end
 
-  defp get_recent_packages_for_repository(repository_name, limit \\ 5) do
+  defp get_recent_packages_for_repository(_repository_name, _limit \\ 5) do
     # Get recent packages from the repository
     # This would require a database query with ordering
     []
@@ -181,9 +178,10 @@ defmodule HexHub.MCP.Tools.Repositories do
   defp update_package_visibility(package) do
     # Update package visibility in Mnesia
     :mnesia.transaction(fn ->
-      :mnesia.write({:packages, package.name, package.repository, package.meta,
-                     package.private, package.downloads, package.url,
-                     package.inserted_at, DateTime.utc_now()})
+      :mnesia.write(
+        {:packages, package.name, package.repository, package.meta, package.private,
+         package.downloads, package.url, package.inserted_at, DateTime.utc_now()}
+      )
     end)
   end
 
@@ -230,21 +228,24 @@ defmodule HexHub.MCP.Tools.Repositories do
 
   defp validate_fields(args, required, optional) do
     # Check required fields
-    missing_required = Enum.filter(required, fn field ->
-      not Map.has_key?(args, field) or is_nil(Map.get(args, field))
-    end)
+    missing_required =
+      Enum.filter(required, fn field ->
+        not Map.has_key?(args, field) or is_nil(Map.get(args, field))
+      end)
 
     if length(missing_required) > 0 do
       {:error, {:missing_required_fields, missing_required}}
     else
       # Check for unknown fields
       known_fields = required ++ optional
-      unknown_fields = Enum.filter(Map.keys(args), fn field ->
-        field not in known_fields
-      end)
+
+      unknown_fields =
+        Enum.filter(Map.keys(args), fn field ->
+          field not in known_fields
+        end)
 
       if length(unknown_fields) > 0 do
-        Logger.warn("Unknown fields in args: #{inspect(unknown_fields)}")
+        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
       end
 
       :ok
@@ -268,12 +269,14 @@ defmodule HexHub.MCP.Tools.Repositories do
   defp get_total_repositories_count do
     # Count total repositories
     # This would require a database query
-    1 # At least hexpm exists
+    # At least hexpm exists
+    1
   end
 
   defp get_public_repositories_count do
     # Count public repositories
-    1 # hexpm is public
+    # hexpm is public
+    1
   end
 
   defp get_private_repositories_count do
@@ -309,10 +312,14 @@ defmodule HexHub.MCP.Tools.Repositories do
   Log repository operation for telemetry.
   """
   def log_repository_operation(operation, repository_name, metadata \\ %{}) do
-    :telemetry.execute([:hex_hub, :mcp, :repositories], %{
-      operation: operation,
-      repository_name: repository_name
-    }, metadata)
+    :telemetry.execute(
+      [:hex_hub, :mcp, :repositories],
+      %{
+        operation: operation,
+        repository_name: repository_name
+      },
+      metadata
+    )
   end
 
   @doc """
@@ -330,7 +337,9 @@ defmodule HexHub.MCP.Tools.Repositories do
   """
   def get_repository_with_fallback(name) do
     case Repositories.get_repository(name) do
-      {:ok, repository} -> {:ok, repository}
+      {:ok, repository} ->
+        {:ok, repository}
+
       {:error, _} ->
         # Fallback to default repository
         Repositories.get_repository(get_default_repository())
@@ -353,10 +362,7 @@ defmodule HexHub.MCP.Tools.Repositories do
       updated_at: DateTime.utc_now()
     }
 
-    case Repositories.create_repository(repository) do
-      {:ok, repo} -> {:ok, format_repository(repo)}
-      {:error, reason} -> {:error, reason}
-    end
+    Repositories.create_repository(repository)
   end
 
   @doc """
@@ -367,15 +373,13 @@ defmodule HexHub.MCP.Tools.Repositories do
     # This would be an admin-only operation
     case Repositories.get_repository(name) do
       {:ok, repository} ->
-        updated_repo = %{repository |
-          url: Map.get(params, "url", repository.url),
-          description: Map.get(params, "description", repository.description),
-          public: Map.get(params, "public", repository.public),
-          updated_at: DateTime.utc_now()
-        }
+        updated_repo =
+          repository
+          |> Map.put(:url, Map.get(params, "url", repository.url))
+          |> Map.put(:description, Map.get(params, "description", repository.description))
+          |> Map.put(:public, Map.get(params, "public", repository.public))
 
         case Repositories.update_repository(updated_repo) do
-          {:ok, repo} -> {:ok, format_repository(repo)}
           {:error, reason} -> {:error, reason}
         end
 
@@ -392,7 +396,6 @@ defmodule HexHub.MCP.Tools.Repositories do
     # This would be an admin-only operation and would need to handle
     # package migration or deletion
     case Repositories.delete_repository(name) do
-      :ok -> {:ok, %{name: name, deleted: true}}
       {:error, reason} -> {:error, reason}
     end
   end
@@ -404,15 +407,15 @@ defmodule HexHub.MCP.Tools.Repositories do
     page = Map.get(opts, :page, 1)
     per_page = Map.get(opts, :per_page, 20)
 
-    case Packages.list_packages([repository: name, page: page, per_page: per_page]) do
-      {:ok, packages} ->
+    case Packages.list_packages(repository: name, page: page, per_page: per_page) do
+      {:ok, packages, total} ->
         result = %{
           repository: name,
-          packages: Enum.map(packages, &PackageTools.format_package/1),
+          packages: Enum.map(packages, &format_basic_package/1),
           pagination: %{
             page: page,
             per_page: per_page,
-            total_packages: length(packages)
+            total_packages: total
           }
         }
 
@@ -433,12 +436,13 @@ defmodule HexHub.MCP.Tools.Repositories do
 
     # Implementation would depend on repository type
     # For now, return success
-    {:ok, %{
-      name: name,
-      synced_at: DateTime.utc_now(),
-      packages_updated: 0,
-      packages_added: 0
-    }}
+    {:ok,
+     %{
+       name: name,
+       synced_at: DateTime.utc_now(),
+       packages_updated: 0,
+       packages_added: 0
+     }}
   end
 
   @doc """
@@ -447,11 +451,11 @@ defmodule HexHub.MCP.Tools.Repositories do
   def get_repository_health(name) do
     # Check repository health (connectivity, sync status, etc.)
     case Repositories.get_repository(name) do
-      {:ok, repository} ->
+      {:ok, _repository} ->
         health = %{
           name: name,
           status: "healthy",
-          last_sync: repository.updated_at,
+          last_sync: DateTime.utc_now(),
           connectivity: "connected",
           package_count: get_package_count_for_repository(name),
           issues: []
@@ -460,14 +464,15 @@ defmodule HexHub.MCP.Tools.Repositories do
         {:ok, health}
 
       {:error, reason} ->
-        {:ok, %{
-          name: name,
-          status: "error",
-          error: reason,
-          connectivity: "disconnected",
-          package_count: 0,
-          issues: ["Repository not found: #{inspect(reason)}"]
-        }}
+        {:ok,
+         %{
+           name: name,
+           status: "error",
+           error: reason,
+           connectivity: "disconnected",
+           package_count: 0,
+           issues: ["Repository not found: #{inspect(reason)}"]
+         }}
     end
   end
 end

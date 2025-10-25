@@ -1,7 +1,7 @@
 import Config
 
 config :hex_hub, HexHubWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT") || "4000")],
+  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("PORT") || "4360")],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -12,7 +12,7 @@ config :hex_hub, HexHubWeb.Endpoint,
   ]
 
 config :hex_hub, HexHubAdminWeb.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("ADMIN_PORT") || "4001")],
+  http: [ip: {0, 0, 0, 0}, port: String.to_integer(System.get_env("ADMIN_PORT") || "4361")],
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
@@ -74,3 +74,9 @@ config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
 config :swoosh, :api_client, false
+
+# Enable MCP (Model Context Protocol) in development
+config :hex_hub, :mcp,
+  enabled: true,
+  require_auth: false,
+  debug: true

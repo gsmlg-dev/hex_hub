@@ -2,6 +2,14 @@ defmodule HexHubWeb.API.DocsControllerTest do
   use HexHubWeb.ConnCase
 
   setup %{conn: conn} do
+    # Ensure storage directories exist
+    File.mkdir_p!("priv/test_storage/packages")
+    File.mkdir_p!("priv/test_storage/docs")
+
+    # Configure storage
+    Application.put_env(:hex_hub, :storage_type, :local)
+    Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
+
     %{api_key: api_key} = setup_authenticated_user()
     {:ok, conn: authenticated_conn(conn, api_key)}
   end

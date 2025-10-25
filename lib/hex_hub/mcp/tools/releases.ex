@@ -9,7 +9,7 @@ defmodule HexHub.MCP.Tools.Releases do
   require Logger
 
   alias HexHub.{Packages, Storage}
-  alias HexHub.MCP.Tools.Packages, as: PackageTools
+  # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
   List all releases/versions for a package.
@@ -21,18 +21,19 @@ defmodule HexHub.MCP.Tools.Releases do
 
     case Packages.list_releases(name) do
       releases when is_list(releases) ->
-        filtered_releases = if include_retired do
-          releases
-        else
-          Enum.reject(releases, &(&1.retirement != nil))
-        end
+        filtered_releases =
+          if include_retired do
+            releases
+          else
+            Enum.reject(releases, &(&1.retirement != nil))
+          end
 
         result = %{
           package_name: name,
           releases: Enum.map(filtered_releases, &format_release/1),
           total_releases: length(filtered_releases),
           include_retired: include_retired,
-          latest_version: PackageTools.get_latest_version(releases)
+          latest_version: get_latest_version(releases)
         }
 
         {:ok, result}
@@ -50,7 +51,7 @@ defmodule HexHub.MCP.Tools.Releases do
   @doc """
   Get detailed information about a specific package release.
   """
-  def get_release(%{"name" => name, "version" => version} = args) do
+  def get_release(%{"name" => name, "version" => version} = _args) do
     Logger.debug("MCP getting release info for: #{name} v#{version}")
 
     case Packages.get_release(name, version) do
@@ -112,7 +113,7 @@ defmodule HexHub.MCP.Tools.Releases do
         end
 
       false ->
-        Logger.warn("MCP download release: tarball not found for #{name} v#{version}")
+        Logger.warning("MCP download release: tarball not found for #{name} v#{version}")
         {:error, :tarball_not_found}
     end
   end
@@ -129,7 +130,6 @@ defmodule HexHub.MCP.Tools.Releases do
 
     with {:ok, release1} <- Packages.get_release(name, version1),
          {:ok, release2} <- Packages.get_release(name, version2) do
-
       metadata1 = Jason.decode!(release1.metadata || "{}")
       metadata2 = Jason.decode!(release2.metadata || "{}")
 
@@ -183,6 +183,7 @@ defmodule HexHub.MCP.Tools.Releases do
   end
 
   defp parse_requirements(nil), do: %{}
+
   defp parse_requirements(requirements) do
     case Jason.decode(requirements || "{}") do
       {:ok, reqs} -> reqs
@@ -192,7 +193,9 @@ defmodule HexHub.MCP.Tools.Releases do
 
   defp get_retirement_info(release) do
     case release.retirement do
-      nil -> nil
+      nil ->
+        nil
+
       retirement ->
         %{
           reason: retirement.reason,
@@ -239,46 +242,50 @@ defmodule HexHub.MCP.Tools.Releases do
 
   defp compare_metadata(meta1, meta2) do
     # Compare metadata fields
-    all_keys = Map.keys(meta1) ++ Map.keys(meta2) |> Enum.uniq()
+    all_keys = (Map.keys(meta1) ++ Map.keys(meta2)) |> Enum.uniq()
 
     Enum.into(all_keys, %{}, fn key ->
       value1 = Map.get(meta1, key)
       value2 = Map.get(meta2, key)
 
-      diff = cond do
-        is_nil(value1) and not is_nil(value2) -> :added
-        not is_nil(value1) and is_nil(value2) -> :removed
-        value1 != value2 -> :changed
-        true -> :unchanged
-      end
+      diff =
+        cond do
+          is_nil(value1) and not is_nil(value2) -> :added
+          not is_nil(value1) and is_nil(value2) -> :removed
+          value1 != value2 -> :changed
+          true -> :unchanged
+        end
 
-      {key, %{
-        status: diff,
-        v1_value: value1,
-        v2_value: value2
-      }}
+      {key,
+       %{
+         status: diff,
+         v1_value: value1,
+         v2_value: value2
+       }}
     end)
   end
 
   defp compare_requirements(reqs1, reqs2) do
-    all_deps = Map.keys(reqs1) ++ Map.keys(reqs2) |> Enum.uniq()
+    all_deps = (Map.keys(reqs1) ++ Map.keys(reqs2)) |> Enum.uniq()
 
     Enum.into(all_deps, %{}, fn dep ->
       req1 = Map.get(reqs1, dep)
       req2 = Map.get(reqs2, dep)
 
-      diff = cond do
-        is_nil(req1) and not is_nil(req2) -> :added
-        not is_nil(req1) and is_nil(req2) -> :removed
-        req1 != req2 -> :changed
-        true -> :unchanged
-      end
+      diff =
+        cond do
+          is_nil(req1) and not is_nil(req2) -> :added
+          not is_nil(req1) and is_nil(req2) -> :removed
+          req1 != req2 -> :changed
+          true -> :unchanged
+        end
 
-      {dep, %{
-        status: diff,
-        v1_requirement: req1,
-        v2_requirement: req2
-      }}
+      {dep,
+       %{
+         status: diff,
+         v1_requirement: req1,
+         v2_requirement: req2
+       }}
     end)
   end
 
@@ -332,21 +339,24 @@ defmodule HexHub.MCP.Tools.Releases do
 
   defp validate_fields(args, required, optional) do
     # Check required fields
-    missing_required = Enum.filter(required, fn field ->
-      not Map.has_key?(args, field) or is_nil(Map.get(args, field))
-    end)
+    missing_required =
+      Enum.filter(required, fn field ->
+        not Map.has_key?(args, field) or is_nil(Map.get(args, field))
+      end)
 
     if length(missing_required) > 0 do
       {:error, {:missing_required_fields, missing_required}}
     else
       # Check for unknown fields
       known_fields = required ++ optional
-      unknown_fields = Enum.filter(Map.keys(args), fn field ->
-        field not in known_fields
-      end)
+
+      unknown_fields =
+        Enum.filter(Map.keys(args), fn field ->
+          field not in known_fields
+        end)
 
       if length(unknown_fields) > 0 do
-        Logger.warn("Unknown fields in args: #{inspect(unknown_fields)}")
+        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
       end
 
       :ok
@@ -403,11 +413,15 @@ defmodule HexHub.MCP.Tools.Releases do
   Log release operation for telemetry.
   """
   def log_release_operation(operation, package_name, version, metadata \\ %{}) do
-    :telemetry.execute([:hex_hub, :mcp, :releases], %{
-      operation: operation,
-      package_name: package_name,
-      version: version
-    }, metadata)
+    :telemetry.execute(
+      [:hex_hub, :mcp, :releases],
+      %{
+        operation: operation,
+        package_name: package_name,
+        version: version
+      },
+      metadata
+    )
   end
 
   @doc """
@@ -431,8 +445,19 @@ defmodule HexHub.MCP.Tools.Releases do
         # This would need Storage to support size queries
         # For now, return 0
         0
+
       false ->
         {:error, :tarball_not_found}
     end
   end
+
+  # Helper function to get the latest version from a list of releases
+  defp get_latest_version(releases) when is_list(releases) do
+    releases
+    |> Enum.map(& &1.version)
+    |> Enum.sort(&(Version.compare(&2, &1) == :gt))
+    |> List.first()
+  end
+
+  defp get_latest_version(_), do: nil
 end
