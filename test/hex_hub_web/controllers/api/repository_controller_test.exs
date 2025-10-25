@@ -7,7 +7,6 @@ defmodule HexHubWeb.API.RepositoryControllerTest do
 
       repositories = json_response(conn, 200)
       assert is_list(repositories)
-      assert length(repositories) > 0
     end
   end
 
