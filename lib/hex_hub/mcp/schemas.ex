@@ -93,20 +93,18 @@ defmodule HexHub.MCP.Schemas do
   Validate request against specific schemas
   """
   def validate_request(request) do
-    cond do
-      is_tool_call?(request) ->
-        case validate_against_schema(request, tool_call_schema()) do
-          :ok -> {:ok, request}
-          {:ok, validated} -> {:ok, validated}
-          {:error, reason} -> {:error, reason}
-        end
-
-      true ->
-        case validate_against_schema(request, request_schema()) do
-          :ok -> {:ok, request}
-          {:ok, validated} -> {:ok, validated}
-          {:error, reason} -> {:error, reason}
-        end
+    if is_tool_call?(request) do
+      case validate_against_schema(request, tool_call_schema()) do
+        :ok -> {:ok, request}
+        {:ok, validated} -> {:ok, validated}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      case validate_against_schema(request, request_schema()) do
+        :ok -> {:ok, request}
+        {:ok, validated} -> {:ok, validated}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 

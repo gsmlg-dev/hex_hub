@@ -287,16 +287,18 @@ defmodule HexHub.Users do
   end
 
   defp validate_email(email) do
-    cond do
-      not String.match?(email, ~r/^[^\s]+@[^\s]+$/) -> {:error, "Invalid email format"}
-      true -> :ok
+    if not String.match?(email, ~r/^[^\s]+@[^\s]+$/) do
+      {:error, "Invalid email format"}
+    else
+      :ok
     end
   end
 
   defp validate_password(password) do
-    cond do
-      String.length(password) < 8 -> {:error, "Password must be at least 8 characters"}
-      true -> :ok
+    if String.length(password) < 8 do
+      {:error, "Password must be at least 8 characters"}
+    else
+      :ok
     end
   end
 

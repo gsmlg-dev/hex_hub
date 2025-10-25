@@ -184,58 +184,56 @@ defmodule HexHubWeb.HealthController do
   defp s3_storage_health do
     bucket = Application.get_env(:hex_hub, :s3_bucket)
 
-    cond do
-      is_nil(bucket) ->
-        %{
-          name: "storage",
-          status: :error,
-          message: "S3 bucket not configured",
-          details: %{type: :s3}
-        }
+    if is_nil(bucket) do
+      %{
+        name: "storage",
+        status: :error,
+        message: "S3 bucket not configured",
+        details: %{type: :s3}
+      }
+    else
+      try do
+        # Test S3 connectivity by listing bucket
+        alias ExAws.S3
 
-      true ->
-        try do
-          # Test S3 connectivity by listing bucket
-          alias ExAws.S3
+        result =
+          bucket
+          |> S3.list_objects(max_keys: 1)
+          |> ExAws.request()
 
-          result =
-            bucket
-            |> S3.list_objects(max_keys: 1)
-            |> ExAws.request()
-
-          case result do
-            {:ok, _response} ->
-              %{
-                name: "storage",
-                status: :ok,
-                details: %{
-                  bucket: bucket,
-                  type: :s3,
-                  accessible: true
-                }
+        case result do
+          {:ok, _response} ->
+            %{
+              name: "storage",
+              status: :ok,
+              details: %{
+                bucket: bucket,
+                type: :s3,
+                accessible: true
               }
+            }
 
-            {:error, error} ->
-              %{
-                name: "storage",
-                status: :error,
-                message: "S3 connectivity check failed",
-                details: %{
-                  bucket: bucket,
-                  type: :s3,
-                  error: inspect(error)
-                }
-              }
-          end
-        rescue
-          error ->
+          {:error, error} ->
             %{
               name: "storage",
               status: :error,
-              message: "S3 health check failed",
-              details: %{error: inspect(error), type: :s3}
+              message: "S3 connectivity check failed",
+              details: %{
+                bucket: bucket,
+                type: :s3,
+                error: inspect(error)
+              }
             }
         end
+      rescue
+        error ->
+          %{
+            name: "storage",
+            status: :error,
+            message: "S3 health check failed",
+            details: %{error: inspect(error), type: :s3}
+          }
+      end
     end
   end
 

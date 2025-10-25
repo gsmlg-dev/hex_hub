@@ -284,12 +284,16 @@ defmodule HexHub.MCP.Tools.Dependencies do
 
   defp parse_release_requirements(nil), do: %{}
 
-  defp parse_release_requirements(requirements) do
-    case Jason.decode(requirements || "{}") do
+  defp parse_release_requirements(requirements) when is_map(requirements), do: requirements
+
+  defp parse_release_requirements(requirements) when is_binary(requirements) do
+    case Jason.decode(requirements) do
       {:ok, reqs} -> reqs
       {:error, _} -> %{}
     end
   end
+
+  defp parse_release_requirements(_), do: %{}
 
   defp calculate_tree_stats(tree) do
     %{
@@ -321,7 +325,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   defp count_leaf_nodes(tree) do
     deps = Map.get(tree, :dependencies, [])
 
-    if length(deps) == 0 do
+    if Enum.empty?(deps) do
       1
     else
       Enum.sum(Enum.map(deps, &count_leaf_nodes/1))
@@ -331,7 +335,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   defp calculate_avg_branching(tree) do
     deps = Map.get(tree, :dependencies, [])
 
-    if length(deps) == 0 do
+    if Enum.empty?(deps) do
       0
     else
       total_deps =
