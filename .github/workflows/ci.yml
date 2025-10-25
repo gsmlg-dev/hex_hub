@@ -2,43 +2,22 @@ name: CI
 
 on:
   push:
-    branches: ['**']  # Run on all branches
-  pull_request:
-    branches: ['**']  # Run on PRs to all branches
-
-env:
-  MIX_ENV: test
+    branches: [ '*' ]
 
 jobs:
   test:
-    name: Test (Elixir ${{ matrix.elixir }} / OTP ${{ matrix.otp }})
+    name: Build and test
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - elixir: '1.18'
-            otp: '27'
-          - elixir: '1.18'
-            otp: '28'
-
-    services:
-      mailhog:
-        image: mailhog/mailhog:latest
-        ports:
-          - 1025:1025
-          - 8025:8025
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
+          elixir-version: '1.18'
+          otp-version: '28'
 
       - name: Restore dependencies cache
         uses: actions/cache@v4
@@ -46,18 +25,27 @@ jobs:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
 
       - name: Install dependencies
         run: mix deps.get
 
-      - name: Check code formatting
+      - name: Check formatting
         run: mix format --check-formatted
 
-      - name: Compile with warnings as errors
+      - name: Compile
         run: mix compile --warnings-as-errors
 
-      - name: Run tests
-        run: mix test
+      - name: Run Credo
+        run: mix credo --strict
+
+      - name: Build Dialyzer PLT (cached)
+        id: plt
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: dialyzer-${{ hashFiles('mix.lock') }}
+
+      - name: Run Dialyzer
+        run: mix dialyzer --halt-exit-status

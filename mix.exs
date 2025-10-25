@@ -68,6 +68,7 @@ defmodule HexHub.MixProject do
     [
       setup: ["deps.get", "assets.setup", "assets.build"],
       test: ["test"],
+      lint: ["credo --strict", "dialyzer"],
       "assets.setup": ["tailwind.install --if-missing", "bun.install --if-missing"],
       "assets.build": [
         "tailwind hex_hub",

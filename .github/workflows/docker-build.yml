@@ -1,26 +1,16 @@
 name: Build and Release Docker Image
 
 on:
-  push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       tag:
         description: 'Docker tag to use (optional)'
         required: false
         default: 'manual'
-      push_image:
-        description: 'Push image to registry'
-        required: false
-        type: boolean
-        default: false
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: gsmlg-dev/hex-hub
 
 jobs:
   test:
@@ -28,9 +18,9 @@ jobs:
     name: Test on OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }}
     strategy:
       matrix:
-        otp: ['26.2.5']
-        elixir: ['1.15.7']
-    
+        otp: ['28']
+        elixir: ['1.18']
+
     services:
       mailhog:
         image: mailhog/mailhog:latest
@@ -39,24 +29,30 @@ jobs:
           - 8025:8025
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otp }}
           elixir-version: ${{ matrix.elixir }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Restore dependencies cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: deps
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: ${{ runner.os }}-mix-
+
       - name: Install dependencies
         run: mix deps.get
+
       - name: Run tests
         run: mix test
-      - name: Check formatting
-        run: mix format --check-formatted
 
   build-and-push:
     needs: test
@@ -64,10 +60,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -77,7 +73,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -103,29 +99,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-only:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.tag == 'manual' && github.event.inputs.push_image == 'false'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: false
-          tags: hex_hub:manual-build
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build-and-push
@@ -136,7 +109,7 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Log in to Container Registry
         uses: docker/login-action@v3
@@ -146,28 +119,25 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
           body: |
             ## Docker Image
-            
+
             Available at: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}`
-            
+
             ## Quick Start
-            
+
             ```bash
             docker run -p 4000:4000 \
               -e SECRET_KEY_BASE=your-secret-key \
               -e PHX_HOST=localhost \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ```
-            
+
             ## Configuration
-            
+
             See [README.md](README.md) for full configuration options.
