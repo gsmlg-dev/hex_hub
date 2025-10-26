@@ -249,36 +249,40 @@ defmodule HexHub.MCP.Tools.Dependencies do
     if current_depth >= max_depth do
       {:ok, %{name: name, version: version, truncated: true}}
     else
-      case Packages.get_release(name, version) do
-        {:ok, release} ->
-          requirements = parse_release_requirements(release.requirements)
+      build_tree_for_release(name, version, max_depth, current_depth)
+    end
+  end
 
-          dependencies =
-            Enum.map(requirements, fn {dep_name, req} ->
-              case find_suitable_version(dep_name, req, get_current_elixir_version()) do
-                {:ok, dep_version} ->
-                  case build_dependency_tree(dep_name, dep_version, max_depth, current_depth + 1) do
-                    {:ok, dep_tree} -> dep_tree
-                    {:error, _} -> %{name: dep_name, error: true}
-                  end
+  defp build_tree_for_release(name, version, max_depth, current_depth) do
+    case Packages.get_release(name, version) do
+      {:ok, release} ->
+        requirements = parse_release_requirements(release.requirements)
+        dependencies = resolve_dependencies_for_tree(requirements, max_depth, current_depth)
+        {:ok, %{name: name, version: version, dependencies: dependencies, depth: current_depth}}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
-                {:error, _} ->
-                  %{name: dep_name, version: req, unresolved: true}
-              end
-            end)
+  defp resolve_dependencies_for_tree(requirements, max_depth, current_depth) do
+    Enum.map(requirements, fn {dep_name, req} ->
+      resolve_single_dependency(dep_name, req, max_depth, current_depth + 1)
+    end)
+  end
 
-          tree = %{
-            name: name,
-            version: version,
-            dependencies: dependencies,
-            depth: current_depth
-          }
+  defp resolve_single_dependency(dep_name, req, max_depth, next_depth) do
+    case find_suitable_version(dep_name, req, get_current_elixir_version()) do
+      {:ok, dep_version} ->
+        build_tree_or_error(dep_name, dep_version, max_depth, next_depth)
+      {:error, _} ->
+        %{name: dep_name, version: req, unresolved: true}
+    end
+  end
 
-          {:ok, tree}
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+  defp build_tree_or_error(dep_name, dep_version, max_depth, next_depth) do
+    case build_dependency_tree(dep_name, dep_version, max_depth, next_depth) do
+      {:ok, dep_tree} -> dep_tree
+      {:error, _} -> %{name: dep_name, error: true}
     end
   end
 

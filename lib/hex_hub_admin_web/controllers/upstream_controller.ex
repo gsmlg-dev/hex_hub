@@ -61,84 +61,66 @@ defmodule HexHubAdminWeb.UpstreamController do
   # Private functions
 
   defp changeset(config, params \\ %{}) do
-    # Manual validation since we don't use Ecto
     errors = []
+    |> validate_required_fields(config, params)
+    |> validate_url_formats(config, params)
+    |> validate_numeric_ranges(config, params)
 
-    # Required fields
-    errors =
-      if is_nil(params[:enabled]) and is_nil(config[:enabled]) do
-        [{"enabled", "is required"} | errors]
-      else
-        errors
-      end
-
-    errors =
-      if is_nil(params[:api_url]) and is_nil(config[:api_url]) do
-        [{"api_url", "is required"} | errors]
-      else
-        errors
-      end
-
-    errors =
-      if is_nil(params[:repo_url]) and is_nil(config[:repo_url]) do
-        [{"repo_url", "is required"} | errors]
-      else
-        errors
-      end
-
-    # Format validation
-    api_url = params[:api_url] || config[:api_url] || ""
-    repo_url = params[:repo_url] || config[:repo_url] || ""
-
-    errors =
-      if api_url != "" and not String.match?(api_url, ~r/^https?:\/\//) do
-        [{"api_url", "must be a valid URL"} | errors]
-      else
-        errors
-      end
-
-    errors =
-      if repo_url != "" and not String.match?(repo_url, ~r/^https?:\/\//) do
-        [{"repo_url", "must be a valid URL"} | errors]
-      else
-        errors
-      end
-
-    # Number validation
-    timeout = params[:timeout] || config[:timeout] || 30_000
-
-    errors =
-      if not is_number(timeout) or timeout <= 1000 or timeout >= 300_000 do
-        [{"timeout", "must be between 1000 and 300000"} | errors]
-      else
-        errors
-      end
-
-    retry_attempts = params[:retry_attempts] || config[:retry_attempts] || 3
-
-    errors =
-      if not is_number(retry_attempts) or retry_attempts <= 0 or retry_attempts >= 10 do
-        [{"retry_attempts", "must be between 1 and 9"} | errors]
-      else
-        errors
-      end
-
-    retry_delay = params[:retry_delay] || config[:retry_delay] || 1_000
-
-    errors =
-      if not is_number(retry_delay) or retry_delay <= 100 or retry_delay >= 60_000 do
-        [{"retry_delay", "must be between 100 and 60000"} | errors]
-      else
-        errors
-      end
-
-    # Return changeset-like structure
     %{
       data: config,
       params: params,
       errors: Enum.reverse(errors),
       valid?: Enum.empty?(errors)
     }
+  end
+
+  defp validate_required_fields(errors, config, params) do
+    required_fields = [:enabled, :api_url, :repo_url]
+
+    Enum.reduce(required_fields, errors, fn field, acc ->
+      if is_nil(params[field]) and is_nil(config[field]) do
+        [{to_string(field), "is required"} | acc]
+      else
+        acc
+      end
+    end)
+  end
+
+  defp validate_url_formats(errors, config, params) do
+    api_url = params[:api_url] || config[:api_url] || ""
+    repo_url = params[:repo_url] || config[:repo_url] || ""
+
+    errors
+    |> validate_url_format("api_url", api_url)
+    |> validate_url_format("repo_url", repo_url)
+  end
+
+  defp validate_url_format(errors, _field, ""), do: errors
+  defp validate_url_format(errors, field, url) do
+    if String.match?(url, ~r/^https?:\/\//) do
+      errors
+    else
+      [{field, "must be a valid URL"} | errors]
+    end
+  end
+
+  defp validate_numeric_ranges(errors, config, params) do
+    timeout = params[:timeout] || config[:timeout] || 30_000
+    retry_attempts = params[:retry_attempts] || config[:retry_attempts] || 3
+    retry_delay = params[:retry_delay] || config[:retry_delay] || 1_000
+
+    errors
+    |> validate_numeric_range("timeout", timeout, 1000, 300_000)
+    |> validate_numeric_range("retry_attempts", retry_attempts, 1, 9)
+    |> validate_numeric_range("retry_delay", retry_delay, 100, 60_000)
+  end
+
+  defp validate_numeric_range(errors, field, value, min, max) do
+    if is_number(value) and value > min and value < max do
+      errors
+    else
+      [{field, "must be between #{min} and #{max}"} | errors]
+    end
   end
 
   defp test_upstream_connection(config) do

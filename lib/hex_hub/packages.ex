@@ -346,79 +346,25 @@ defmodule HexHub.Packages do
   """
   @spec upload_docs(String.t(), String.t(), binary()) :: {:ok, release()} | {:error, String.t()}
   def upload_docs(package_name, version, docs_tarball) do
-    case get_release(package_name, version) do
-      {:ok, _release} ->
-        docs_key = Storage.generate_docs_key(package_name, version)
+    docs_key = Storage.generate_docs_key(package_name, version)
 
-        case Storage.upload(docs_key, docs_tarball) do
-          {:ok, _} ->
-            # Update release to mark has_docs as true
-            case :mnesia.transaction(fn ->
-                   releases =
-                     :mnesia.match_object(
-                       {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_,
-                        :_, :_, :_}
-                     )
-
-                   case releases do
-                     [] ->
-                       {:error, "Release not found"}
-
-                     releases ->
-                       # For :bag type, update all matching records and delete old ones
-                       Enum.each(releases, fn release_tuple ->
-                         {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
-                          downloads, inserted_at, _updated_at, url, package_url, html_url,
-                          docs_html_url} = release_tuple
-
-                         # Delete the old record first (required for :bag tables)
-                         :mnesia.delete_object(release_tuple)
-
-                         updated_release = {
-                           @releases_table,
-                           pkg_name,
-                           ver,
-                           # has_docs
-                           true,
-                           meta,
-                           requirements,
-                           retired,
-                           downloads,
-                           inserted_at,
-                           DateTime.utc_now(),
-                           url,
-                           package_url,
-                           html_url,
-                           docs_html_url
-                         }
-
-                         :mnesia.write(updated_release)
-                       end)
-
-                       {:ok, :updated}
-                   end
-                 end) do
-              {:atomic, {:ok, _}} ->
-                case get_release(package_name, version) do
-                  {:ok, release} -> {:ok, release}
-                  error -> error
-                end
-
-              {:atomic, {:error, reason}} ->
-                Storage.delete(docs_key)
-                {:error, reason}
-
-              {:aborted, reason} ->
-                Storage.delete(docs_key)
-                {:error, "Failed to update release: #{inspect(reason)}"}
-            end
-
-          {:error, reason} ->
-            {:error, "Failed to upload docs: #{reason}"}
-        end
-
+    with {:ok, _release} <- get_release(package_name, version),
+         {:ok, _} <- Storage.upload(docs_key, docs_tarball),
+         {:ok, _} <- update_release_docs_flag(package_name, version, true) do
+      get_release(package_name, version)
+    else
       {:error, :not_found} ->
         {:error, "Release not found"}
+      {:error, reason} = error ->
+        # Clean up uploaded docs if database update failed
+        cleanup_docs_on_error(docs_key, reason)
+        error
+    end
+  end
+
+  defp cleanup_docs_on_error(docs_key, reason) do
+    if String.contains?(to_string(reason), ["update", "transaction", "mnesia"]) do
+      Storage.delete(docs_key)
     end
   end
 
@@ -447,70 +393,53 @@ defmodule HexHub.Packages do
   def delete_docs(package_name, version) do
     docs_key = Storage.generate_docs_key(package_name, version)
 
-    case Storage.delete(docs_key) do
-      :ok ->
-        # Update release to mark has_docs as false
-        case :mnesia.transaction(fn ->
-               releases =
-                 :mnesia.match_object(
-                   {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_,
-                    :_, :_}
-                 )
-
-               case releases do
-                 [] ->
-                   {:error, "Release not found"}
-
-                 releases ->
-                   # For :bag type, update all matching records
-                   Enum.each(releases, fn release_tuple ->
-                     {@releases_table, pkg_name, ver, _has_docs, meta, requirements, retired,
-                      downloads, inserted_at, _updated_at, url, package_url, html_url,
-                      docs_html_url} = release_tuple
-
-                     # Delete the old record first (required for :bag tables)
-                     :mnesia.delete_object(release_tuple)
-
-                     updated_release = {
-                       @releases_table,
-                       pkg_name,
-                       ver,
-                       # has_docs
-                       false,
-                       meta,
-                       requirements,
-                       retired,
-                       downloads,
-                       inserted_at,
-                       DateTime.utc_now(),
-                       url,
-                       package_url,
-                       html_url,
-                       docs_html_url
-                     }
-
-                     :mnesia.write(updated_release)
-                   end)
-
-                   {:ok, :updated}
-               end
-             end) do
-          {:atomic, {:ok, _}} ->
-            case get_release(package_name, version) do
-              {:ok, release} -> {:ok, release}
-              error -> error
-            end
-
-          {:atomic, {:error, reason}} ->
-            {:error, reason}
-
-          {:aborted, reason} ->
-            {:error, "Failed to update release: #{inspect(reason)}"}
-        end
-
-      {:error, reason} ->
-        {:error, "Failed to delete docs: #{reason}"}
+    with :ok <- Storage.delete(docs_key),
+         {:ok, _} <- update_release_docs_flag(package_name, version, false) do
+      get_release(package_name, version)
+    else
+      {:error, reason} when is_binary(reason) -> {:error, reason}
+      {:error, reason} -> {:error, "Failed to delete docs: #{inspect(reason)}"}
     end
+  end
+
+  defp update_release_docs_flag(package_name, version, has_docs) do
+    case :mnesia.transaction(fn -> do_update_release_docs_flag(package_name, version, has_docs) end) do
+      {:atomic, {:ok, _} = result} -> result
+      {:atomic, {:error, _} = error} -> error
+      {:aborted, reason} -> {:error, "Transaction failed: #{inspect(reason)}"}
+    end
+  end
+
+  defp do_update_release_docs_flag(package_name, version, has_docs) do
+    releases = :mnesia.match_object(
+      {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+    )
+
+    case releases do
+      [] -> {:error, "Release not found"}
+      _ -> update_all_release_docs_flags(releases, has_docs)
+    end
+  end
+
+  defp update_all_release_docs_flags(releases, has_docs) do
+    Enum.each(releases, fn release_tuple ->
+      update_single_release_docs_flag(release_tuple, has_docs)
+    end)
+    {:ok, :updated}
+  end
+
+  defp update_single_release_docs_flag(release_tuple, has_docs) do
+    {@releases_table, pkg_name, ver, _old_has_docs, meta, requirements, retired,
+     downloads, inserted_at, _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
+
+    :mnesia.delete_object(release_tuple)
+
+    updated_release = {
+      @releases_table, pkg_name, ver, has_docs, meta, requirements, retired,
+      downloads, inserted_at, DateTime.utc_now(), url, package_url, html_url, docs_html_url
+    }
+
+    :mnesia.write(updated_release)
   end
 
   @doc """
@@ -518,63 +447,7 @@ defmodule HexHub.Packages do
   """
   @spec retire_release(String.t(), String.t()) :: {:ok, release()} | {:error, String.t()}
   def retire_release(package_name, version) do
-    case get_release(package_name, version) do
-      {:ok, _release} ->
-        case :mnesia.transaction(fn ->
-               releases =
-                 :mnesia.match_object(
-                   {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_,
-                    :_, :_}
-                 )
-
-               case releases do
-                 [] ->
-                   {:error, "Release not found"}
-
-                 releases ->
-                   # For :bag type, update all matching records
-                   Enum.each(releases, fn release_tuple ->
-                     {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
-                      inserted_at, _updated_at, url, package_url, html_url,
-                      docs_html_url} = release_tuple
-
-                     updated_release = {
-                       @releases_table,
-                       pkg_name,
-                       ver,
-                       has_docs,
-                       meta,
-                       requirements,
-                       # retired
-                       true,
-                       downloads,
-                       inserted_at,
-                       DateTime.utc_now(),
-                       url,
-                       package_url,
-                       html_url,
-                       docs_html_url
-                     }
-
-                     :mnesia.write(updated_release)
-                   end)
-
-                   {:ok, hd(releases)}
-               end
-             end) do
-          {:atomic, {:ok, release_tuple}} ->
-            {:ok, release_to_map(release_tuple)}
-
-          {:atomic, {:error, reason}} ->
-            {:error, reason}
-
-          {:aborted, reason} ->
-            {:error, "Failed to retire release: #{inspect(reason)}"}
-        end
-
-      {:error, :not_found} ->
-        {:error, "Release not found"}
-    end
+    update_release_retirement_status(package_name, version, true)
   end
 
   @doc """
@@ -582,63 +455,55 @@ defmodule HexHub.Packages do
   """
   @spec unretire_release(String.t(), String.t()) :: {:ok, release()} | {:error, String.t()}
   def unretire_release(package_name, version) do
-    case get_release(package_name, version) do
-      {:ok, _release} ->
-        case :mnesia.transaction(fn ->
-               releases =
-                 :mnesia.match_object(
-                   {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_,
-                    :_, :_}
-                 )
+    update_release_retirement_status(package_name, version, false)
+  end
 
-               case releases do
-                 [] ->
-                   {:error, "Release not found"}
-
-                 releases ->
-                   # For :bag type, update all matching records
-                   Enum.each(releases, fn release_tuple ->
-                     {_, pkg_name, ver, has_docs, meta, requirements, _retired, downloads,
-                      inserted_at, _updated_at, url, package_url, html_url,
-                      docs_html_url} = release_tuple
-
-                     updated_release = {
-                       @releases_table,
-                       pkg_name,
-                       ver,
-                       has_docs,
-                       meta,
-                       requirements,
-                       # retired
-                       false,
-                       downloads,
-                       inserted_at,
-                       DateTime.utc_now(),
-                       url,
-                       package_url,
-                       html_url,
-                       docs_html_url
-                     }
-
-                     :mnesia.write(updated_release)
-                   end)
-
-                   {:ok, hd(releases)}
-               end
-             end) do
-          {:atomic, {:ok, release_tuple}} ->
-            {:ok, release_to_map(release_tuple)}
-
-          {:atomic, {:error, reason}} ->
-            {:error, reason}
-
-          {:aborted, reason} ->
-            {:error, "Failed to unretire release: #{inspect(reason)}"}
-        end
-
-      {:error, :not_found} ->
-        {:error, "Release not found"}
+  defp update_release_retirement_status(package_name, version, retired) do
+    with {:ok, _release} <- get_release(package_name, version),
+         {:ok, release_tuple} <- update_retirement_in_transaction(package_name, version, retired) do
+      {:ok, release_to_map(release_tuple)}
+    else
+      {:error, :not_found} -> {:error, "Release not found"}
+      {:error, reason} -> {:error, reason}
     end
+  end
+
+  defp update_retirement_in_transaction(package_name, version, retired) do
+    case :mnesia.transaction(fn -> do_update_retirement_status(package_name, version, retired) end) do
+      {:atomic, {:ok, _} = result} -> result
+      {:atomic, {:error, _} = error} -> error
+      {:aborted, reason} -> {:error, "Failed to update retirement status: #{inspect(reason)}"}
+    end
+  end
+
+  defp do_update_retirement_status(package_name, version, retired) do
+    releases = :mnesia.match_object(
+      {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+    )
+
+    case releases do
+      [] -> {:error, "Release not found"}
+      _ -> update_all_releases_retirement(releases, retired)
+    end
+  end
+
+  defp update_all_releases_retirement(releases, retired) do
+    Enum.each(releases, fn release_tuple ->
+      update_single_release_retirement(release_tuple, retired)
+    end)
+    {:ok, hd(releases)}
+  end
+
+  defp update_single_release_retirement(release_tuple, retired) do
+    {_, pkg_name, ver, has_docs, meta, requirements, _old_retired, downloads,
+     inserted_at, _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
+
+    updated_release = {
+      @releases_table, pkg_name, ver, has_docs, meta, requirements, retired,
+      downloads, inserted_at, DateTime.utc_now(), url, package_url, html_url, docs_html_url
+    }
+
+    :mnesia.write(updated_release)
   end
 
   ## Helper functions
