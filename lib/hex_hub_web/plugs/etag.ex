@@ -111,9 +111,6 @@ defmodule HexHubWeb.Plugs.ETag do
 
           put_resp_header(conn, "etag", etag)
           |> check_if_none_match(etag)
-
-        _ ->
-          conn
       end
     else
       conn
@@ -148,7 +145,6 @@ defmodule HexHubWeb.Plugs.ETag do
   end
 
   defp get_response_body(%{resp_body: body}) when is_binary(body), do: body
-  defp get_response_body(%{resp_body: {:sendfile, _, path, _}}), do: %{path: path}
   defp get_response_body(_), do: nil
 end
 

@@ -19,29 +19,24 @@ defmodule HexHub.MCP.Tools.Releases do
 
     Logger.debug("MCP listing releases for package: #{name}")
 
-    case Packages.list_releases(name) do
-      {:ok, releases} ->
-        filtered_releases =
-          if include_retired do
-            releases
-          else
-            Enum.reject(releases, &(&1.retirement != nil))
-          end
+    {:ok, releases} = Packages.list_releases(name)
 
-        result = %{
-          package_name: name,
-          releases: Enum.map(filtered_releases, &format_release/1),
-          total_releases: length(filtered_releases),
-          include_retired: include_retired,
-          latest_version: get_latest_version(releases)
-        }
+    filtered_releases =
+      if include_retired do
+        releases
+      else
+        Enum.reject(releases, &(&1.retirement != nil))
+      end
 
-        {:ok, result}
+    result = %{
+      package_name: name,
+      releases: Enum.map(filtered_releases, &format_release/1),
+      total_releases: length(filtered_releases),
+      include_retired: include_retired,
+      latest_version: get_latest_version(releases)
+    }
 
-      {:error, reason} ->
-        Logger.error("MCP list releases failed: #{inspect(reason)}")
-        {:error, reason}
-    end
+    {:ok, result}
   end
 
   def list_releases(_args) do
@@ -183,15 +178,6 @@ defmodule HexHub.MCP.Tools.Releases do
   end
 
   defp parse_requirements(requirements) when is_map(requirements), do: requirements
-
-  defp parse_requirements(requirements) when is_binary(requirements) do
-    case Jason.decode(requirements) do
-      {:ok, reqs} -> reqs
-      {:error, _} -> %{}
-    end
-  end
-
-  defp parse_requirements(_), do: %{}
 
   defp get_retirement_info(release) do
     case release.retirement do

@@ -145,7 +145,7 @@ defmodule HexHub.Packages do
   @doc """
   List all packages with optional search and pagination.
   """
-  @spec list_packages(keyword()) :: {:ok, [package()], integer()}
+  @spec list_packages(keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
   def list_packages(opts \\ []) do
     search_term = Keyword.get(opts, :search)
     page = Keyword.get(opts, :page, 1)
@@ -197,7 +197,7 @@ defmodule HexHub.Packages do
   @doc """
   Search packages by name or description.
   """
-  @spec search_packages(String.t(), keyword()) :: {:ok, [package()], integer()}
+  @spec search_packages(String.t(), keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
   def search_packages(query, opts \\ []) do
     page = Keyword.get(opts, :page, 1)
     per_page = Keyword.get(opts, :per_page, 50)

@@ -71,26 +71,21 @@ defmodule HexHub.MCP.Tools.Documentation do
   def list_documentation_versions(%{"name" => name}) do
     Logger.debug("MCP listing documentation versions for: #{name}")
 
-    case Packages.list_releases(name) do
-      {:ok, releases} ->
-        doc_versions =
-          releases
-          |> Enum.filter(& &1.has_docs)
-          |> Enum.map(&format_doc_version/1)
+    {:ok, releases} = Packages.list_releases(name)
 
-        result = %{
-          name: name,
-          documentation_versions: doc_versions,
-          total_versions: length(doc_versions),
-          latest_version: get_latest_version_with_docs(name)
-        }
+    doc_versions =
+      releases
+      |> Enum.filter(& &1.has_docs)
+      |> Enum.map(&format_doc_version/1)
 
-        {:ok, result}
+    result = %{
+      name: name,
+      documentation_versions: doc_versions,
+      total_versions: length(doc_versions),
+      latest_version: get_latest_version_with_docs(name)
+    }
 
-      {:error, reason} ->
-        Logger.error("MCP list documentation versions failed: #{inspect(reason)}")
-        {:error, reason}
-    end
+    {:ok, result}
   end
 
   def list_documentation_versions(_args) do
@@ -144,17 +139,13 @@ defmodule HexHub.MCP.Tools.Documentation do
   # Private helper functions
 
   defp get_latest_version_with_docs(name) do
-    case Packages.list_releases(name) do
-      {:ok, releases} ->
-        releases
-        |> Enum.filter(& &1.has_docs)
-        |> Enum.map(& &1.version)
-        |> Enum.sort(&(Version.compare(&1, &2) == :gt))
-        |> List.first()
+    {:ok, releases} = Packages.list_releases(name)
 
-      _ ->
-        nil
-    end
+    releases
+    |> Enum.filter(& &1.has_docs)
+    |> Enum.map(& &1.version)
+    |> Enum.sort(&(Version.compare(&1, &2) == :gt))
+    |> List.first()
   end
 
   defp get_documentation_page(name, version, page) do
