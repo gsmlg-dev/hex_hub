@@ -174,34 +174,14 @@ defmodule HexHub.AuditLogs do
   """
   @spec get_download_stats(String.t(), String.t() | nil) :: map()
   def get_download_stats(package_name, version \\ nil) do
-    case :mnesia.transaction(fn ->
-           if version do
-             case :mnesia.read({:package_downloads, {package_name, version}}) do
-               [{:package_downloads, _key, _pkg, _ver, day_count, week_count, all_count}] ->
-                 %{day: day_count, week: week_count, all: all_count}
+    result =
+      if version do
+        get_single_version_stats(package_name, version)
+      else
+        get_aggregate_stats(package_name)
+      end
 
-               [] ->
-                 %{day: 0, week: 0, all: 0}
-             end
-           else
-             # Aggregate all versions
-             :mnesia.foldl(
-               fn {:package_downloads, {pkg, _ver}, _pkg2, _ver2, day, week, all}, acc ->
-                 if pkg == package_name do
-                   %{
-                     day: acc.day + day,
-                     week: acc.week + week,
-                     all: acc.all + all
-                   }
-                 else
-                   acc
-                 end
-               end,
-               %{day: 0, week: 0, all: 0},
-               :package_downloads
-             )
-           end
-         end) do
+    case result do
       {:atomic, stats} -> stats
       {:aborted, _} -> %{day: 0, week: 0, all: 0}
     end
@@ -443,7 +423,7 @@ defmodule HexHub.AuditLogs do
     headers = "ID,Timestamp,User,Action,Resource Type,Resource ID,IP Address,User Agent\n"
 
     rows =
-      Enum.map(logs, fn log ->
+      Enum.map_join(logs, "\n", fn log ->
         [
           log.id,
           log.timestamp,
@@ -454,10 +434,8 @@ defmodule HexHub.AuditLogs do
           log.ip_address || "",
           log.user_agent || ""
         ]
-        |> Enum.map(&escape_csv/1)
-        |> Enum.join(",")
+        |> Enum.map_join(",", &escape_csv/1)
       end)
-      |> Enum.join("\n")
 
     headers <> rows
   end
@@ -471,4 +449,36 @@ defmodule HexHub.AuditLogs do
   end
 
   defp escape_csv(value), do: to_string(value)
+
+  defp get_single_version_stats(package_name, version) do
+    :mnesia.transaction(fn ->
+      case :mnesia.read({:package_downloads, {package_name, version}}) do
+        [{:package_downloads, _key, _pkg, _ver, day_count, week_count, all_count}] ->
+          %{day: day_count, week: week_count, all: all_count}
+
+        [] ->
+          %{day: 0, week: 0, all: 0}
+      end
+    end)
+  end
+
+  defp get_aggregate_stats(package_name) do
+    :mnesia.transaction(fn ->
+      :mnesia.foldl(
+        fn {:package_downloads, {pkg, _ver}, _pkg2, _ver2, day, week, all}, acc ->
+          if pkg == package_name do
+            %{
+              day: acc.day + day,
+              week: acc.week + week,
+              all: acc.all + all
+            }
+          else
+            acc
+          end
+        end,
+        %{day: 0, week: 0, all: 0},
+        :package_downloads
+      )
+    end)
+  end
 end

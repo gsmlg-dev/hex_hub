@@ -22,59 +22,11 @@ defmodule HexHub.PackageRetirement do
   @spec retire_release(String.t(), String.t(), atom(), String.t() | nil, String.t()) ::
           :ok | {:error, String.t()}
   def retire_release(package_name, version, reason, message \\ nil, retired_by) do
-    if reason not in @retirement_reasons do
-      {:error,
-       "Invalid retirement reason. Must be one of: #{Enum.join(@retirement_reasons, ", ")}"}
-    else
-      # Check if release exists
-      case get_release(package_name, version) do
-        {:ok, _release} ->
-          case :mnesia.transaction(fn ->
-                 # Check if already retired
-                 case :mnesia.read({:retired_releases, {package_name, version}}) do
-                   [] ->
-                     # Add retirement record
-                     :mnesia.write({
-                       :retired_releases,
-                       {package_name, version},
-                       package_name,
-                       version,
-                       reason,
-                       message,
-                       DateTime.utc_now(),
-                       retired_by
-                     })
-
-                   [_existing] ->
-                     {:error, "Release is already retired"}
-                 end
-               end) do
-            {:atomic, :ok} ->
-              # Log the retirement
-              Audit.log_event(
-                "package.release.retired",
-                "release",
-                "#{package_name}:#{version}",
-                %{
-                  retired_by: retired_by,
-                  reason: reason,
-                  message: message
-                },
-                nil
-              )
-
-              :ok
-
-            {:atomic, error} ->
-              error
-
-            {:aborted, reason} ->
-              {:error, "Failed to retire release: #{inspect(reason)}"}
-          end
-
-        {:error, _} ->
-          {:error, "Release not found"}
-      end
+    with :ok <- validate_retirement_reason(reason),
+         {:ok, _release} <- get_release(package_name, version),
+         :ok <- create_retirement_record(package_name, version, reason, message, retired_by) do
+      log_retirement(package_name, version, reason, message, retired_by)
+      :ok
     end
   end
 
@@ -219,7 +171,56 @@ defmodule HexHub.PackageRetirement do
   @spec retirement_reasons() :: list(atom())
   def retirement_reasons, do: @retirement_reasons
 
-  # Private helper to check if release exists
+  # Private helper functions
+
+  defp validate_retirement_reason(reason) do
+    if reason in @retirement_reasons do
+      :ok
+    else
+      {:error,
+       "Invalid retirement reason. Must be one of: #{Enum.join(@retirement_reasons, ", ")}"}
+    end
+  end
+
+  defp create_retirement_record(package_name, version, reason, message, retired_by) do
+    case :mnesia.transaction(fn ->
+           case :mnesia.read({:retired_releases, {package_name, version}}) do
+             [] ->
+               :mnesia.write({
+                 :retired_releases,
+                 {package_name, version},
+                 package_name,
+                 version,
+                 reason,
+                 message,
+                 DateTime.utc_now(),
+                 retired_by
+               })
+
+             [_existing] ->
+               {:error, "Release is already retired"}
+           end
+         end) do
+      {:atomic, :ok} -> :ok
+      {:atomic, error} -> error
+      {:aborted, reason} -> {:error, "Failed to retire release: #{inspect(reason)}"}
+    end
+  end
+
+  defp log_retirement(package_name, version, reason, message, retired_by) do
+    Audit.log_event(
+      "package.release.retired",
+      "release",
+      "#{package_name}:#{version}",
+      %{
+        retired_by: retired_by,
+        reason: reason,
+        message: message
+      },
+      nil
+    )
+  end
+
   defp get_release(package_name, version) do
     case :mnesia.transaction(fn ->
            :mnesia.match_object(

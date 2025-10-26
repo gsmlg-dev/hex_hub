@@ -1,8 +1,8 @@
 defmodule HexHubWeb.API.TwoFactorController do
   use HexHubWeb, :controller
 
-  alias HexHub.TwoFactorAuth
   alias HexHub.Audit
+  alias HexHub.TwoFactorAuth
 
   @doc """
   GET /api/auth/totp
