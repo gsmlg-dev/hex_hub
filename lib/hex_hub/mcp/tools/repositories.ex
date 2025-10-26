@@ -8,7 +8,7 @@ defmodule HexHub.MCP.Tools.Repositories do
 
   require Logger
 
-  alias HexHub.{Repositories, Packages}
+  alias HexHub.{Packages, Repositories}
 
   @doc """
   List all available repositories.

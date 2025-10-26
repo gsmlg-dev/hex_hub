@@ -2,9 +2,9 @@ defmodule HexHubAdminWeb.AdminController do
   use HexHubAdminWeb, :controller
 
   alias HexHub.Packages
-  alias HexHub.Users
-  alias HexHub.Upstream
   alias HexHub.StorageConfig
+  alias HexHub.Upstream
+  alias HexHub.Users
 
   def dashboard(conn, _params) do
     {:ok, _packages, total} = Packages.list_packages()

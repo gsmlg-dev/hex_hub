@@ -133,9 +133,10 @@ defmodule HexHub.RegistryFormat do
   Returns :etf for Hex clients, :json otherwise.
   """
   def response_format(conn) do
-    cond do
-      hex_client?(conn) -> :etf
-      true -> :json
+    if hex_client?(conn) do
+      :etf
+    else
+      :json
     end
   end
 end

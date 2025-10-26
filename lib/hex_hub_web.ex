@@ -90,8 +90,8 @@ defmodule HexHubWeb do
       use PhoenixDuskmoon.Fun
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias HexHubWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

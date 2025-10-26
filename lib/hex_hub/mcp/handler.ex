@@ -8,7 +8,7 @@ defmodule HexHub.MCP.Handler do
 
   require Logger
 
-  alias HexHub.MCP.{Server, Schemas}
+  alias HexHub.MCP.{Schemas, Server}
 
   @doc """
   Handle incoming MCP requests.

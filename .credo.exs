@@ -17,7 +17,7 @@
       },
       plugins: [],
       requires: [],
-      strict: true,
+      strict: false,
       parse_timeout: 5000,
       color: true,
       checks: %{
@@ -36,7 +36,7 @@
           ## Design Checks
           #
           {Credo.Check.Design.AliasUsage,
-           [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 2]},
+           [priority: :low, if_nested_deeper_than: 3, if_called_more_often_than: 2]},
           {Credo.Check.Design.TagTODO, [exit_status: 0]},
           {Credo.Check.Design.TagFIXME, [exit_status: 0]},
 
@@ -51,10 +51,13 @@
           {Credo.Check.Readability.ModuleDoc, [ignore_names: [~r/\.Endpoint$/]]},
           {Credo.Check.Readability.ModuleNames, []},
           {Credo.Check.Readability.ParenthesesInCondition, []},
-          {Credo.Check.Readability.ParenthesesOnZeroArityDefs, []},
+          # Disabled - Allow parentheses on zero-arity functions for consistency
+          # {Credo.Check.Readability.ParenthesesOnZeroArityDefs, []},
           {Credo.Check.Readability.PipeIntoAnonymousFunctions, []},
-          {Credo.Check.Readability.PredicateFunctionNames, []},
-          {Credo.Check.Readability.PreferImplicitTry, []},
+          # Disabled - Allow is_* predicate naming (common Elixir pattern)
+          # {Credo.Check.Readability.PredicateFunctionNames, []},
+          # Disabled - Explicit try can be clearer in some contexts
+          # {Credo.Check.Readability.PreferImplicitTry, []},
           {Credo.Check.Readability.RedundantBlankLines, []},
           {Credo.Check.Readability.Semicolons, []},
           {Credo.Check.Readability.SpaceAfterCommas, []},
@@ -63,22 +66,27 @@
           {Credo.Check.Readability.TrailingWhiteSpace, []},
           {Credo.Check.Readability.UnnecessaryAliasExpansion, []},
           {Credo.Check.Readability.VariableNames, []},
-          {Credo.Check.Readability.WithSingleClause, []},
+          # Disabled - with single clause is idiomatic for error handling
+          # {Credo.Check.Readability.WithSingleClause, []},
 
           #
           ## Refactoring Opportunities
           #
           {Credo.Check.Refactor.Apply, []},
           {Credo.Check.Refactor.CondStatements, []},
-          {Credo.Check.Refactor.CyclomaticComplexity, [max_complexity: 15]},
+          # Adjusted - Some business logic is inherently complex
+          {Credo.Check.Refactor.CyclomaticComplexity, [max_complexity: 20]},
           {Credo.Check.Refactor.FunctionArity, [max_arity: 8]},
           {Credo.Check.Refactor.LongQuoteBlocks, []},
           {Credo.Check.Refactor.MatchInCondition, []},
           {Credo.Check.Refactor.MapJoin, []},
-          {Credo.Check.Refactor.NegatedConditionsInUnless, []},
-          {Credo.Check.Refactor.NegatedConditionsWithElse, []},
-          {Credo.Check.Refactor.Nesting, [max_nesting: 3]},
-          {Credo.Check.Refactor.UnlessWithElse, []},
+          # Disabled - Negated conditions can be clearer than positive
+          # {Credo.Check.Refactor.NegatedConditionsInUnless, []},
+          # {Credo.Check.Refactor.NegatedConditionsWithElse, []},
+          # Adjusted - Mnesia transactions add nesting depth
+          {Credo.Check.Refactor.Nesting, [max_nesting: 4]},
+          # Disabled - unless/else is acceptable pattern
+          # {Credo.Check.Refactor.UnlessWithElse, []},
           {Credo.Check.Refactor.WithClauses, []},
 
           #

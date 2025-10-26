@@ -3,7 +3,7 @@ defmodule HexHub.TestHelpers do
   Helper functions for setting up test data.
   """
 
-  alias HexHub.{Users, ApiKeys}
+  alias HexHub.{ApiKeys, Users}
 
   def create_user(attrs \\ %{}) do
     username = Map.get(attrs, :username) || "testuser#{System.unique_integer([:positive])}"
