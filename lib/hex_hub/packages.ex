@@ -443,6 +443,32 @@ defmodule HexHub.Packages do
   end
 
   @doc """
+  Get package owners.
+  """
+  @spec get_package_owners(String.t()) :: {:ok, list()} | {:error, String.t()}
+  def get_package_owners(package_name) do
+    case :mnesia.transaction(fn ->
+      :mnesia.match_object({:package_owners, package_name, :_, :_, :_})
+    end) do
+      {:atomic, owners} when is_list(owners) ->
+        owner_list = Enum.map(owners, fn {:package_owners, _pkg, username, level, inserted_at} ->
+          %{
+            username: username,
+            level: level,
+            inserted_at: inserted_at
+          }
+        end)
+        {:ok, owner_list}
+
+      {:atomic, []} ->
+        {:ok, []}
+
+      {:aborted, reason} ->
+        {:error, "Failed to get owners: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
   Retire a package release.
   """
   @spec retire_release(String.t(), String.t()) :: {:ok, release()} | {:error, String.t()}

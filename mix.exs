@@ -62,7 +62,9 @@ defmodule HexHub.MixProject do
       {:hackney, "~> 1.20"},
       {:mox, "~> 1.1", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:nimble_totp, "~> 1.0"},
+      {:qr_code, "~> 3.0"}
     ]
   end
 
