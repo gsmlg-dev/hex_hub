@@ -40,7 +40,7 @@ defmodule HexHub.RegistryFormat do
   def format_package_for_registry(package) do
     %{
       name: package.name,
-      repository: package.repository || "hexpm",
+      repository: package.repository_name || "hexpm",
       releases: format_releases_for_registry(package),
       meta: decode_meta(package.meta),
       downloads: %{
