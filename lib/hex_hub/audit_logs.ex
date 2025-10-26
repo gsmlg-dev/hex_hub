@@ -105,30 +105,36 @@ defmodule HexHub.AuditLogs do
     offset = filters[:offset] || 0
 
     case :mnesia.transaction(fn ->
-      # Build match specification for filtering
-      match_spec = build_match_spec(user_id, action, resource_type, resource_id, from, to)
+           # Build match specification for filtering
+           match_spec = build_match_spec(user_id, action, resource_type, resource_id, from, to)
 
-      # Query with filters
-      results = :mnesia.select(:audit_logs, match_spec)
+           # Query with filters
+           results = :mnesia.select(:audit_logs, match_spec)
 
-      # Filter by category if specified
-      results = if category do
-        filter_by_category(results, category)
-      else
-        results
-      end
+           # Filter by category if specified
+           results =
+             if category do
+               filter_by_category(results, category)
+             else
+               results
+             end
 
-      # Sort by timestamp descending
-      results = Enum.sort_by(results, fn {_, _, timestamp, _, _, _, _, _, _, _} ->
-        timestamp
-      end, {:desc, DateTime})
+           # Sort by timestamp descending
+           results =
+             Enum.sort_by(
+               results,
+               fn {_, _, timestamp, _, _, _, _, _, _, _} ->
+                 timestamp
+               end,
+               {:desc, DateTime}
+             )
 
-      # Apply pagination
-      results
-      |> Enum.drop(offset)
-      |> Enum.take(limit)
-      |> Enum.map(&format_audit_log/1)
-    end) do
+           # Apply pagination
+           results
+           |> Enum.drop(offset)
+           |> Enum.take(limit)
+           |> Enum.map(&format_audit_log/1)
+         end) do
       {:atomic, results} -> {:ok, results}
       {:aborted, reason} -> {:error, "Failed to query audit logs: #{inspect(reason)}"}
     end
@@ -147,10 +153,12 @@ defmodule HexHub.AuditLogs do
   """
   @spec get_package_audit_logs(String.t(), map()) :: {:ok, list(map())} | {:error, String.t()}
   def get_package_audit_logs(package_name, opts \\ %{}) do
-    query_logs(Map.merge(opts, %{
-      resource_type: "package",
-      resource_id: package_name
-    }))
+    query_logs(
+      Map.merge(opts, %{
+        resource_type: "package",
+        resource_id: package_name
+      })
+    )
   end
 
   @doc """
@@ -167,32 +175,33 @@ defmodule HexHub.AuditLogs do
   @spec get_download_stats(String.t(), String.t() | nil) :: map()
   def get_download_stats(package_name, version \\ nil) do
     case :mnesia.transaction(fn ->
-      if version do
-        case :mnesia.read({:package_downloads, {package_name, version}}) do
-          [{:package_downloads, _key, _pkg, _ver, day_count, week_count, all_count}] ->
-            %{day: day_count, week: week_count, all: all_count}
-          [] ->
-            %{day: 0, week: 0, all: 0}
-        end
-      else
-        # Aggregate all versions
-        :mnesia.foldl(
-          fn {:package_downloads, {pkg, _ver}, _pkg2, _ver2, day, week, all}, acc ->
-            if pkg == package_name do
-              %{
-                day: acc.day + day,
-                week: acc.week + week,
-                all: acc.all + all
-              }
-            else
-              acc
-            end
-          end,
-          %{day: 0, week: 0, all: 0},
-          :package_downloads
-        )
-      end
-    end) do
+           if version do
+             case :mnesia.read({:package_downloads, {package_name, version}}) do
+               [{:package_downloads, _key, _pkg, _ver, day_count, week_count, all_count}] ->
+                 %{day: day_count, week: week_count, all: all_count}
+
+               [] ->
+                 %{day: 0, week: 0, all: 0}
+             end
+           else
+             # Aggregate all versions
+             :mnesia.foldl(
+               fn {:package_downloads, {pkg, _ver}, _pkg2, _ver2, day, week, all}, acc ->
+                 if pkg == package_name do
+                   %{
+                     day: acc.day + day,
+                     week: acc.week + week,
+                     all: acc.all + all
+                   }
+                 else
+                   acc
+                 end
+               end,
+               %{day: 0, week: 0, all: 0},
+               :package_downloads
+             )
+           end
+         end) do
       {:atomic, stats} -> stats
       {:aborted, _} -> %{day: 0, week: 0, all: 0}
     end
@@ -225,6 +234,7 @@ defmodule HexHub.AuditLogs do
   # Private functions
 
   defp build_enhanced_details(details, nil), do: details
+
   defp build_enhanced_details(details, conn) do
     Map.merge(details, %{
       method: conn.method,
@@ -238,11 +248,16 @@ defmodule HexHub.AuditLogs do
 
   defp update_api_key_last_used(conn) do
     case conn.assigns[:api_key_name] do
-      nil -> :ok
+      nil ->
+        :ok
+
       key_name ->
         :mnesia.transaction(fn ->
           case :mnesia.read({:api_keys, key_name}) do
-            [{:api_keys, name, username, secret_hash, permissions, revoked_at, inserted_at, _updated_at}] ->
+            [
+              {:api_keys, name, username, secret_hash, permissions, revoked_at, inserted_at,
+               _updated_at}
+            ] ->
               :mnesia.write({
                 :api_keys,
                 name,
@@ -253,7 +268,9 @@ defmodule HexHub.AuditLogs do
                 inserted_at,
                 DateTime.utc_now()
               })
-            _ -> :ok
+
+            _ ->
+              :ok
           end
         end)
     end
@@ -264,6 +281,7 @@ defmodule HexHub.AuditLogs do
 
     :mnesia.transaction(fn ->
       key = {package_name, version}
+
       case :mnesia.read({:package_downloads, key}) do
         [{:package_downloads, ^key, _pkg, _ver, day, week, all}] ->
           :mnesia.write({
@@ -325,18 +343,64 @@ defmodule HexHub.AuditLogs do
 
   defp filter_by_category(results, category) do
     category_actions = get_category_actions(category)
+
     Enum.filter(results, fn {_, _, _, action, _, _, _, _, _, _} ->
       action in category_actions
     end)
   end
 
-  defp get_category_actions(:auth), do: ["auth.login", "auth.logout", "auth.failed", "auth.api_key_used", "auth.2fa_required", "auth.2fa_verified", "auth.2fa_failed"]
-  defp get_category_actions(:package), do: ["package.published", "package.updated", "package.retired", "package.unretired", "package.deleted", "package.downloaded", "package.docs_uploaded", "package.docs_deleted", "package.ownership_added", "package.ownership_removed"]
-  defp get_category_actions(:user), do: ["user.created", "user.updated", "user.deactivated", "user.reactivated", "user.password_changed", "user.email_changed", "user.2fa_enabled", "user.2fa_disabled"]
-  defp get_category_actions(:security), do: ["security.rate_limit", "security.ip_blocked", "security.ip_unblocked", "security.suspicious_activity", "security.invalid_request"]
+  defp get_category_actions(:auth),
+    do: [
+      "auth.login",
+      "auth.logout",
+      "auth.failed",
+      "auth.api_key_used",
+      "auth.2fa_required",
+      "auth.2fa_verified",
+      "auth.2fa_failed"
+    ]
+
+  defp get_category_actions(:package),
+    do: [
+      "package.published",
+      "package.updated",
+      "package.retired",
+      "package.unretired",
+      "package.deleted",
+      "package.downloaded",
+      "package.docs_uploaded",
+      "package.docs_deleted",
+      "package.ownership_added",
+      "package.ownership_removed"
+    ]
+
+  defp get_category_actions(:user),
+    do: [
+      "user.created",
+      "user.updated",
+      "user.deactivated",
+      "user.reactivated",
+      "user.password_changed",
+      "user.email_changed",
+      "user.2fa_enabled",
+      "user.2fa_disabled"
+    ]
+
+  defp get_category_actions(:security),
+    do: [
+      "security.rate_limit",
+      "security.ip_blocked",
+      "security.ip_unblocked",
+      "security.suspicious_activity",
+      "security.invalid_request"
+    ]
+
   defp get_category_actions(_), do: []
 
-  defp format_audit_log({:audit_logs, id, timestamp, user_id, action, resource_type, resource_id, details, ip_address, user_agent}) do
+  defp format_audit_log(
+         {:audit_logs, id, timestamp, user_id, action, resource_type, resource_id, details,
+          ip_address, user_agent}
+       ) do
     %{
       id: id,
       timestamp: timestamp,
@@ -378,21 +442,22 @@ defmodule HexHub.AuditLogs do
   defp build_csv(logs) do
     headers = "ID,Timestamp,User,Action,Resource Type,Resource ID,IP Address,User Agent\n"
 
-    rows = Enum.map(logs, fn log ->
-      [
-        log.id,
-        log.timestamp,
-        log.user_id || "",
-        log.action_description,
-        log.resource_type,
-        log.resource_id,
-        log.ip_address || "",
-        log.user_agent || ""
-      ]
-      |> Enum.map(&escape_csv/1)
-      |> Enum.join(",")
-    end)
-    |> Enum.join("\n")
+    rows =
+      Enum.map(logs, fn log ->
+        [
+          log.id,
+          log.timestamp,
+          log.user_id || "",
+          log.action_description,
+          log.resource_type,
+          log.resource_id,
+          log.ip_address || "",
+          log.user_agent || ""
+        ]
+        |> Enum.map(&escape_csv/1)
+        |> Enum.join(",")
+      end)
+      |> Enum.join("\n")
 
     headers <> rows
   end
@@ -404,5 +469,6 @@ defmodule HexHub.AuditLogs do
       value
     end
   end
+
   defp escape_csv(value), do: to_string(value)
 end

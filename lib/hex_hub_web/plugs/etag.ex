@@ -13,7 +13,8 @@ defmodule HexHubWeb.Plugs.ETag do
 
   @default_cache_control "public, max-age=3600"
   @registry_cache_control "public, max-age=60, must-revalidate"
-  @package_cache_control "public, max-age=31536000, immutable"  # 1 year for immutable packages
+  # 1 year for immutable packages
+  @package_cache_control "public, max-age=31536000, immutable"
 
   def init(opts), do: opts
 
@@ -29,8 +30,9 @@ defmodule HexHubWeb.Plugs.ETag do
   Generate ETag from response body or file content.
   """
   def generate_etag(content) when is_binary(content) do
-    hash = :crypto.hash(:md5, content)
-    |> Base.encode16(case: :lower)
+    hash =
+      :crypto.hash(:md5, content)
+      |> Base.encode16(case: :lower)
 
     "\"#{hash}\""
   end
@@ -101,13 +103,17 @@ defmodule HexHubWeb.Plugs.ETag do
     # Only add ETag for successful responses
     if conn.status in 200..299 do
       case get_response_body(conn) do
-        nil -> conn
+        nil ->
+          conn
+
         body when is_binary(body) ->
           etag = generate_etag(body)
+
           put_resp_header(conn, "etag", etag)
           |> check_if_none_match(etag)
 
-        _ -> conn
+        _ ->
+          conn
       end
     else
       conn
@@ -130,6 +136,7 @@ defmodule HexHubWeb.Plugs.ETag do
   end
 
   defp etag_matches?(_etag, []), do: false
+
   defp etag_matches?(etag, [if_none_match | rest]) do
     # Handle multiple ETags in If-None-Match header
     if_none_match
@@ -171,11 +178,11 @@ defmodule HexHubWeb.Plugs.RegistryCache do
   """
   def get_registry_version() do
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:system_metadata, @registry_version_key}) do
-        [{:system_metadata, @registry_version_key, version}] -> version
-        [] -> 1
-      end
-    end) do
+           case :mnesia.read({:system_metadata, @registry_version_key}) do
+             [{:system_metadata, @registry_version_key, version}] -> version
+             [] -> 1
+           end
+         end) do
       {:atomic, version} -> version
       _ -> 1
     end
@@ -200,7 +207,9 @@ defmodule HexHubWeb.Plugs.RegistryCache do
     base_etag = ETag.generate_etag(content)
 
     case base_etag do
-      nil -> nil
+      nil ->
+        nil
+
       etag ->
         # Strip quotes, add version, re-quote
         etag_value = String.trim(etag, "\"")
@@ -216,9 +225,12 @@ defmodule HexHubWeb.Plugs.RegistryCache do
       register_before_send(conn, fn conn ->
         # Add registry-specific ETag
         case get_response_body(conn) do
-          nil -> conn
+          nil ->
+            conn
+
           body ->
             etag = generate_registry_etag(body)
+
             if etag do
               put_resp_header(conn, "etag", etag)
             else
@@ -250,7 +262,8 @@ defmodule HexHubWeb.Plugs.StaleCache do
 
   def call(conn, opts) do
     max_age = opts[:max_age] || 3600
-    stale_while_revalidate = opts[:stale_while_revalidate] || 86400  # 24 hours
+    # 24 hours
+    stale_while_revalidate = opts[:stale_while_revalidate] || 86400
 
     cache_control = "public, max-age=#{max_age}, stale-while-revalidate=#{stale_while_revalidate}"
 

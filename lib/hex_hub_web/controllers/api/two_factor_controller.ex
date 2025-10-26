@@ -36,9 +36,15 @@ defmodule HexHubWeb.API.TwoFactorController do
     case TwoFactorAuth.enable_2fa(username, secret, code) do
       {:ok, %{recovery_codes: codes}} ->
         # Log the 2FA enablement
-        Audit.log_event("2fa.enabled", "user", username, %{
-          ip_address: get_ip(conn)
-        }, conn)
+        Audit.log_event(
+          "2fa.enabled",
+          "user",
+          username,
+          %{
+            ip_address: get_ip(conn)
+          },
+          conn
+        )
 
         json(conn, %{
           message: "Two-factor authentication enabled successfully",
@@ -68,9 +74,15 @@ defmodule HexHubWeb.API.TwoFactorController do
     case TwoFactorAuth.disable_2fa(username, code) do
       :ok ->
         # Log the 2FA disablement
-        Audit.log_event("2fa.disabled", "user", username, %{
-          ip_address: get_ip(conn)
-        }, conn)
+        Audit.log_event(
+          "2fa.disabled",
+          "user",
+          username,
+          %{
+            ip_address: get_ip(conn)
+          },
+          conn
+        )
 
         json(conn, %{message: "Two-factor authentication disabled successfully"})
 
@@ -135,9 +147,15 @@ defmodule HexHubWeb.API.TwoFactorController do
     case TwoFactorAuth.verify_recovery_code(username, code) do
       :ok ->
         # Log recovery code usage
-        Audit.log_event("2fa.recovery_code_used", "user", username, %{
-          ip_address: get_ip(conn)
-        }, conn)
+        Audit.log_event(
+          "2fa.recovery_code_used",
+          "user",
+          username,
+          %{
+            ip_address: get_ip(conn)
+          },
+          conn
+        )
 
         conn
         |> put_session(:totp_verified, true)
@@ -167,9 +185,15 @@ defmodule HexHubWeb.API.TwoFactorController do
     case TwoFactorAuth.regenerate_recovery_codes(username, code) do
       {:ok, codes} ->
         # Log recovery code regeneration
-        Audit.log_event("2fa.recovery_codes_regenerated", "user", username, %{
-          ip_address: get_ip(conn)
-        }, conn)
+        Audit.log_event(
+          "2fa.recovery_codes_regenerated",
+          "user",
+          username,
+          %{
+            ip_address: get_ip(conn)
+          },
+          conn
+        )
 
         json(conn, %{
           message: "Recovery codes regenerated successfully",

@@ -18,32 +18,37 @@ defmodule HexHub.TwoFactorAuth do
   @doc """
   Generate a new TOTP secret for a user.
   """
-  @spec generate_secret(String.t()) :: {:ok, %{secret: String.t(), uri: String.t(), qr_code: String.t()}} | {:error, String.t()}
+  @spec generate_secret(String.t()) ::
+          {:ok, %{secret: String.t(), uri: String.t(), qr_code: String.t()}}
+          | {:error, String.t()}
   def generate_secret(username) do
     case Users.get_user(username) do
       {:ok, user} ->
         secret = NimbleTOTP.secret()
 
-        uri = NimbleTOTP.otpauth_uri(
-          "totp:#{@issuer}:#{user.email}",
-          secret,
-          issuer: @issuer,
-          label: user.username,
-          period: 30
-        )
+        uri =
+          NimbleTOTP.otpauth_uri(
+            "totp:#{@issuer}:#{user.email}",
+            secret,
+            issuer: @issuer,
+            label: user.username,
+            period: 30
+          )
 
         # Generate QR code for easy scanning
-        qr_svg = uri
-                 |> QRCode.create()
-                 |> QRCode.Render.Svg.create(%QRCode.Render.SvgSettings{})
-                 |> elem(1)
-                 |> Base.encode64()
+        qr_svg =
+          uri
+          |> QRCode.create()
+          |> QRCode.Render.Svg.create(%QRCode.Render.SvgSettings{})
+          |> elem(1)
+          |> Base.encode64()
 
-        {:ok, %{
-          secret: Base.encode32(secret),
-          uri: uri,
-          qr_code: "data:image/svg+xml;base64,#{qr_svg}"
-        }}
+        {:ok,
+         %{
+           secret: Base.encode32(secret),
+           uri: uri,
+           qr_code: "data:image/svg+xml;base64,#{qr_svg}"
+         }}
 
       {:error, reason} ->
         {:error, reason}
@@ -53,11 +58,11 @@ defmodule HexHub.TwoFactorAuth do
   @doc """
   Enable 2FA for a user with the provided secret and verification code.
   """
-  @spec enable_2fa(String.t(), String.t(), String.t()) :: {:ok, %{recovery_codes: list(String.t())}} | {:error, String.t()}
+  @spec enable_2fa(String.t(), String.t(), String.t()) ::
+          {:ok, %{recovery_codes: list(String.t())}} | {:error, String.t()}
   def enable_2fa(username, secret, verification_code) do
     with {:ok, _user} <- Users.get_user(username),
          :ok <- verify_code(secret, verification_code) do
-
       # Generate recovery codes
       recovery_codes = generate_recovery_codes()
       hashed_codes = Enum.map(recovery_codes, &Bcrypt.hash_pwd_salt/1)
@@ -87,7 +92,6 @@ defmodule HexHub.TwoFactorAuth do
     with {:ok, user} <- get_user_with_2fa(username),
          true <- user.totp_enabled,
          :ok <- verify_code(user.totp_secret, verification_code) do
-
       update_user_2fa(username, nil, false, [])
     else
       false ->
@@ -125,8 +129,8 @@ defmodule HexHub.TwoFactorAuth do
   def verify_recovery_code(username, recovery_code) do
     with {:ok, user} <- get_user_with_2fa(username),
          true <- user.totp_enabled,
-         {:ok, remaining_codes} <- check_and_consume_recovery_code(user.recovery_codes, recovery_code) do
-
+         {:ok, remaining_codes} <-
+           check_and_consume_recovery_code(user.recovery_codes, recovery_code) do
       # Update user with remaining recovery codes
       update_user_recovery_codes(username, remaining_codes)
       :ok
@@ -145,12 +149,12 @@ defmodule HexHub.TwoFactorAuth do
   @doc """
   Generate new recovery codes for a user (requires current 2FA code).
   """
-  @spec regenerate_recovery_codes(String.t(), String.t()) :: {:ok, list(String.t())} | {:error, String.t()}
+  @spec regenerate_recovery_codes(String.t(), String.t()) ::
+          {:ok, list(String.t())} | {:error, String.t()}
   def regenerate_recovery_codes(username, verification_code) do
     with {:ok, user} <- get_user_with_2fa(username),
          true <- user.totp_enabled,
          :ok <- verify_code(user.totp_secret, verification_code) do
-
       recovery_codes = generate_recovery_codes()
       hashed_codes = Enum.map(recovery_codes, &Bcrypt.hash_pwd_salt/1)
 
@@ -190,9 +194,10 @@ defmodule HexHub.TwoFactorAuth do
     secret_binary = Base.decode32!(secret)
 
     # Allow for time drift (previous, current, and next 30-second windows)
-    valid? = NimbleTOTP.valid?(secret_binary, code) ||
-             NimbleTOTP.valid?(secret_binary, code, time: System.system_time(:second) - 30) ||
-             NimbleTOTP.valid?(secret_binary, code, time: System.system_time(:second) + 30)
+    valid? =
+      NimbleTOTP.valid?(secret_binary, code) ||
+        NimbleTOTP.valid?(secret_binary, code, time: System.system_time(:second) - 30) ||
+        NimbleTOTP.valid?(secret_binary, code, time: System.system_time(:second) + 30)
 
     if valid?, do: :ok, else: {:error, :invalid_code}
   end
@@ -207,9 +212,10 @@ defmodule HexHub.TwoFactorAuth do
   end
 
   defp check_and_consume_recovery_code(hashed_codes, recovery_code) do
-    matching_code = Enum.find(hashed_codes, fn hashed ->
-      Bcrypt.verify_pass(recovery_code, hashed)
-    end)
+    matching_code =
+      Enum.find(hashed_codes, fn hashed ->
+        Bcrypt.verify_pass(recovery_code, hashed)
+      end)
 
     if matching_code do
       remaining_codes = List.delete(hashed_codes, matching_code)
@@ -221,23 +227,26 @@ defmodule HexHub.TwoFactorAuth do
 
   defp get_user_with_2fa(username) do
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:users, username}) do
-        [{:users, _username, email, password_hash, totp_secret, totp_enabled, recovery_codes, inserted_at, updated_at}] ->
-          %{
-            username: username,
-            email: email,
-            password_hash: password_hash,
-            totp_secret: totp_secret,
-            totp_enabled: totp_enabled,
-            recovery_codes: recovery_codes || [],
-            inserted_at: inserted_at,
-            updated_at: updated_at
-          }
+           case :mnesia.read({:users, username}) do
+             [
+               {:users, _username, email, password_hash, totp_secret, totp_enabled,
+                recovery_codes, inserted_at, updated_at}
+             ] ->
+               %{
+                 username: username,
+                 email: email,
+                 password_hash: password_hash,
+                 totp_secret: totp_secret,
+                 totp_enabled: totp_enabled,
+                 recovery_codes: recovery_codes || [],
+                 inserted_at: inserted_at,
+                 updated_at: updated_at
+               }
 
-        [] ->
-          nil
-      end
-    end) do
+             [] ->
+               nil
+           end
+         end) do
       {:atomic, nil} ->
         {:error, :not_found}
 
@@ -251,24 +260,27 @@ defmodule HexHub.TwoFactorAuth do
 
   defp update_user_2fa(username, secret, enabled, recovery_codes) do
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:users, username}) do
-        [{:users, username, email, password_hash, _old_secret, _old_enabled, _old_codes, inserted_at, _updated_at}] ->
-          :mnesia.write({
-            :users,
-            username,
-            email,
-            password_hash,
-            secret,
-            enabled,
-            recovery_codes,
-            inserted_at,
-            DateTime.utc_now()
-          })
+           case :mnesia.read({:users, username}) do
+             [
+               {:users, username, email, password_hash, _old_secret, _old_enabled, _old_codes,
+                inserted_at, _updated_at}
+             ] ->
+               :mnesia.write({
+                 :users,
+                 username,
+                 email,
+                 password_hash,
+                 secret,
+                 enabled,
+                 recovery_codes,
+                 inserted_at,
+                 DateTime.utc_now()
+               })
 
-        [] ->
-          {:error, :not_found}
-      end
-    end) do
+             [] ->
+               {:error, :not_found}
+           end
+         end) do
       {:atomic, :ok} -> :ok
       {:atomic, error} -> error
       {:aborted, reason} -> {:error, reason}
@@ -277,24 +289,27 @@ defmodule HexHub.TwoFactorAuth do
 
   defp update_user_recovery_codes(username, recovery_codes) do
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:users, username}) do
-        [{:users, username, email, password_hash, secret, enabled, _old_codes, inserted_at, _updated_at}] ->
-          :mnesia.write({
-            :users,
-            username,
-            email,
-            password_hash,
-            secret,
-            enabled,
-            recovery_codes,
-            inserted_at,
-            DateTime.utc_now()
-          })
+           case :mnesia.read({:users, username}) do
+             [
+               {:users, username, email, password_hash, secret, enabled, _old_codes, inserted_at,
+                _updated_at}
+             ] ->
+               :mnesia.write({
+                 :users,
+                 username,
+                 email,
+                 password_hash,
+                 secret,
+                 enabled,
+                 recovery_codes,
+                 inserted_at,
+                 DateTime.utc_now()
+               })
 
-        [] ->
-          {:error, :not_found}
-      end
-    end) do
+             [] ->
+               {:error, :not_found}
+           end
+         end) do
       {:atomic, :ok} -> :ok
       {:atomic, error} -> error
       {:aborted, reason} -> {:error, reason}

@@ -45,7 +45,18 @@ defmodule HexHub.Mnesia do
     tables = [
       {:users,
        [
-         attributes: [:username, :email, :password_hash, :totp_secret, :totp_enabled, :recovery_codes, :service_account, :deactivated_at, :inserted_at, :updated_at],
+         attributes: [
+           :username,
+           :email,
+           :password_hash,
+           :totp_secret,
+           :totp_enabled,
+           :recovery_codes,
+           :service_account,
+           :deactivated_at,
+           :inserted_at,
+           :updated_at
+         ],
          type: :set,
          ram_copies: [node()],
          index: [:email, :service_account]

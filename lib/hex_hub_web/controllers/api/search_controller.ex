@@ -60,11 +60,12 @@ defmodule HexHubWeb.API.SearchController do
   Search packages by specific field.
   """
   def search_by_field(conn, %{"field" => field, "q" => query}) do
-    field_atom = try do
-      String.to_existing_atom(field)
-    rescue
-      ArgumentError -> :name
-    end
+    field_atom =
+      try do
+        String.to_existing_atom(field)
+      rescue
+        ArgumentError -> :name
+      end
 
     opts = [
       limit: parse_int(conn.params["limit"], 20)
@@ -124,12 +125,14 @@ defmodule HexHubWeb.API.SearchController do
   # Private functions
 
   defp parse_int(nil, default), do: default
+
   defp parse_int(value, default) when is_binary(value) do
     case Integer.parse(value) do
       {int, _} -> int
       :error -> default
     end
   end
+
   defp parse_int(value, _default) when is_integer(value), do: value
   defp parse_int(_value, default), do: default
 
@@ -137,8 +140,9 @@ defmodule HexHubWeb.API.SearchController do
     case conn.assigns[:current_user] do
       %{username: username} ->
         # Check if user is admin or service account
+        # Add your admin usernames
         HexHub.Users.is_service_account?(username) ||
-        username in ["admin", "root"]  # Add your admin usernames
+          username in ["admin", "root"]
 
       _ ->
         false

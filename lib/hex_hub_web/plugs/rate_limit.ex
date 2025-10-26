@@ -14,12 +14,18 @@ defmodule HexHubWeb.Plugs.RateLimit do
   alias HexHub.BlockedAddresses
 
   @default_limits %{
-    user: {500, 60},               # 500 requests per minute
-    organization: {500, 60},       # 500 requests per minute
-    ip: {100, 60},                  # 100 requests per minute
-    login: {10, 900},               # 10 attempts per 15 minutes
-    tfa_ip: {20, 900},             # 20 2FA attempts per 15 minutes per IP
-    tfa_session: {5, 600}          # 5 2FA attempts per 10 minutes per session
+    # 500 requests per minute
+    user: {500, 60},
+    # 500 requests per minute
+    organization: {500, 60},
+    # 100 requests per minute
+    ip: {100, 60},
+    # 10 attempts per 15 minutes
+    login: {10, 900},
+    # 20 2FA attempts per 15 minutes per IP
+    tfa_ip: {20, 900},
+    # 5 2FA attempts per 10 minutes per session
+    tfa_session: {5, 600}
   }
 
   def init(opts), do: opts
@@ -47,6 +53,7 @@ defmodule HexHubWeb.Plugs.RateLimit do
     case conn.assigns[:current_user] do
       %{username: username} ->
         HexHub.Users.is_service_account?(username)
+
       _ ->
         false
     end
@@ -58,39 +65,42 @@ defmodule HexHubWeb.Plugs.RateLimit do
     limits = Map.merge(@default_limits, custom_limits)
 
     # Determine which limits to apply based on the endpoint
-    checks = case endpoint do
-      :login ->
-        [
-          {:ip, get_ip(conn), limits.login}
-        ]
+    checks =
+      case endpoint do
+        :login ->
+          [
+            {:ip, get_ip(conn), limits.login}
+          ]
 
-      :tfa ->
-        [
-          {:ip, "tfa:#{get_ip(conn)}", limits.tfa_ip},
-          {:session, "tfa:#{get_session_id(conn)}", limits.tfa_session}
-        ]
+        :tfa ->
+          [
+            {:ip, "tfa:#{get_ip(conn)}", limits.tfa_ip},
+            {:session, "tfa:#{get_session_id(conn)}", limits.tfa_session}
+          ]
 
-      _ ->
-        # General API endpoints
-        checks = []
+        _ ->
+          # General API endpoints
+          checks = []
 
-        # Add user-based limit if authenticated
-        checks = if user = conn.assigns[:current_user] do
-          [{:user, "user:#{user.username}", limits.user} | checks]
-        else
-          checks
-        end
+          # Add user-based limit if authenticated
+          checks =
+            if user = conn.assigns[:current_user] do
+              [{:user, "user:#{user.username}", limits.user} | checks]
+            else
+              checks
+            end
 
-        # Add organization-based limit if applicable
-        checks = if org = conn.assigns[:current_organization] do
-          [{:organization, "org:#{org}", limits.organization} | checks]
-        else
-          checks
-        end
+          # Add organization-based limit if applicable
+          checks =
+            if org = conn.assigns[:current_organization] do
+              [{:organization, "org:#{org}", limits.organization} | checks]
+            else
+              checks
+            end
 
-        # Always add IP-based limit
-        [{:ip, "ip:#{get_ip(conn)}", limits.ip} | checks]
-    end
+          # Always add IP-based limit
+          [{:ip, "ip:#{get_ip(conn)}", limits.ip} | checks]
+      end
 
     # Check all applicable limits
     case check_all_limits(checks) do
@@ -99,6 +109,7 @@ defmodule HexHubWeb.Plugs.RateLimit do
         Enum.each(checks, fn {_type, key, _limit} ->
           increment_counter(key)
         end)
+
         conn
 
       {:error, type, remaining_time} ->
@@ -128,23 +139,25 @@ defmodule HexHubWeb.Plugs.RateLimit do
     window_start = now - window
 
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:rate_limit, key}) do
-        [{:rate_limit, ^key, _type, _id, count, start, _updated}] when start > window_start ->
-          if count >= limit do
-            # Calculate remaining time until window resets
-            remaining = start + window - now
-            {:error, remaining}
-          else
-            :ok
-          end
+           case :mnesia.read({:rate_limit, key}) do
+             [{:rate_limit, ^key, _type, _id, count, start, _updated}]
+             when start > window_start ->
+               if count >= limit do
+                 # Calculate remaining time until window resets
+                 remaining = start + window - now
+                 {:error, remaining}
+               else
+                 :ok
+               end
 
-        _ ->
-          # No recent activity or window expired
-          :ok
-      end
-    end) do
+             _ ->
+               # No recent activity or window expired
+               :ok
+           end
+         end) do
       {:atomic, result} -> result
-      {:aborted, _reason} -> :ok  # Allow request on error
+      # Allow request on error
+      {:aborted, _reason} -> :ok
     end
   end
 
@@ -168,6 +181,7 @@ defmodule HexHubWeb.Plugs.RateLimit do
         [] ->
           # Create new counter
           {type, id} = parse_key(key)
+
           :mnesia.write({
             :rate_limit,
             key,
@@ -196,20 +210,21 @@ defmodule HexHubWeb.Plugs.RateLimit do
     # Try to get real IP from headers first (for proxied requests)
     forwarded_for = get_req_header(conn, "x-forwarded-for")
 
-    ip = case forwarded_for do
-      [ips | _] ->
-        # Take the first IP from the forwarded chain
-        ips
-        |> String.split(",")
-        |> List.first()
-        |> String.trim()
+    ip =
+      case forwarded_for do
+        [ips | _] ->
+          # Take the first IP from the forwarded chain
+          ips
+          |> String.split(",")
+          |> List.first()
+          |> String.trim()
 
-      [] ->
-        # Fall back to remote_ip
-        conn.remote_ip
-        |> Tuple.to_list()
-        |> Enum.join(".")
-    end
+        [] ->
+          # Fall back to remote_ip
+          conn.remote_ip
+          |> Tuple.to_list()
+          |> Enum.join(".")
+      end
 
     ip
   end
@@ -246,34 +261,38 @@ defmodule HexHub.BlockedAddresses do
     now = DateTime.utc_now()
 
     case :mnesia.transaction(fn ->
-      case :mnesia.read({:blocked_addresses, ip_address}) do
-        [{:blocked_addresses, ^ip_address, type, _reason, _blocked_at, blocked_until, _created_by}] ->
-          cond do
-            type == :allowlist ->
-              # IP is allowlisted, always allow
-              :ok
+           case :mnesia.read({:blocked_addresses, ip_address}) do
+             [
+               {:blocked_addresses, ^ip_address, type, _reason, _blocked_at, blocked_until,
+                _created_by}
+             ] ->
+               cond do
+                 type == :allowlist ->
+                   # IP is allowlisted, always allow
+                   :ok
 
-            is_nil(blocked_until) ->
-              # Permanent block
-              {:error, :blocked}
+                 is_nil(blocked_until) ->
+                   # Permanent block
+                   {:error, :blocked}
 
-            DateTime.compare(now, blocked_until) == :lt ->
-              # Still within blocking period
-              {:error, :blocked}
+                 DateTime.compare(now, blocked_until) == :lt ->
+                   # Still within blocking period
+                   {:error, :blocked}
 
-            true ->
-              # Block has expired, remove it
-              :mnesia.delete({:blocked_addresses, ip_address})
-              :ok
-          end
+                 true ->
+                   # Block has expired, remove it
+                   :mnesia.delete({:blocked_addresses, ip_address})
+                   :ok
+               end
 
-        [] ->
-          # IP not in blocked list
-          :ok
-      end
-    end) do
+             [] ->
+               # IP not in blocked list
+               :ok
+           end
+         end) do
       {:atomic, result} -> result
-      {:aborted, _reason} -> :ok  # Allow on error
+      # Allow on error
+      {:aborted, _reason} -> :ok
     end
   end
 
@@ -305,7 +324,8 @@ defmodule HexHub.BlockedAddresses do
         :allowlist,
         reason,
         DateTime.utc_now(),
-        nil,  # Allowlist doesn't expire
+        # Allowlist doesn't expire
+        nil,
         created_by
       })
     end)
@@ -325,14 +345,14 @@ defmodule HexHub.BlockedAddresses do
   """
   def list_blocked() do
     case :mnesia.transaction(fn ->
-      :mnesia.select(:blocked_addresses, [
-        {
-          {:"$1", :"$2", :"$3", :"$4", :"$5", :"$6", :"$7"},
-          [{:==, :"$3", :blocklist}],
-          [:"$$"]
-        }
-      ])
-    end) do
+           :mnesia.select(:blocked_addresses, [
+             {
+               {:"$1", :"$2", :"$3", :"$4", :"$5", :"$6", :"$7"},
+               [{:==, :"$3", :blocklist}],
+               [:"$$"]
+             }
+           ])
+         end) do
       {:atomic, results} ->
         Enum.map(results, fn [ip, _ip2, type, reason, blocked_at, blocked_until, created_by] ->
           %{

@@ -259,6 +259,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
         requirements = parse_release_requirements(release.requirements)
         dependencies = resolve_dependencies_for_tree(requirements, max_depth, current_depth)
         {:ok, %{name: name, version: version, dependencies: dependencies, depth: current_depth}}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -274,6 +275,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
     case find_suitable_version(dep_name, req, get_current_elixir_version()) do
       {:ok, dep_version} ->
         build_tree_or_error(dep_name, dep_version, max_depth, next_depth)
+
       {:error, _} ->
         %{name: dep_name, version: req, unresolved: true}
     end

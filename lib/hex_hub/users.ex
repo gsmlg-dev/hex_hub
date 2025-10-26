@@ -27,7 +27,8 @@ defmodule HexHub.Users do
   @doc """
   Create a new user with hashed password.
   """
-  @spec create_user(String.t(), String.t(), String.t(), keyword()) :: {:ok, user()} | {:error, String.t()}
+  @spec create_user(String.t(), String.t(), String.t(), keyword()) ::
+          {:ok, user()} | {:error, String.t()}
   def create_user(username, email, password, opts \\ []) do
     with :ok <- validate_username(username),
          :ok <- validate_email(email),
@@ -40,18 +41,22 @@ defmodule HexHub.Users do
 
       # Store user in Mnesia with new schema
       case :mnesia.transaction(fn ->
-             :mnesia.write({@table, username, email, password_hash, nil, false, [], service_account, nil, now, now})
+             :mnesia.write(
+               {@table, username, email, password_hash, nil, false, [], service_account, nil, now,
+                now}
+             )
            end) do
         {:atomic, :ok} ->
-          {:ok, %{
-            username: username,
-            email: email,
-            password_hash: password_hash,
-            service_account: service_account,
-            deactivated_at: nil,
-            inserted_at: now,
-            updated_at: now
-          }}
+          {:ok,
+           %{
+             username: username,
+             email: email,
+             password_hash: password_hash,
+             service_account: service_account,
+             deactivated_at: nil,
+             inserted_at: now,
+             updated_at: now
+           }}
 
         {:aborted, reason} ->
           {:error, "Failed to create user: #{inspect(reason)}"}
@@ -73,12 +78,19 @@ defmodule HexHub.Users do
 
     with {:ok, user} <- create_user(username, email, password, service_account: true) do
       # Store the description in audit log
-      HexHub.Audit.log_event("service_account.created", "user", username, %{
-        description: description,
-        email: email
-      }, nil)
+      HexHub.Audit.log_event(
+        "service_account.created",
+        "user",
+        username,
+        %{
+          description: description,
+          email: email
+        },
+        nil
+      )
 
-      {:ok, Map.put(user, :api_key, password)} # Return the password once for initial setup
+      # Return the password once for initial setup
+      {:ok, Map.put(user, :api_key, password)}
     end
   end
 
@@ -286,13 +298,17 @@ defmodule HexHub.Users do
   @spec is_service_account?(String.t()) :: boolean()
   def is_service_account?(username) do
     case :mnesia.transaction(fn ->
-      case :mnesia.read(@table, username) do
-        [{@table, _username, _email, _password_hash, _totp_secret, _totp_enabled, _recovery_codes, service_account, _deactivated_at, _inserted_at, _updated_at}] ->
-          service_account == true
-        [] ->
-          false
-      end
-    end) do
+           case :mnesia.read(@table, username) do
+             [
+               {@table, _username, _email, _password_hash, _totp_secret, _totp_enabled,
+                _recovery_codes, service_account, _deactivated_at, _inserted_at, _updated_at}
+             ] ->
+               service_account == true
+
+             [] ->
+               false
+           end
+         end) do
       {:atomic, result} -> result
       {:aborted, _} -> false
     end
@@ -304,25 +320,29 @@ defmodule HexHub.Users do
   @spec deactivate_user(String.t()) :: :ok | {:error, String.t()}
   def deactivate_user(username) do
     case :mnesia.transaction(fn ->
-      case :mnesia.read(@table, username) do
-        [{@table, username, email, password_hash, totp_secret, totp_enabled, recovery_codes, service_account, _deactivated_at, inserted_at, _updated_at}] ->
-          :mnesia.write({
-            @table,
-            username,
-            email,
-            password_hash,
-            totp_secret,
-            totp_enabled,
-            recovery_codes,
-            service_account,
-            DateTime.utc_now(),
-            inserted_at,
-            DateTime.utc_now()
-          })
-        [] ->
-          {:error, "User not found"}
-      end
-    end) do
+           case :mnesia.read(@table, username) do
+             [
+               {@table, username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+                service_account, _deactivated_at, inserted_at, _updated_at}
+             ] ->
+               :mnesia.write({
+                 @table,
+                 username,
+                 email,
+                 password_hash,
+                 totp_secret,
+                 totp_enabled,
+                 recovery_codes,
+                 service_account,
+                 DateTime.utc_now(),
+                 inserted_at,
+                 DateTime.utc_now()
+               })
+
+             [] ->
+               {:error, "User not found"}
+           end
+         end) do
       {:atomic, :ok} -> :ok
       {:atomic, error} -> error
       {:aborted, reason} -> {:error, "Failed to deactivate user: #{inspect(reason)}"}
@@ -335,10 +355,11 @@ defmodule HexHub.Users do
   @spec list_service_accounts() :: list(user())
   def list_service_accounts() do
     case :mnesia.transaction(fn ->
-      :mnesia.index_read(@table, true, :service_account)
-    end) do
+           :mnesia.index_read(@table, true, :service_account)
+         end) do
       {:atomic, users} ->
         Enum.map(users, &user_to_map/1)
+
       {:aborted, _} ->
         []
     end
@@ -346,7 +367,10 @@ defmodule HexHub.Users do
 
   ## Helper functions
 
-  defp user_to_map({@table, username, email, password_hash, _totp_secret, _totp_enabled, _recovery_codes, service_account, deactivated_at, inserted_at, updated_at}) do
+  defp user_to_map(
+         {@table, username, email, password_hash, _totp_secret, _totp_enabled, _recovery_codes,
+          service_account, deactivated_at, inserted_at, updated_at}
+       ) do
     %{
       username: username,
       email: email,

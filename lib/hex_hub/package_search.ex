@@ -59,16 +59,19 @@ defmodule HexHub.PackageSearch do
     # Check cache first
     case get_cached_results(normalized_query) do
       {:ok, cached_results} ->
-        results = cached_results
-                  |> apply_pagination(offset, limit)
-                  |> filter_deprecated(include_deprecated)
+        results =
+          cached_results
+          |> apply_pagination(offset, limit)
+          |> filter_deprecated(include_deprecated)
+
         {:ok, results}
 
       :miss ->
         # Perform search
-        results = perform_search(tokens, normalized_query)
-                  |> apply_pagination(offset, limit)
-                  |> filter_deprecated(include_deprecated)
+        results =
+          perform_search(tokens, normalized_query)
+          |> apply_pagination(offset, limit)
+          |> filter_deprecated(include_deprecated)
 
         # Cache results
         cache_results(normalized_query, results)
@@ -123,21 +126,22 @@ defmodule HexHub.PackageSearch do
   @spec rebuild_index() :: {:ok, integer()} | {:error, String.t()}
   def rebuild_index() do
     case :mnesia.transaction(fn ->
-      # Clear existing index
-      :mnesia.clear_table(@search_index_table)
+           # Clear existing index
+           :mnesia.clear_table(@search_index_table)
 
-      # Get all packages
-      packages = :mnesia.match_object({:packages, :_, :_, :_, :_, :_, :_, :_, :_, :_})
+           # Get all packages
+           packages = :mnesia.match_object({:packages, :_, :_, :_, :_, :_, :_, :_, :_, :_})
 
-      # Reindex each package
-      count = Enum.reduce(packages, 0, fn package_tuple, acc ->
-        package = tuple_to_package(package_tuple)
-        index_package(package)
-        acc + 1
-      end)
+           # Reindex each package
+           count =
+             Enum.reduce(packages, 0, fn package_tuple, acc ->
+               package = tuple_to_package(package_tuple)
+               index_package(package)
+               acc + 1
+             end)
 
-      count
-    end) do
+           count
+         end) do
       {:atomic, count} ->
         clear_cache()
         {:ok, count}
@@ -157,20 +161,23 @@ defmodule HexHub.PackageSearch do
     normalized_prefix = normalize_query(prefix)
 
     case :mnesia.transaction(fn ->
-      # Find packages with names starting with prefix
-      :mnesia.foldl(
-        fn {:packages, name, _repo, _meta, _private, _downloads, _inserted, _updated, _html_url, _docs_url}, acc ->
-          normalized_name = String.downcase(name)
-          if String.starts_with?(normalized_name, normalized_prefix) do
-            [name | acc]
-          else
-            acc
-          end
-        end,
-        [],
-        :packages
-      )
-    end) do
+           # Find packages with names starting with prefix
+           :mnesia.foldl(
+             fn {:packages, name, _repo, _meta, _private, _downloads, _inserted, _updated,
+                 _html_url, _docs_url},
+                acc ->
+               normalized_name = String.downcase(name)
+
+               if String.starts_with?(normalized_name, normalized_prefix) do
+                 [name | acc]
+               else
+                 acc
+               end
+             end,
+             [],
+             :packages
+           )
+         end) do
       {:atomic, suggestions} ->
         suggestions
         |> Enum.sort()
@@ -184,30 +191,31 @@ defmodule HexHub.PackageSearch do
   @doc """
   Search packages by specific field.
   """
-  @spec search_by_field(String.t(), atom(), keyword()) :: {:ok, list(map())} | {:error, String.t()}
+  @spec search_by_field(String.t(), atom(), keyword()) ::
+          {:ok, list(map())} | {:error, String.t()}
   def search_by_field(query, field, opts \\ []) do
     limit = Keyword.get(opts, :limit, 20)
 
     normalized_query = normalize_query(query)
 
     case :mnesia.transaction(fn ->
-      matches = :mnesia.match_object({@search_index_table, :_, field, :_, :_, :_})
+           matches = :mnesia.match_object({@search_index_table, :_, field, :_, :_, :_})
 
-      matches
-      |> Enum.filter(fn {_, term, _, _, _, _} ->
-        String.contains?(term, normalized_query)
-      end)
-      |> Enum.group_by(fn {_, _, _, package_name, _, _} -> package_name end)
-      |> Enum.map(fn {package_name, entries} ->
-        score = calculate_field_score(entries, normalized_query, field)
-        {package_name, score}
-      end)
-      |> Enum.sort_by(fn {_, score} -> -score end)
-      |> Enum.take(limit)
-      |> Enum.map(fn {package_name, score} ->
-        load_package_with_score(package_name, score)
-      end)
-    end) do
+           matches
+           |> Enum.filter(fn {_, term, _, _, _, _} ->
+             String.contains?(term, normalized_query)
+           end)
+           |> Enum.group_by(fn {_, _, _, package_name, _, _} -> package_name end)
+           |> Enum.map(fn {package_name, entries} ->
+             score = calculate_field_score(entries, normalized_query, field)
+             {package_name, score}
+           end)
+           |> Enum.sort_by(fn {_, score} -> -score end)
+           |> Enum.take(limit)
+           |> Enum.map(fn {package_name, score} ->
+             load_package_with_score(package_name, score)
+           end)
+         end) do
       {:atomic, results} ->
         {:ok, Enum.reject(results, &is_nil/1)}
 
@@ -266,26 +274,26 @@ defmodule HexHub.PackageSearch do
 
   defp perform_search(tokens, full_query) do
     case :mnesia.transaction(fn ->
-      # Search for exact matches
-      exact_matches = search_exact(full_query)
+           # Search for exact matches
+           exact_matches = search_exact(full_query)
 
-      # Search for prefix matches
-      prefix_matches = search_prefix(full_query)
+           # Search for prefix matches
+           prefix_matches = search_prefix(full_query)
 
-      # Search for token matches
-      token_matches = search_tokens(tokens)
+           # Search for token matches
+           token_matches = search_tokens(tokens)
 
-      # Combine and score results
-      all_matches = combine_results([exact_matches, prefix_matches, token_matches])
+           # Combine and score results
+           all_matches = combine_results([exact_matches, prefix_matches, token_matches])
 
-      # Load package details and sort by score
-      all_matches
-      |> Enum.map(fn {package_name, score} ->
-        load_package_with_score(package_name, score)
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.sort_by(fn pkg -> {-pkg.score, -(pkg.downloads || 0)} end)
-    end) do
+           # Load package details and sort by score
+           all_matches
+           |> Enum.map(fn {package_name, score} ->
+             load_package_with_score(package_name, score)
+           end)
+           |> Enum.reject(&is_nil/1)
+           |> Enum.sort_by(fn pkg -> {-pkg.score, -(pkg.downloads || 0)} end)
+         end) do
       {:atomic, results} -> results
       {:aborted, _} -> []
     end
@@ -327,9 +335,11 @@ defmodule HexHub.PackageSearch do
     |> List.flatten()
     |> Enum.group_by(fn {package_name, _} -> package_name end)
     |> Enum.map(fn {package_name, scores} ->
-      total_score = scores
-                    |> Enum.map(fn {_, score} -> score end)
-                    |> Enum.sum()
+      total_score =
+        scores
+        |> Enum.map(fn {_, score} -> score end)
+        |> Enum.sum()
+
       {package_name, total_score}
     end)
   end
@@ -340,7 +350,8 @@ defmodule HexHub.PackageSearch do
     entries
     |> Enum.map(fn {_, term, _, _, _, score} ->
       if term == query do
-        score * base_weight * 2  # Exact match bonus
+        # Exact match bonus
+        score * base_weight * 2
       else
         score * base_weight
       end
@@ -350,7 +361,10 @@ defmodule HexHub.PackageSearch do
 
   defp load_package_with_score(package_name, score) do
     case :mnesia.read({:packages, package_name}) do
-      [{:packages, name, repo, meta, _private, downloads, inserted_at, updated_at, html_url, docs_url}] ->
+      [
+        {:packages, name, repo, meta, _private, downloads, inserted_at, updated_at, html_url,
+         docs_url}
+      ] ->
         %{
           name: name,
           repository: repo,
@@ -368,7 +382,10 @@ defmodule HexHub.PackageSearch do
     end
   end
 
-  defp tuple_to_package({:packages, name, repo, meta, private, downloads, inserted_at, updated_at, html_url, docs_url}) do
+  defp tuple_to_package(
+         {:packages, name, repo, meta, private, downloads, inserted_at, updated_at, html_url,
+          docs_url}
+       ) do
     %{
       name: name,
       repository: repo,
@@ -392,9 +409,10 @@ defmodule HexHub.PackageSearch do
     # Filter out deprecated packages if not including them
     Enum.reject(results, fn package ->
       case :mnesia.transaction(fn ->
-        :mnesia.match_object({:retired_releases, package.name, :_, :_, :_, :_, :_})
-      end) do
-        {:atomic, [_ | _]} -> true  # Has retired releases
+             :mnesia.match_object({:retired_releases, package.name, :_, :_, :_, :_, :_})
+           end) do
+        # Has retired releases
+        {:atomic, [_ | _]} -> true
         _ -> false
       end
     end)
@@ -403,22 +421,24 @@ defmodule HexHub.PackageSearch do
   defp filter_deprecated(results, true), do: results
 
   defp get_cached_results(query) do
-    cache_ttl = 300  # 5 minutes
+    # 5 minutes
+    cache_ttl = 300
 
     case :mnesia.transaction(fn ->
-      case :mnesia.read({@search_cache_table, query}) do
-        [{_, _, results, timestamp}] ->
-          age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
-          if age < cache_ttl do
-            {:ok, results}
-          else
-            :miss
-          end
+           case :mnesia.read({@search_cache_table, query}) do
+             [{_, _, results, timestamp}] ->
+               age = DateTime.diff(DateTime.utc_now(), timestamp, :second)
 
-        [] ->
-          :miss
-      end
-    end) do
+               if age < cache_ttl do
+                 {:ok, results}
+               else
+                 :miss
+               end
+
+             [] ->
+               :miss
+           end
+         end) do
       {:atomic, result} -> result
       _ -> :miss
     end
@@ -441,5 +461,7 @@ defmodule HexHub.PackageSearch do
 
   defp handle_transaction_result({:atomic, :ok}), do: :ok
   defp handle_transaction_result({:atomic, result}), do: result
-  defp handle_transaction_result({:aborted, reason}), do: {:error, "Transaction failed: #{inspect(reason)}"}
+
+  defp handle_transaction_result({:aborted, reason}),
+    do: {:error, "Transaction failed: #{inspect(reason)}"}
 end
