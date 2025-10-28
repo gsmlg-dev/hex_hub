@@ -197,7 +197,8 @@ defmodule HexHub.Packages do
   @doc """
   Search packages by name or description.
   """
-  @spec search_packages(String.t(), keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
+  @spec search_packages(String.t(), keyword()) ::
+          {:ok, [package()], integer()} | {:error, String.t()}
   def search_packages(query, opts \\ []) do
     page = Keyword.get(opts, :page, 1)
     per_page = Keyword.get(opts, :per_page, 50)
@@ -697,7 +698,7 @@ defmodule HexHub.Packages do
   Create a new repository. This is a logical operation since repositories
   are currently just names associated with packages.
   """
-  @spec create_repository(map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  @spec create_repository(map()) :: {:ok, map()} | {:error, String.t()}
   def create_repository(params) do
     name = params["name"] || params[:name]
 
@@ -729,7 +730,7 @@ defmodule HexHub.Packages do
   @doc """
   Update a repository name. This involves updating all packages in the repository.
   """
-  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, String.t()}
   def update_repository(old_name, params) do
     new_name = params["name"] || params[:name]
 
@@ -820,7 +821,7 @@ defmodule HexHub.Packages do
   @doc """
   Delete a specific package and all its releases.
   """
-  @spec delete_package(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec delete_package(String.t()) :: {:ok, String.t()} | {:error, :not_found | String.t()}
   def delete_package(name) do
     case :mnesia.transaction(fn ->
            # Get the package first

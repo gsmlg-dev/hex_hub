@@ -117,17 +117,6 @@ defmodule HexHubWeb.API.PackageController do
         conn
         |> put_status(:not_found)
         |> json(%{message: "Package not found"})
-
-      {:error, reason} ->
-        duration_ms =
-          (System.monotonic_time() - start_time)
-          |> System.convert_time_unit(:native, :millisecond)
-
-        HexHub.Telemetry.track_api_request("packages.show", duration_ms, 500, "error")
-
-        conn
-        |> put_status(:internal_server_error)
-        |> json(%{message: reason})
     end
   end
 
@@ -165,7 +154,7 @@ defmodule HexHubWeb.API.PackageController do
             }
           end)
 
-        _ ->
+        {:error, _} ->
           []
       end
 

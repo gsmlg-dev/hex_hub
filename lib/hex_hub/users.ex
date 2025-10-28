@@ -148,8 +148,11 @@ defmodule HexHub.Users do
         # Query Mnesia by username
         case :mnesia.transaction(fn ->
                case :mnesia.read(@table, username_or_email) do
-                 [{@table, username, email, password_hash, inserted_at, updated_at}] ->
-                   {:ok, {username, email, password_hash, inserted_at, updated_at}}
+                 [{@table, username, email, password_hash, totp_secret, totp_enabled,
+                   recovery_codes, service_account, deactivated_at, inserted_at, updated_at}] ->
+                   {:ok,
+                    {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+                     service_account, deactivated_at, inserted_at, updated_at}}
 
                  [] ->
                    # If not found by username, try email
@@ -159,8 +162,14 @@ defmodule HexHub.Users do
           {:atomic, {:ok, user_tuple}} ->
             {:ok, user_to_map(user_tuple)}
 
-          {:atomic, [{@table, username, email, password_hash, inserted_at, updated_at}]} ->
-            {:ok, user_to_map({username, email, password_hash, inserted_at, updated_at})}
+          {:atomic,
+           [{@table, username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+             service_account, deactivated_at, inserted_at, updated_at}]} ->
+            {:ok,
+             user_to_map(
+               {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+                service_account, deactivated_at, inserted_at, updated_at}
+             )}
 
           {:atomic, []} ->
             {:error, :not_found}
@@ -383,13 +392,19 @@ defmodule HexHub.Users do
   end
 
   # Legacy compatibility for old tuple format
-  defp user_to_map({username, email, password_hash, inserted_at, updated_at}) do
+  defp user_to_map(
+         {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+          service_account, deactivated_at, inserted_at, updated_at}
+       ) do
     %{
       username: username,
       email: email,
       password_hash: password_hash,
-      service_account: false,
-      deactivated_at: nil,
+      totp_secret: totp_secret,
+      totp_enabled: totp_enabled || false,
+      recovery_codes: recovery_codes || [],
+      service_account: service_account || false,
+      deactivated_at: deactivated_at,
       inserted_at: inserted_at,
       updated_at: updated_at
     }

@@ -75,7 +75,7 @@ defmodule HexHub.RegistryFormat do
       {:ok, releases} ->
         Enum.map(releases, &format_release_for_registry/1)
 
-      _ ->
+      {:error, _} ->
         []
     end
   end
