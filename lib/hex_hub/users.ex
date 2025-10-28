@@ -148,8 +148,10 @@ defmodule HexHub.Users do
         # Query Mnesia by username
         case :mnesia.transaction(fn ->
                case :mnesia.read(@table, username_or_email) do
-                 [{@table, username, email, password_hash, totp_secret, totp_enabled,
-                   recovery_codes, service_account, deactivated_at, inserted_at, updated_at}] ->
+                 [
+                   {@table, username, email, password_hash, totp_secret, totp_enabled,
+                    recovery_codes, service_account, deactivated_at, inserted_at, updated_at}
+                 ] ->
                    {:ok,
                     {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
                      service_account, deactivated_at, inserted_at, updated_at}}
@@ -163,8 +165,10 @@ defmodule HexHub.Users do
             {:ok, user_to_map(user_tuple)}
 
           {:atomic,
-           [{@table, username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
-             service_account, deactivated_at, inserted_at, updated_at}]} ->
+           [
+             {@table, username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+              service_account, deactivated_at, inserted_at, updated_at}
+           ]} ->
             {:ok,
              user_to_map(
                {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
@@ -275,8 +279,16 @@ defmodule HexHub.Users do
   def list_users() do
     case :mnesia.transaction(fn ->
            :mnesia.foldl(
-             fn {_, username, email, password_hash, inserted_at, updated_at}, acc ->
-               [user_to_map({username, email, password_hash, inserted_at, updated_at}) | acc]
+             fn {_, username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+                 service_account, deactivated_at, inserted_at, updated_at},
+                acc ->
+               [
+                 user_to_map(
+                   {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
+                    service_account, deactivated_at, inserted_at, updated_at}
+                 )
+                 | acc
+               ]
              end,
              [],
              @table
