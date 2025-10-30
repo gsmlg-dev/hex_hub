@@ -1,6 +1,12 @@
 name: Build and Release Docker Image
 
 on:
+  push:
+    branches:
+      - develop
+      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
@@ -75,6 +81,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Generate SECRET_KEY_BASE
+        id: secret
+        run: echo "SECRET_KEY_BASE=$(openssl rand -base64 48)" >> $GITHUB_OUTPUT
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -86,6 +96,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/develop' }}
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag != 'manual' }}
 
       - name: Build and push Docker image
@@ -96,6 +107,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.push_image == 'true') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            SECRET_KEY_BASE=${{ steps.secret.outputs.SECRET_KEY_BASE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
