@@ -178,7 +178,7 @@ defmodule HexHub.Mnesia do
        ]},
       {:retired_releases,
        [
-         attributes: [:package_name, :version, :reason, :message, :retired_at, :retired_by],
+         attributes: [:key, :package_name, :version, :reason, :message, :retired_at, :retired_by],
          type: :set,
          ram_copies: [node()],
          index: [:package_name]

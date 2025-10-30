@@ -31,6 +31,8 @@ defmodule HexHubWeb.Router do
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
   # These must come before browser routes to avoid conflicts
+  # NOTE: These routes are intentionally duplicated at /api/* for standard API access
+  # This root-level scope is specifically for Mix clients using HEX_MIRROR environment variable
   scope "/", HexHubWeb.API do
     pipe_through :api_cached
 
@@ -112,6 +114,8 @@ defmodule HexHubWeb.Router do
   end
 
   # API routes matching hex-api.yaml specification (with /api prefix)
+  # NOTE: These routes are intentionally duplicated from root-level routes above
+  # This /api/* scope is for standard REST API clients (curl, HTTPoison, etc.)
   scope "/api", HexHubWeb.API do
     pipe_through :api_cached
 

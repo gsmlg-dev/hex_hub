@@ -31,7 +31,7 @@ RUN mix local.hex --force \
 
 # set build ENV
 ARG MIX_ENV=prod
-ARG SECRET_KEY_BASE=XOvyNXFliw6nExlZ1ZxQ/lQYNQygmvpEGtRVI1XajTxCg3Fdg//fwMgbM3qbncJK
+ARG SECRET_KEY_BASE
 
 # install npm packages
 COPY package.json package.json
@@ -90,7 +90,6 @@ RUN chown nobody /app
 # set runner ENV
 ARG MIX_ENV=prod
 ENV MIX_ENV="prod"
-ENV SECRET_KEY_BASE=XOvyNXFliw6nExlZ1ZxQ/lQYNQygmvpEGtRVI1XajTxCg3Fdg//fwMgbM3qbncJK
 
 # Create storage directory
 RUN mkdir -p /app/priv/storage && chown nobody:nogroup /app/priv/storage

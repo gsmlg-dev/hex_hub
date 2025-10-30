@@ -110,7 +110,7 @@ defmodule HexHub.PackageRetirement do
   @spec list_retired_releases(String.t()) :: list(map())
   def list_retired_releases(package_name) do
     case :mnesia.transaction(fn ->
-           :mnesia.index_read(:retired_releases, package_name, 2)
+           :mnesia.index_read(:retired_releases, package_name, :package_name)
          end) do
       {:atomic, releases} ->
         Enum.map(releases, fn {:retired_releases, _key, _pkg, version, reason, message,
