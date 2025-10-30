@@ -211,14 +211,17 @@ defmodule HexHub.Users do
          :ok <- check_email_availability(new_email) do
       case :mnesia.transaction(fn ->
              case :mnesia.read(@table, username) do
-               [{@table, old_username, _old_email, password_hash, totp_secret, totp_enabled,
-                 recovery_codes, service_account, deactivated_at, inserted_at, _updated_at}] ->
+               [
+                 {@table, old_username, _old_email, password_hash, totp_secret, totp_enabled,
+                  recovery_codes, service_account, deactivated_at, inserted_at, _updated_at}
+               ] ->
                  updated_user =
                    {@table, old_username, new_email, password_hash, totp_secret, totp_enabled,
                     recovery_codes, service_account, deactivated_at, inserted_at,
                     DateTime.utc_now()}
 
                  :mnesia.write(updated_user)
+
                  {:ok,
                   {old_username, new_email, password_hash, totp_secret, totp_enabled,
                    recovery_codes, service_account, deactivated_at, inserted_at,
@@ -250,8 +253,10 @@ defmodule HexHub.Users do
     with :ok <- validate_password(new_password) do
       case :mnesia.transaction(fn ->
              case :mnesia.read(@table, username) do
-               [{@table, username, email, _old_hash, totp_secret, totp_enabled, recovery_codes,
-                 service_account, deactivated_at, inserted_at, _updated_at}] ->
+               [
+                 {@table, username, email, _old_hash, totp_secret, totp_enabled, recovery_codes,
+                  service_account, deactivated_at, inserted_at, _updated_at}
+               ] ->
                  password_hash = Bcrypt.hash_pwd_salt(new_password)
 
                  updated_user =
@@ -260,6 +265,7 @@ defmodule HexHub.Users do
                     DateTime.utc_now()}
 
                  :mnesia.write(updated_user)
+
                  {:ok,
                   {username, email, password_hash, totp_secret, totp_enabled, recovery_codes,
                    service_account, deactivated_at, inserted_at, DateTime.utc_now()}}
