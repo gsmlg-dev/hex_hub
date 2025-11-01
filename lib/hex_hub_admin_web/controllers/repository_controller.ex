@@ -35,8 +35,8 @@ defmodule HexHubAdminWeb.RepositoryController do
         |> put_flash(:info, "Repository #{repository.name} created successfully!")
         |> redirect(to: ~p"/repositories")
 
-      {:error, changeset} ->
-        render(conn, :new, changeset: changeset)
+      {:error, errors} ->
+        render(conn, :new, changeset: errors)
     end
   end
 
@@ -61,8 +61,8 @@ defmodule HexHubAdminWeb.RepositoryController do
             |> put_flash(:info, "Repository #{updated_repository.name} updated successfully!")
             |> redirect(to: ~p"/repositories")
 
-          {:error, changeset} ->
-            render(conn, :edit, repository: repository, changeset: changeset)
+          {:error, errors} ->
+            render(conn, :edit, repository: repository, changeset: errors)
         end
 
       {:error, :not_found} ->

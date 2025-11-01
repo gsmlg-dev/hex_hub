@@ -21,14 +21,7 @@ defmodule HexHubWeb.ClusterController do
   end
 
   def leave(conn, _params) do
-    case Clustering.leave_cluster() do
-      {:ok, _} ->
-        json(conn, %{status: "success", message: "Successfully left cluster"})
-
-      error ->
-        conn
-        |> put_status(:bad_request)
-        |> json(%{status: "error", message: "Failed to leave cluster: #{inspect(error)}"})
-    end
+    {:ok, _} = Clustering.leave_cluster()
+    json(conn, %{status: "success", message: "Successfully left cluster"})
   end
 end

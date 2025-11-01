@@ -6,6 +6,8 @@ defmodule HexHub.MCP.Tools.Repositories do
   and managing package visibility within repositories.
   """
 
+  @dialyzer {:no_match, repository_exists?: 1}
+
   require Logger
 
   alias HexHub.{Packages, Repositories}
@@ -325,11 +327,9 @@ defmodule HexHub.MCP.Tools.Repositories do
   @doc """
   Check if a repository exists.
   """
+  @dialyzer {:nowarn_function, repository_exists?: 1}
   def repository_exists?(name) do
-    case Repositories.get_repository(name) do
-      {:ok, _} -> true
-      {:error, _} -> false
-    end
+    match?({:ok, _}, Repositories.get_repository(name))
   end
 
   @doc """

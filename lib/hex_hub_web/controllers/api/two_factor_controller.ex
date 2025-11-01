@@ -11,19 +11,13 @@ defmodule HexHubWeb.API.TwoFactorController do
   def setup(conn, _params) do
     username = conn.assigns.current_user.username
 
-    case TwoFactorAuth.generate_secret(username) do
-      {:ok, setup_data} ->
-        json(conn, %{
-          secret: setup_data.secret,
-          uri: setup_data.uri,
-          qr_code: setup_data.qr_code
-        })
+    {:ok, setup_data} = TwoFactorAuth.generate_secret(username)
 
-      {:error, reason} ->
-        conn
-        |> put_status(:internal_server_error)
-        |> json(%{error: reason})
-    end
+    json(conn, %{
+      secret: setup_data.secret,
+      uri: setup_data.uri,
+      qr_code: setup_data.qr_code
+    })
   end
 
   @doc """

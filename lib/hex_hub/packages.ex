@@ -698,7 +698,7 @@ defmodule HexHub.Packages do
   Create a new repository. This is a logical operation since repositories
   are currently just names associated with packages.
   """
-  @spec create_repository(map()) :: {:ok, map()} | {:error, String.t()}
+  @spec create_repository(map()) :: {:ok, map()} | {:error, map()}
   def create_repository(params) do
     name = params["name"] || params[:name]
 
@@ -730,7 +730,7 @@ defmodule HexHub.Packages do
   @doc """
   Update a repository name. This involves updating all packages in the repository.
   """
-  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, String.t()}
+  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, map()}
   def update_repository(old_name, params) do
     new_name = params["name"] || params[:name]
 

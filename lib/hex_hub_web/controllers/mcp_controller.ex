@@ -219,8 +219,6 @@ defmodule HexHubWeb.MCPController do
     case reason do
       :no_api_key -> "API key required"
       :invalid_api_key -> "Invalid API key"
-      :unauthorized -> "Unauthorized"
-      _ -> "Authentication failed"
     end
   end
 
@@ -293,26 +291,10 @@ defmodule HexHubWeb.MCPController do
     "#{scheme}://#{host}#{port}/mcp"
   end
 
-  defp determine_error_status(response) do
-    case response do
-      %{error: %{code: code}} when code in [-32700, -32600, -32601, -32602] ->
-        :bad_request
-
-      %{error: %{code: -32001}} ->
-        :unauthorized
-
-      %{error: %{code: -32002}} ->
-        :too_many_requests
-
-      %{error: %{code: -32003}} ->
-        :forbidden
-
-      %{error: %{code: -32004}} ->
-        :not_found
-
-      _ ->
-        :internal_server_error
-    end
+  defp determine_error_status(_response) do
+    # Default to internal_server_error for all error responses
+    # Specific status codes can be added based on actual error response structure
+    :internal_server_error
   end
 
   @doc """

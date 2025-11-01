@@ -137,26 +137,22 @@ defmodule HexHubWeb.API.PackageController do
 
   defp format_package_for_show(package) do
     # Get releases for this package
-    releases =
-      case HexHub.Packages.list_releases(package.name) do
-        {:ok, releases} ->
-          Enum.map(releases, fn release ->
-            %{
-              version: release.version,
-              url: release.url,
-              has_docs: release.has_docs,
-              inserted_at: release.inserted_at,
-              updated_at: release.updated_at,
-              # Add fields that Mix expects for HEX_MIRROR compatibility
-              requirements: Map.get(release, :requirements, %{}),
-              checksum: Map.get(release, :checksum, ""),
-              build_tools: Map.get(release.meta, "build_tools", ["mix"])
-            }
-          end)
+    {:ok, releases} = HexHub.Packages.list_releases(package.name)
 
-        {:error, _} ->
-          []
-      end
+    releases =
+      Enum.map(releases, fn release ->
+        %{
+          version: release.version,
+          url: release.url,
+          has_docs: release.has_docs,
+          inserted_at: release.inserted_at,
+          updated_at: release.updated_at,
+          # Add fields that Mix expects for HEX_MIRROR compatibility
+          requirements: Map.get(release, :requirements, %{}),
+          checksum: Map.get(release, :checksum, ""),
+          build_tools: Map.get(release.meta, "build_tools", ["mix"])
+        }
+      end)
 
     %{
       name: package.name,

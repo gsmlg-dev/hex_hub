@@ -446,6 +446,4 @@ defmodule HexHub.MCP.Tools.Releases do
     |> Enum.sort(&(Version.compare(&2, &1) == :gt))
     |> List.first()
   end
-
-  defp get_latest_version(_), do: nil
 end
