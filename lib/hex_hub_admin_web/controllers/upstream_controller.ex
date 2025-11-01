@@ -61,10 +61,11 @@ defmodule HexHubAdminWeb.UpstreamController do
   # Private functions
 
   defp changeset(config, params \\ %{}) do
-    errors = []
-    |> validate_required_fields(config, params)
-    |> validate_url_formats(config, params)
-    |> validate_numeric_ranges(config, params)
+    errors =
+      []
+      |> validate_required_fields(config, params)
+      |> validate_url_formats(config, params)
+      |> validate_numeric_ranges(config, params)
 
     %{
       data: config,
@@ -96,6 +97,7 @@ defmodule HexHubAdminWeb.UpstreamController do
   end
 
   defp validate_url_format(errors, _field, ""), do: errors
+
   defp validate_url_format(errors, field, url) do
     if String.match?(url, ~r/^https?:\/\//) do
       errors

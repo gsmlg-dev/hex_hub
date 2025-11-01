@@ -14,10 +14,15 @@ defmodule HexHubWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :api_cached do
+    plug :accepts, ["json"]
+    plug HexHubWeb.Plugs.ETag
+  end
+
   pipeline :api_auth do
     plug :accepts, ["json"]
     plug HexHubWeb.Plugs.Authenticate
-    plug HexHubWeb.Plugs.RateLimiter, limit: 100, window: 60_000, key: :user
+    plug HexHubWeb.Plugs.RateLimit
   end
 
   pipeline :require_write do
@@ -26,12 +31,12 @@ defmodule HexHubWeb.Router do
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
   # These must come before browser routes to avoid conflicts
+  # NOTE: These routes are intentionally duplicated at /api/* for standard API access
+  # This root-level scope is specifically for Mix clients using HEX_MIRROR environment variable
   scope "/", HexHubWeb.API do
-    pipe_through :api
+    pipe_through :api_cached
 
-    # Public endpoints for Mix/HEX_MIRROR support
-    post "/users", UserController, :create
-    get "/users/:username_or_email", UserController, :show
+    # Public endpoints for Mix/HEX_MIRROR support (with caching)
     get "/packages", PackageController, :list
     get "/packages/:name", PackageController, :show
     get "/packages/:name/releases/:version", ReleaseController, :show
@@ -45,6 +50,14 @@ defmodule HexHubWeb.Router do
     get "/tarballs/:tarball", DownloadController, :tarball
     # Installs endpoint for Mix dependency resolution
     get "/installs/:elixir_version/:requirements", PackageController, :installs
+  end
+
+  scope "/", HexHubWeb.API do
+    pipe_through :api
+
+    # Non-cached endpoints
+    post "/users", UserController, :create
+    get "/users/:username_or_email", UserController, :show
   end
 
   scope "/", HexHubWeb do
@@ -101,17 +114,22 @@ defmodule HexHubWeb.Router do
   end
 
   # API routes matching hex-api.yaml specification (with /api prefix)
+  # NOTE: These routes are intentionally duplicated from root-level routes above
+  # This /api/* scope is for standard REST API clients (curl, HTTPoison, etc.)
   scope "/api", HexHubWeb.API do
-    pipe_through :api
+    pipe_through :api_cached
 
-    # Public endpoints
-    post "/users", UserController, :create
-    get "/users/:username_or_email", UserController, :show
+    # Public endpoints (with caching)
     get "/packages", PackageController, :list
     get "/packages/:name", PackageController, :show
     get "/packages/:name/releases/:version", ReleaseController, :show
     get "/repos", RepositoryController, :list
     get "/repos/:name", RepositoryController, :show
+
+    # Search endpoints
+    get "/packages/search", SearchController, :search
+    get "/packages/suggest", SearchController, :suggest
+    get "/packages/search/by/:field", SearchController, :search_by_field
 
     # Download endpoints (public, with upstream fallback)
     get "/packages/:name/releases/:version/download", DownloadController, :package
@@ -120,6 +138,14 @@ defmodule HexHubWeb.Router do
     get "/tarballs/:tarball", DownloadController, :tarball
     # Installs endpoint for Mix dependency resolution
     get "/installs/:elixir_version/:requirements", PackageController, :installs
+  end
+
+  scope "/api", HexHubWeb.API do
+    pipe_through :api
+
+    # Non-cached endpoints
+    post "/users", UserController, :create
+    get "/users/:username_or_email", UserController, :show
   end
 
   # Authenticated API routes
@@ -136,6 +162,18 @@ defmodule HexHubWeb.Router do
     # API Keys endpoints (read operations)
     get "/keys", KeyController, :list
     get "/keys/:name", KeyController, :show
+
+    # Two-Factor Authentication endpoints
+    get "/auth/totp", TwoFactorController, :setup
+    post "/auth/totp", TwoFactorController, :enable
+    delete "/auth/totp", TwoFactorController, :disable
+    post "/auth/totp/verify", TwoFactorController, :verify
+    post "/auth/totp/recovery", TwoFactorController, :verify_recovery
+    post "/auth/totp/recovery/regenerate", TwoFactorController, :regenerate_recovery_codes
+
+    # Retirement info endpoints (read operations)
+    get "/packages/:name/releases/:version/retire", RetirementController, :show
+    get "/packages/:name/retired", RetirementController, :index
   end
 
   # Authenticated API routes requiring write permissions
@@ -144,8 +182,8 @@ defmodule HexHubWeb.Router do
 
     # Authenticated package management (write operations)
     post "/publish", ReleaseController, :publish
-    post "/packages/:name/releases/:version/retire", ReleaseController, :retire
-    delete "/packages/:name/releases/:version/retire", ReleaseController, :unretire
+    post "/packages/:name/releases/:version/retire", RetirementController, :retire
+    delete "/packages/:name/releases/:version/retire", RetirementController, :unretire
 
     # Authenticated documentation endpoints (write operations)
     post "/packages/:name/releases/:version/docs", DocsController, :publish
@@ -158,6 +196,9 @@ defmodule HexHubWeb.Router do
     # API Keys endpoints (write operations)
     post "/keys", KeyController, :create
     delete "/keys/:name", KeyController, :delete
+
+    # Admin endpoints
+    post "/packages/search/reindex", SearchController, :reindex
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

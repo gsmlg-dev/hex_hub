@@ -71,13 +71,8 @@ defmodule HexHub.RegistryFormat do
   # Private helpers
 
   defp format_releases_for_registry(package) do
-    case HexHub.Packages.list_releases(package.name) do
-      {:ok, releases} ->
-        Enum.map(releases, &format_release_for_registry/1)
-
-      _ ->
-        []
-    end
+    {:ok, releases} = HexHub.Packages.list_releases(package.name)
+    Enum.map(releases, &format_release_for_registry/1)
   end
 
   defp decode_meta(meta) when is_binary(meta) do

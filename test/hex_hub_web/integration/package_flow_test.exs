@@ -15,11 +15,11 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       Application.put_env(:hex_hub, :storage_type, :local)
       Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
 
-      %{api_key: api_key} = setup_authenticated_user()
-      %{conn: authenticated_conn(conn, api_key)}
+      %{api_key: api_key, user: user} = setup_authenticated_user()
+      %{conn: authenticated_conn(conn, api_key), user: user}
     end
 
-    test "complete package lifecycle", %{conn: conn} do
+    test "complete package lifecycle", %{conn: conn, user: user} do
       package_name = "test_package_#{System.unique_integer([:positive])}"
       version = "1.0.0"
 
@@ -30,6 +30,11 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
           "app" => package_name,
           "version" => version
         })
+
+      # Add authenticated user as owner
+      :mnesia.transaction(fn ->
+        :mnesia.write({:package_owners, package_name, user.username, "owner", DateTime.utc_now()})
+      end)
 
       assert package.name == package_name
       assert package.repository_name == "hexpm"
@@ -103,7 +108,7 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       assert %{"name" => ^package_name, "version" => ^version} = json_response(conn, 200)
     end
 
-    test "package publishing via API", %{conn: conn} do
+    test "package publishing via API", %{conn: conn, user: user} do
       package_name = "api_test_package_#{System.unique_integer([:positive])}"
       version = "1.0.0"
 
@@ -120,6 +125,11 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       # Note: Package creation is handled via POST /api/publish for releases
       # For now, we'll create the package directly
       {:ok, _} = Packages.create_package(package_name, "hexpm", package_params["meta"])
+
+      # Add authenticated user as owner
+      :mnesia.transaction(fn ->
+        :mnesia.write({:package_owners, package_name, user.username, "owner", DateTime.utc_now()})
+      end)
 
       # 2. Publish release via API
       mock_tarball = "mock tarball content"
@@ -162,10 +172,10 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       conn7 =
         post(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire", retire_params)
 
-      assert response(conn7, 204)
+      assert response(conn7, 202)
 
       conn8 = delete(conn, ~p"/api/packages/#{package_name}/releases/#{version}/retire")
-      assert response(conn8, 204)
+      assert response(conn8, 200)
     end
 
     test "error handling throughout flow", %{conn: conn} do

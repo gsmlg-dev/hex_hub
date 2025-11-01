@@ -17,6 +17,9 @@ defmodule HexHub.TestHelpers do
       {:error, "Username already taken"} ->
         {:ok, user} = Users.get_user(username)
         user
+
+      {:error, reason} ->
+        raise "Failed to create test user: #{inspect(reason)}"
     end
   end
 

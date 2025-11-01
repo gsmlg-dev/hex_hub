@@ -265,7 +265,6 @@ defmodule HexHubWeb.HealthController do
       case :os.type() do
         {:unix, _} -> get_unix_disk_stats()
         {:win32, _} -> get_windows_disk_stats()
-        _ -> %{status: :unknown, details: %{}}
       end
 
     Map.put(disk_stats, :name, "disk")

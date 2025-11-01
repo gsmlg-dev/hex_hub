@@ -13,7 +13,10 @@ defmodule HexHub.Mnesia do
     :package_downloads,
     :rate_limit,
     :audit_logs,
-    :upstream_configs
+    :upstream_configs,
+    :blocked_addresses,
+    :retired_releases,
+    :system_metadata
   ]
 
   @doc """
@@ -42,10 +45,21 @@ defmodule HexHub.Mnesia do
     tables = [
       {:users,
        [
-         attributes: [:username, :email, :password_hash, :inserted_at, :updated_at],
+         attributes: [
+           :username,
+           :email,
+           :password_hash,
+           :totp_secret,
+           :totp_enabled,
+           :recovery_codes,
+           :service_account,
+           :deactivated_at,
+           :inserted_at,
+           :updated_at
+         ],
          type: :set,
          ram_copies: [node()],
-         index: [:email]
+         index: [:email, :service_account]
        ]},
       {:repositories,
        [
@@ -117,7 +131,7 @@ defmodule HexHub.Mnesia do
        ]},
       {:rate_limit,
        [
-         attributes: [:key, :count],
+         attributes: [:key, :type, :identifier, :count, :window_start, :updated_at],
          type: :set,
          ram_copies: [node()]
        ]},
@@ -152,6 +166,26 @@ defmodule HexHub.Mnesia do
            :inserted_at,
            :updated_at
          ],
+         type: :set,
+         ram_copies: [node()]
+       ]},
+      {:blocked_addresses,
+       [
+         attributes: [:ip_address, :type, :reason, :blocked_at, :blocked_until, :created_by],
+         type: :set,
+         ram_copies: [node()],
+         index: [:type, :blocked_until]
+       ]},
+      {:retired_releases,
+       [
+         attributes: [:key, :package_name, :version, :reason, :message, :retired_at, :retired_by],
+         type: :set,
+         ram_copies: [node()],
+         index: [:package_name]
+       ]},
+      {:system_metadata,
+       [
+         attributes: [:key, :value],
          type: :set,
          ram_copies: [node()]
        ]}

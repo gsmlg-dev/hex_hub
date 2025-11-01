@@ -173,24 +173,20 @@ defmodule HexHub.MCP.Tools.Dependencies do
   end
 
   defp find_suitable_version(package, requirement, elixir_version) do
-    case Packages.list_releases(package) do
-      {:ok, releases} ->
-        suitable_versions =
-          releases
-          |> Enum.map(& &1.version)
-          |> Enum.filter(fn version ->
-            Version.match?(version, requirement) and
-              compatible_with_elixir?(package, version, elixir_version)
-          end)
-          |> Enum.sort(&(Version.compare(&1, &2) == :gt))
+    {:ok, releases} = Packages.list_releases(package)
 
-        case suitable_versions do
-          [version | _] -> {:ok, version}
-          [] -> {:error, :no_suitable_version}
-        end
+    suitable_versions =
+      releases
+      |> Enum.map(& &1.version)
+      |> Enum.filter(fn version ->
+        Version.match?(version, requirement) and
+          compatible_with_elixir?(package, version, elixir_version)
+      end)
+      |> Enum.sort(&(Version.compare(&1, &2) == :gt))
 
-      {:error, reason} ->
-        {:error, reason}
+    case suitable_versions do
+      [version | _] -> {:ok, version}
+      [] -> {:error, :no_suitable_version}
     end
   end
 
@@ -259,6 +255,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
         requirements = parse_release_requirements(release.requirements)
         dependencies = resolve_dependencies_for_tree(requirements, max_depth, current_depth)
         {:ok, %{name: name, version: version, dependencies: dependencies, depth: current_depth}}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -274,6 +271,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
     case find_suitable_version(dep_name, req, get_current_elixir_version()) do
       {:ok, dep_version} ->
         build_tree_or_error(dep_name, dep_version, max_depth, next_depth)
+
       {:error, _} ->
         %{name: dep_name, version: req, unresolved: true}
     end
@@ -287,15 +285,6 @@ defmodule HexHub.MCP.Tools.Dependencies do
   end
 
   defp parse_release_requirements(requirements) when is_map(requirements), do: requirements
-
-  defp parse_release_requirements(requirements) when is_binary(requirements) do
-    case Jason.decode(requirements) do
-      {:ok, reqs} -> reqs
-      {:error, _} -> %{}
-    end
-  end
-
-  defp parse_release_requirements(_), do: %{}
 
   defp calculate_tree_stats(tree) do
     %{
