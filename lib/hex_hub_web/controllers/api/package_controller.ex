@@ -1,7 +1,6 @@
 defmodule HexHubWeb.API.PackageController do
   use HexHubWeb, :controller
 
-  alias HexHub.RegistryFormat
   alias HexHubWeb.Plugs.HexFormat
 
   plug HexFormat
@@ -87,31 +86,24 @@ defmodule HexHubWeb.API.PackageController do
   def show(conn, %{"name" => name}) do
     start_time = System.monotonic_time()
 
-    case HexHub.Packages.get_package(name) do
-      {:ok, package} ->
-        duration_ms =
-          (System.monotonic_time() - start_time)
-          |> System.convert_time_unit(:native, :millisecond)
+    # For Hex clients (ETF format), always proxy to upstream to get proper protobuf format
+    # This is a temporary solution until we implement protobuf encoding locally
+    if conn.assigns[:hex_format] == :etf and HexHub.Upstream.enabled?() do
+      proxy_upstream_package(conn, name, start_time)
+    else
+      # For non-Hex clients (JSON), serve from local database
+      case HexHub.Packages.get_package(name) do
+        {:ok, package} ->
+          duration_ms =
+            (System.monotonic_time() - start_time)
+            |> System.convert_time_unit(:native, :millisecond)
 
-        HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200)
+          HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200)
 
-        # Format response based on client type (Hex client vs browser/API)
-        data =
-          case conn.assigns[:hex_format] do
-            :etf ->
-              RegistryFormat.format_package_for_registry(package)
+          data = format_package_for_show(package)
+          json(conn, data)
 
-            _ ->
-              format_package_for_show(package)
-          end
-
-        HexFormat.send_hex_response(conn, data)
-
-      {:error, :not_found} ->
-        # Try upstream proxy for Hex clients (to get proper protobuf format)
-        if conn.assigns[:hex_format] == :etf and HexHub.Upstream.enabled?() do
-          proxy_upstream_package(conn, name, start_time)
-        else
+        {:error, :not_found} ->
           duration_ms =
             (System.monotonic_time() - start_time)
             |> System.convert_time_unit(:native, :millisecond)
@@ -121,7 +113,7 @@ defmodule HexHubWeb.API.PackageController do
           conn
           |> put_status(:not_found)
           |> json(%{message: "Package not found"})
-        end
+      end
     end
   end
 
