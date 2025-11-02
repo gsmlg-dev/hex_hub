@@ -108,15 +108,105 @@ defmodule HexHubWeb.API.PackageController do
         HexFormat.send_hex_response(conn, data)
 
       {:error, :not_found} ->
+        # Try upstream proxy for Hex clients (to get proper protobuf format)
+        if conn.assigns[:hex_format] == :etf and HexHub.Upstream.enabled?() do
+          proxy_upstream_package(conn, name, start_time)
+        else
+          duration_ms =
+            (System.monotonic_time() - start_time)
+            |> System.convert_time_unit(:native, :millisecond)
+
+          HexHub.Telemetry.track_api_request("packages.show", duration_ms, 404, "not_found")
+
+          conn
+          |> put_status(:not_found)
+          |> json(%{message: "Package not found"})
+        end
+    end
+  end
+
+  defp proxy_upstream_package(conn, name, start_time) do
+    upstream_config = HexHub.Upstream.config()
+    url = "#{upstream_config.api_url}/api/packages/#{name}"
+
+    # Forward the request to upstream and return raw response
+    headers = build_upstream_headers(conn, upstream_config)
+    req_opts = [receive_timeout: upstream_config.timeout, headers: headers]
+
+    case Req.get(url, req_opts) do
+      {:ok, %{status: 200, body: body, headers: resp_headers}} when is_binary(body) ->
         duration_ms =
           (System.monotonic_time() - start_time)
           |> System.convert_time_unit(:native, :millisecond)
 
-        HexHub.Telemetry.track_api_request("packages.show", duration_ms, 404, "not_found")
+        HexHub.Telemetry.track_api_request("packages.show", duration_ms, 200, "upstream_proxy")
+
+        # Forward the upstream response as-is
+        conn = put_resp_content_type(conn, "application/vnd.hex+erlang")
+
+        # Copy relevant headers from upstream
+        conn =
+          Enum.reduce(resp_headers, conn, fn {key, value}, acc ->
+            case String.downcase(key) do
+              "cache-control" -> put_resp_header(acc, "cache-control", value)
+              "etag" -> put_resp_header(acc, "etag", value)
+              _ -> acc
+            end
+          end)
+
+        send_resp(conn, 200, body)
+
+      {:ok, %{status: status}} ->
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        HexHub.Telemetry.track_api_request(
+          "packages.show",
+          duration_ms,
+          status,
+          "upstream_error"
+        )
 
         conn
-        |> put_status(:not_found)
-        |> json(%{message: "Package not found"})
+        |> put_status(status)
+        |> json(%{message: "Upstream error: #{status}"})
+
+      {:error, reason} ->
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        HexHub.Telemetry.track_api_request(
+          "packages.show",
+          duration_ms,
+          502,
+          "upstream_connection_error"
+        )
+
+        conn
+        |> put_status(:bad_gateway)
+        |> json(%{message: "Failed to connect to upstream: #{inspect(reason)}"})
+    end
+  end
+
+  defp build_upstream_headers(conn, upstream_config) do
+    base_headers = [
+      {"user-agent", "HexHub/0.1.0 (Proxy-Mode)"},
+      {"accept", "application/vnd.hex+erlang"}
+    ]
+
+    # Forward accept-encoding if present
+    headers =
+      case get_req_header(conn, "accept-encoding") do
+        [] -> base_headers
+        [encoding | _] -> [{"accept-encoding", encoding} | base_headers]
+      end
+
+    # Add API key if configured
+    case upstream_config.api_key do
+      nil -> headers
+      api_key -> [{"authorization", "Bearer #{api_key}"} | headers]
     end
   end
 
