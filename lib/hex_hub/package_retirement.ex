@@ -168,7 +168,7 @@ defmodule HexHub.PackageRetirement do
   @doc """
   Get list of valid retirement reasons.
   """
-  @spec retirement_reasons() :: list(atom())
+  @spec retirement_reasons() :: [:deprecated | :invalid | :other | :renamed | :security, ...]
   def retirement_reasons, do: @retirement_reasons
 
   # Private helper functions

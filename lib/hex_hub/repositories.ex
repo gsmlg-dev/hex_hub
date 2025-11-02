@@ -24,6 +24,7 @@ defmodule HexHub.Repositories do
   @doc """
   Get repository by name.
   """
+  @spec get_repository(String.t()) :: {:ok, map()} | {:error, String.t()}
   def get_repository(name) do
     if name == "hexpm" do
       {:ok,

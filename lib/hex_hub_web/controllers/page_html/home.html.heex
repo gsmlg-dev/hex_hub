@@ -416,10 +416,8 @@
           </div>
           <div class="stat-title">Users</div>
           <div class="stat-value text-accent">
-            {
-              {:ok, users} = HexHub.Users.list_users()
-              length(users)
-            }
+            {{:ok, users} = HexHub.Users.list_users()
+            length(users)}
           </div>
         </div>
       </div>

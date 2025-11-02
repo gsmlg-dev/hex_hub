@@ -10,6 +10,7 @@ defmodule HexHub.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      dialyzer: dialyzer(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
       releases: [
@@ -65,6 +66,14 @@ defmodule HexHub.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:nimble_totp, "~> 1.0"},
       {:qr_code, "~> 3.0"}
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"},
+      flags: [:error_handling, :underspecs],
+      ignore_warnings: ".dialyzer_ignore.exs"
     ]
   end
 
