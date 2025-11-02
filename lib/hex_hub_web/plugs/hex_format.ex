@@ -32,7 +32,6 @@ defmodule HexHubWeb.Plugs.HexFormat do
 
     conn
     |> put_resp_content_type("application/vnd.hex+erlang")
-    |> put_resp_header("content-encoding", "gzip")
     |> send_resp(200, encoded)
   end
 
