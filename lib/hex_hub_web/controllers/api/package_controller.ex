@@ -139,9 +139,12 @@ defmodule HexHubWeb.API.PackageController do
         # Copy relevant headers from upstream
         conn =
           Enum.reduce(resp_headers, conn, fn {key, value}, acc ->
+            # Normalize value to string (Req can return lists)
+            header_value = normalize_header_value(value)
+
             case String.downcase(key) do
-              "cache-control" -> put_resp_header(acc, "cache-control", value)
-              "etag" -> put_resp_header(acc, "etag", value)
+              "cache-control" -> put_resp_header(acc, "cache-control", header_value)
+              "etag" -> put_resp_header(acc, "etag", header_value)
               _ -> acc
             end
           end)
@@ -201,6 +204,10 @@ defmodule HexHubWeb.API.PackageController do
       api_key -> [{"authorization", "Bearer #{api_key}"} | headers]
     end
   end
+
+  defp normalize_header_value(value) when is_binary(value), do: value
+  defp normalize_header_value([value | _]) when is_binary(value), do: value
+  defp normalize_header_value(value), do: to_string(value)
 
   defp format_package_for_list(package) do
     %{
