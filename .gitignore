@@ -45,3 +45,4 @@ bun.lock
 # devenv
 .devenv/
 .devenv.*
+priv/plts/

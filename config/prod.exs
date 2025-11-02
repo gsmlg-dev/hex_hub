@@ -33,7 +33,8 @@ config :ex_aws, :s3,
 # Production upstream configuration
 config :hex_hub, :upstream,
   enabled: System.get_env("UPSTREAM_ENABLED", "true") == "true",
-  url: System.get_env("UPSTREAM_URL", "https://hex.pm"),
+  api_url: System.get_env("UPSTREAM_API_URL", "https://hex.pm"),
+  repo_url: System.get_env("UPSTREAM_REPO_URL", "https://repo.hex.pm"),
   timeout: String.to_integer(System.get_env("UPSTREAM_TIMEOUT", "30000")),
   retry_attempts: String.to_integer(System.get_env("UPSTREAM_RETRY_ATTEMPTS", "3")),
   retry_delay: String.to_integer(System.get_env("UPSTREAM_RETRY_DELAY", "1000"))

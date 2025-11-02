@@ -387,10 +387,8 @@
             {case HexHub.Packages.list_packages() do
               {:ok, packages, _} ->
                 Enum.reduce(packages, 0, fn pkg, acc ->
-                  case HexHub.Packages.list_releases(pkg.name) do
-                    {:ok, releases} -> acc + length(releases)
-                    _ -> acc
-                  end
+                  {:ok, releases} = HexHub.Packages.list_releases(pkg.name)
+                  acc + length(releases)
                 end)
 
               _ ->
@@ -418,10 +416,8 @@
           </div>
           <div class="stat-title">Users</div>
           <div class="stat-value text-accent">
-            {case HexHub.Users.list_users() do
-              {:ok, users} -> length(users)
-              _ -> 0
-            end}
+            {{:ok, users} = HexHub.Users.list_users()
+            length(users)}
           </div>
         </div>
       </div>

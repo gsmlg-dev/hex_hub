@@ -145,7 +145,7 @@ defmodule HexHub.Packages do
   @doc """
   List all packages with optional search and pagination.
   """
-  @spec list_packages(keyword()) :: {:ok, [package()], integer()}
+  @spec list_packages(keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
   def list_packages(opts \\ []) do
     search_term = Keyword.get(opts, :search)
     page = Keyword.get(opts, :page, 1)
@@ -197,7 +197,8 @@ defmodule HexHub.Packages do
   @doc """
   Search packages by name or description.
   """
-  @spec search_packages(String.t(), keyword()) :: {:ok, [package()], integer()}
+  @spec search_packages(String.t(), keyword()) ::
+          {:ok, [package()], integer()} | {:error, String.t()}
   def search_packages(query, opts \\ []) do
     page = Keyword.get(opts, :page, 1)
     per_page = Keyword.get(opts, :per_page, 50)
@@ -355,6 +356,7 @@ defmodule HexHub.Packages do
     else
       {:error, :not_found} ->
         {:error, "Release not found"}
+
       {:error, reason} = error ->
         # Clean up uploaded docs if database update failed
         cleanup_docs_on_error(docs_key, reason)
@@ -403,7 +405,9 @@ defmodule HexHub.Packages do
   end
 
   defp update_release_docs_flag(package_name, version, has_docs) do
-    case :mnesia.transaction(fn -> do_update_release_docs_flag(package_name, version, has_docs) end) do
+    case :mnesia.transaction(fn ->
+           do_update_release_docs_flag(package_name, version, has_docs)
+         end) do
       {:atomic, {:ok, _} = result} -> result
       {:atomic, {:error, _} = error} -> error
       {:aborted, reason} -> {:error, "Transaction failed: #{inspect(reason)}"}
@@ -411,9 +415,10 @@ defmodule HexHub.Packages do
   end
 
   defp do_update_release_docs_flag(package_name, version, has_docs) do
-    releases = :mnesia.match_object(
-      {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
-    )
+    releases =
+      :mnesia.match_object(
+        {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+      )
 
     case releases do
       [] -> {:error, "Release not found"}
@@ -425,21 +430,62 @@ defmodule HexHub.Packages do
     Enum.each(releases, fn release_tuple ->
       update_single_release_docs_flag(release_tuple, has_docs)
     end)
+
     {:ok, :updated}
   end
 
   defp update_single_release_docs_flag(release_tuple, has_docs) do
-    {@releases_table, pkg_name, ver, _old_has_docs, meta, requirements, retired,
-     downloads, inserted_at, _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
+    {@releases_table, pkg_name, ver, _old_has_docs, meta, requirements, retired, downloads,
+     inserted_at, _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
 
     :mnesia.delete_object(release_tuple)
 
     updated_release = {
-      @releases_table, pkg_name, ver, has_docs, meta, requirements, retired,
-      downloads, inserted_at, DateTime.utc_now(), url, package_url, html_url, docs_html_url
+      @releases_table,
+      pkg_name,
+      ver,
+      has_docs,
+      meta,
+      requirements,
+      retired,
+      downloads,
+      inserted_at,
+      DateTime.utc_now(),
+      url,
+      package_url,
+      html_url,
+      docs_html_url
     }
 
     :mnesia.write(updated_release)
+  end
+
+  @doc """
+  Get package owners.
+  """
+  @spec get_package_owners(String.t()) :: {:ok, list()} | {:error, String.t()}
+  def get_package_owners(package_name) do
+    case :mnesia.transaction(fn ->
+           :mnesia.match_object({:package_owners, package_name, :_, :_, :_})
+         end) do
+      {:atomic, owners} when is_list(owners) ->
+        owner_list =
+          Enum.map(owners, fn {:package_owners, _pkg, username, level, inserted_at} ->
+            %{
+              username: username,
+              level: level,
+              inserted_at: inserted_at
+            }
+          end)
+
+        {:ok, owner_list}
+
+      {:atomic, []} ->
+        {:ok, []}
+
+      {:aborted, reason} ->
+        {:error, "Failed to get owners: #{inspect(reason)}"}
+    end
   end
 
   @doc """
@@ -469,7 +515,9 @@ defmodule HexHub.Packages do
   end
 
   defp update_retirement_in_transaction(package_name, version, retired) do
-    case :mnesia.transaction(fn -> do_update_retirement_status(package_name, version, retired) end) do
+    case :mnesia.transaction(fn ->
+           do_update_retirement_status(package_name, version, retired)
+         end) do
       {:atomic, {:ok, _} = result} -> result
       {:atomic, {:error, _} = error} -> error
       {:aborted, reason} -> {:error, "Failed to update retirement status: #{inspect(reason)}"}
@@ -477,9 +525,10 @@ defmodule HexHub.Packages do
   end
 
   defp do_update_retirement_status(package_name, version, retired) do
-    releases = :mnesia.match_object(
-      {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
-    )
+    releases =
+      :mnesia.match_object(
+        {@releases_table, package_name, version, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
+      )
 
     case releases do
       [] -> {:error, "Release not found"}
@@ -491,16 +540,29 @@ defmodule HexHub.Packages do
     Enum.each(releases, fn release_tuple ->
       update_single_release_retirement(release_tuple, retired)
     end)
+
     {:ok, hd(releases)}
   end
 
   defp update_single_release_retirement(release_tuple, retired) do
-    {_, pkg_name, ver, has_docs, meta, requirements, _old_retired, downloads,
-     inserted_at, _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
+    {_, pkg_name, ver, has_docs, meta, requirements, _old_retired, downloads, inserted_at,
+     _updated_at, url, package_url, html_url, docs_html_url} = release_tuple
 
     updated_release = {
-      @releases_table, pkg_name, ver, has_docs, meta, requirements, retired,
-      downloads, inserted_at, DateTime.utc_now(), url, package_url, html_url, docs_html_url
+      @releases_table,
+      pkg_name,
+      ver,
+      has_docs,
+      meta,
+      requirements,
+      retired,
+      downloads,
+      inserted_at,
+      DateTime.utc_now(),
+      url,
+      package_url,
+      html_url,
+      docs_html_url
     }
 
     :mnesia.write(updated_release)
@@ -636,7 +698,7 @@ defmodule HexHub.Packages do
   Create a new repository. This is a logical operation since repositories
   are currently just names associated with packages.
   """
-  @spec create_repository(map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  @spec create_repository(map()) :: {:ok, map()} | {:error, map()}
   def create_repository(params) do
     name = params["name"] || params[:name]
 
@@ -668,7 +730,7 @@ defmodule HexHub.Packages do
   @doc """
   Update a repository name. This involves updating all packages in the repository.
   """
-  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, Ecto.Changeset.t()}
+  @spec update_repository(String.t(), map()) :: {:ok, map()} | {:error, map()}
   def update_repository(old_name, params) do
     new_name = params["name"] || params[:name]
 
@@ -759,7 +821,7 @@ defmodule HexHub.Packages do
   @doc """
   Delete a specific package and all its releases.
   """
-  @spec delete_package(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec delete_package(String.t()) :: {:ok, String.t()} | {:error, :not_found | String.t()}
   def delete_package(name) do
     case :mnesia.transaction(fn ->
            # Get the package first

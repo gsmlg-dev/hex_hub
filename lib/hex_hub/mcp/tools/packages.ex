@@ -203,7 +203,7 @@ defmodule HexHub.MCP.Tools.Packages do
   defp get_latest_version(releases) do
     releases
     |> Enum.map(& &1.version)
-    |> Enum.sort_by(&Version.compare/2, :desc)
+    |> Enum.sort(&(Version.compare(&1, &2) == :gt))
     |> List.first()
   end
 
@@ -226,15 +226,6 @@ defmodule HexHub.MCP.Tools.Packages do
   end
 
   defp parse_requirements(requirements) when is_map(requirements), do: requirements
-
-  defp parse_requirements(requirements) when is_binary(requirements) do
-    case Jason.decode(requirements) do
-      {:ok, reqs} -> reqs
-      {:error, _} -> %{}
-    end
-  end
-
-  defp parse_requirements(_), do: %{}
 
   defp get_retirement_info(release) do
     case release.retirement do

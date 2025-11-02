@@ -6,6 +6,8 @@ defmodule HexHub.MCP.Tools.Repositories do
   and managing package visibility within repositories.
   """
 
+  @dialyzer [{:nowarn_function, repository_exists?: 1}, {:no_match, repository_exists?: 1}]
+
   require Logger
 
   alias HexHub.{Packages, Repositories}
@@ -84,7 +86,7 @@ defmodule HexHub.MCP.Tools.Repositories do
         updated_package = %{package | private: private}
 
         case update_package_visibility(updated_package) do
-          :ok ->
+          {:atomic, _} ->
             result = %{
               name: name,
               repository: package.repository,
@@ -95,9 +97,9 @@ defmodule HexHub.MCP.Tools.Repositories do
 
             {:ok, result}
 
-          {:error, reason} ->
+          {:aborted, reason} ->
             Logger.error("MCP toggle package visibility failed: #{inspect(reason)}")
-            {:error, reason}
+            {:error, "Failed to update package visibility: #{inspect(reason)}"}
         end
 
       {:error, reason} ->
@@ -325,6 +327,7 @@ defmodule HexHub.MCP.Tools.Repositories do
   @doc """
   Check if a repository exists.
   """
+  @spec repository_exists?(String.t()) :: boolean()
   def repository_exists?(name) do
     case Repositories.get_repository(name) do
       {:ok, _} -> true
@@ -403,7 +406,7 @@ defmodule HexHub.MCP.Tools.Repositories do
   @doc """
   Get packages for a repository.
   """
-  def get_repository_packages(name, opts \\ []) do
+  def get_repository_packages(name, opts \\ %{}) do
     page = Map.get(opts, :page, 1)
     per_page = Map.get(opts, :per_page, 20)
 
