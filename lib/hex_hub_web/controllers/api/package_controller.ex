@@ -123,7 +123,15 @@ defmodule HexHubWeb.API.PackageController do
 
     # Forward the request to upstream and return raw response
     headers = build_upstream_headers(conn, upstream_config)
-    req_opts = [receive_timeout: upstream_config.timeout, headers: headers]
+
+    req_opts = [
+      receive_timeout: upstream_config.timeout,
+      headers: headers,
+      # Disable automatic decompression to get raw gzipped response
+      compressed: false,
+      # Disable automatic decoding of response body
+      decode_body: false
+    ]
 
     case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body, headers: resp_headers}} when is_binary(body) ->
