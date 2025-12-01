@@ -385,3 +385,10 @@ The MCP (Model Context Protocol) server provides AI clients with comprehensive p
 **Transaction Safety**: Wrap all Mnesia operations in transactions
 **Error Handling**: Use consistent error response formats
 **Audit Logging**: All operations automatically logged for compliance
+
+## Active Technologies
+- Elixir 1.15+ / OTP 27+ + Phoenix 1.8, ExUnit, Mix (for custom task) (001-e2e-test-setup)
+- Mnesia (existing), local filesystem for test isolation (001-e2e-test-setup)
+
+## Recent Changes
+- 001-e2e-test-setup: Added Elixir 1.15+ / OTP 27+ + Phoenix 1.8, ExUnit, Mix (for custom task)
