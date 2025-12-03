@@ -29,16 +29,36 @@ defmodule HexHubWeb.Router do
     plug HexHubWeb.Plugs.Authorize, "write"
   end
 
+  # Pipeline for binary registry data (protobuf)
+  # No JSON accept header - accepts any content type
+  pipeline :registry do
+    plug :accepts, ["*/*"]
+  end
+
+  # Hex registry endpoints for HEX_MIRROR compatibility
+  # These serve gzipped protobuf data that the Hex client expects
+  # Must come before other routes to avoid conflicts
+  scope "/", HexHubWeb.API do
+    pipe_through :registry
+
+    # Registry endpoints (gzipped protobuf format)
+    get "/names", RegistryController, :names
+    get "/versions", RegistryController, :versions
+    # Package registry data (different from /api/packages/:name which returns JSON)
+    get "/packages/:name", RegistryController, :package
+  end
+
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
   # These must come before browser routes to avoid conflicts
   # NOTE: These routes are intentionally duplicated at /api/* for standard API access
   # This root-level scope is specifically for Mix clients using HEX_MIRROR environment variable
+  # Note: /packages/:name is handled by RegistryController above for protobuf format
   scope "/", HexHubWeb.API do
     pipe_through :api_cached
 
     # Public endpoints for Mix/HEX_MIRROR support (with caching)
     get "/packages", PackageController, :list
-    get "/packages/:name", PackageController, :show
+    # Note: /packages/:name is in registry scope above for protobuf support
     get "/packages/:name/releases/:version", ReleaseController, :show
     get "/repos", RepositoryController, :list
     get "/repos/:name", RepositoryController, :show
