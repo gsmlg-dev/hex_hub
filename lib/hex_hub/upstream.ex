@@ -98,7 +98,8 @@ defmodule HexHub.Upstream do
       start_time = System.monotonic_time()
       url = "#{upstream_config.repo_url}/tarballs/#{package_name}-#{version}.tar"
 
-      result = make_request_with_retry(url, upstream_config)
+      # Use raw binary request to preserve tarball integrity for checksum verification
+      result = make_raw_binary_request(url, upstream_config)
 
       duration_ms =
         (System.monotonic_time() - start_time)
@@ -135,7 +136,8 @@ defmodule HexHub.Upstream do
       start_time = System.monotonic_time()
       url = "#{upstream_config.repo_url}/docs/#{package_name}-#{version}.tar"
 
-      result = make_request_with_retry(url, upstream_config)
+      # Use raw binary request to preserve tarball integrity
+      result = make_raw_binary_request(url, upstream_config)
 
       duration_ms =
         (System.monotonic_time() - start_time)
@@ -232,6 +234,60 @@ defmodule HexHub.Upstream do
   end
 
   ## Private functions
+
+  # Make a raw binary request without any automatic body processing
+  # This is critical for tarballs to preserve checksum integrity
+  defp make_raw_binary_request(url, config) do
+    base_headers = [
+      {"user-agent", "HexHub/0.1.0 (Upstream-Mode)"},
+      {"accept", "application/octet-stream"}
+    ]
+
+    headers =
+      case config.api_key do
+        nil -> base_headers
+        api_key -> [{"authorization", "Bearer #{api_key}"} | base_headers]
+      end
+
+    # Disable all automatic response processing to get raw bytes
+    req_opts = [
+      receive_timeout: config.timeout,
+      headers: headers,
+      # Disable automatic decompression
+      decode_body: false,
+      # Disable gzip/deflate handling
+      compressed: false,
+      # Don't follow redirects automatically for binary data
+      redirect: true,
+      # Disable retry at Req level (we handle retries ourselves)
+      retry: false
+    ]
+
+    case Req.get(url, req_opts) do
+      {:ok, %{status: 200, body: body}} when is_binary(body) ->
+        Logger.debug("Raw binary response, size: #{byte_size(body)}")
+        {:ok, body}
+
+      {:ok, %{status: 404}} ->
+        {:error, "Not found upstream"}
+
+      {:ok, %{status: status}} when status in [400, 401, 403] ->
+        {:error, "Client error: #{status}"}
+
+      {:ok, %{status: status}} when status >= 500 ->
+        {:error, "Server error: #{status}"}
+
+      {:ok, response} ->
+        Logger.error("Unexpected raw binary response: status=#{response.status}")
+        {:error, "Unexpected response status: #{response.status}"}
+
+      {:error, %Req.TransportError{reason: reason}} ->
+        {:error, "Network error: #{inspect(reason)}"}
+
+      {:error, reason} ->
+        {:error, "Request failed: #{inspect(reason)}"}
+    end
+  end
 
   defp make_request_with_retry(url, config, attempt \\ 1) do
     case make_request(url, config) do
