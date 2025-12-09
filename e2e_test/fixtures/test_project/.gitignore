@@ -1,0 +1,4 @@
+# Test fixture artifacts - regenerated during E2E tests
+/_build/
+/deps/
+mix.lock
