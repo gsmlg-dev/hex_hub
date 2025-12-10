@@ -91,6 +91,9 @@ RUN chown nobody /app
 ARG MIX_ENV=prod
 ENV MIX_ENV="prod"
 
+# default secret key base
+ENV SECRET_KEY_BASE="uxrVaRd0kooQYWbYBN1AqF2B3M/Ggblq7/fH7CknPP4aw+z/4+e4KZLsa+Wic4/N"
+
 # Create storage directory
 RUN mkdir -p /app/priv/storage && chown nobody:nogroup /app/priv/storage
 
