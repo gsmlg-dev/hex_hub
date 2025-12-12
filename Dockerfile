@@ -95,11 +95,13 @@ ENV MIX_ENV="prod"
 ENV SECRET_KEY_BASE="uxrVaRd0kooQYWbYBN1AqF2B3M/Ggblq7/fH7CknPP4aw+z/4+e4KZLsa+Wic4/N"
 
 ENV STORAGE_PATH="/data"
+ENV MNESIA_DIR="/data/mnesia"
 
 VOLUME [ "/data" ]
 
-# Create storage directory
-RUN mkdir -p /app/priv/storage && chown nobody:nogroup /app/priv/storage
+# Create data directories for storage and Mnesia persistence
+RUN mkdir -p /data/packages /data/docs /data/mnesia && \
+    chown -R nobody:nogroup /data
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/hex_hub ./

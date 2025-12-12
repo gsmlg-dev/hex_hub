@@ -34,5 +34,6 @@ if config_env() == :prod do
 
   config :hex_hub,
     storage_type: :local,
-    storage_path: System.get_env("STORAGE_PATH", "priv/storage")
+    storage_path: System.get_env("STORAGE_PATH", "priv/storage"),
+    mnesia_dir: System.get_env("MNESIA_DIR", "mnesia")
 end
