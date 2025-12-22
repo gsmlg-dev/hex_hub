@@ -1,13 +1,11 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: 0.0.0 → 1.0.0 (Initial constitution ratification)
-Modified Principles: N/A (new document)
+Version Change: 1.0.0 → 1.1.0 (Principle VII expansion for telemetry-based logging)
+Modified Principles:
+  - Principle VII: "Observability and Audit" → expanded to mandate telemetry-based logging architecture
 Added Sections:
-  - Core Principles (7 principles)
-  - Technology Stack
-  - Development Workflow
-  - Governance
+  - Telemetry-First Logging subsection under Principle VII
 Removed Sections: N/A
 Templates Requiring Updates:
   - .specify/templates/plan-template.md ✅ (no changes needed - generic template)
@@ -89,11 +87,50 @@ dependent projects. High test coverage prevents regressions.
 ### VII. Observability and Audit
 
 All significant operations MUST emit telemetry events. Authentication failures, package
-publishes, upstream requests, and administrative actions MUST be logged. The system MUST
-expose health check endpoints compatible with Kubernetes liveness/readiness probes.
+publishes, upstream requests, and administrative actions MUST be observable through telemetry.
+The system MUST expose health check endpoints compatible with Kubernetes liveness/readiness
+probes.
 
-**Rationale**: Operating a package repository requires visibility into system behavior for
-debugging, security auditing, and capacity planning.
+#### Telemetry-First Logging
+
+Application code MUST NOT use `Logger` directly for operational logging. Instead, all loggable
+events MUST be emitted as telemetry events via `:telemetry.execute/3`. Logging output MUST be
+handled by attaching telemetry handlers that route events to appropriate destinations:
+
+- **Console output**: Attach a handler that uses `Logger` to print to console
+- **File output**: Attach a handler that writes to log files
+- **External systems**: Attach handlers for metrics services, log aggregators, etc.
+
+This pattern MUST be followed:
+
+```elixir
+# CORRECT: Emit telemetry event
+:telemetry.execute([:hex_hub, :package, :published], %{duration: duration_ms}, %{
+  package: name,
+  version: version,
+  user: username
+})
+
+# INCORRECT: Direct Logger call for operational events
+Logger.info("Package #{name} published")
+```
+
+Telemetry handlers MUST be registered in the application supervision tree. Default handlers
+MUST provide:
+- Console logging via `Logger` (configurable log level)
+- Optional file logging (when configured via environment)
+
+**Exceptions**: Direct `Logger` usage is permitted only for:
+- Application startup/shutdown messages in `Application.start/2`
+- Debugging during development (MUST be removed before merge)
+- Error rescue blocks where telemetry might not be available
+
+**Rationale**: Telemetry-first logging provides:
+1. Decoupled event emission from output handling
+2. Consistent event structure across the application
+3. Easy integration with external observability systems
+4. Ability to enable/disable specific log streams without code changes
+5. Metrics and logging from the same event source
 
 ## Technology Stack
 
@@ -109,6 +146,7 @@ HexHub is built with the following technology choices that MUST be maintained:
 | JS Bundler | Bun | Fast asset compilation |
 | Storage | Local / S3 | Via `HexHub.Storage` abstraction |
 | Clustering | Libcluster | Automatic node discovery |
+| Observability | Telemetry | Via `:telemetry` for events and metrics |
 
 **UI Constraints**:
 - All user interfaces MUST use Tailwind CSS utility classes
@@ -157,4 +195,4 @@ check the Constitution Check section in implementation plans.
 - MINOR: New principles added or existing principles expanded
 - PATCH: Clarifications, typo fixes, non-semantic refinements
 
-**Version**: 1.0.0 | **Ratified**: 2025-11-25 | **Last Amended**: 2025-11-25
+**Version**: 1.1.0 | **Ratified**: 2025-11-25 | **Last Amended**: 2025-12-22

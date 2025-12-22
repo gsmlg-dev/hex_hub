@@ -20,6 +20,7 @@ HexHub is a **complete private hex package manager and hexdocs server** built wi
 - **Phoenix Framework 1.8.0-rc.4**: Web layer with LiveView for real-time features
 - **MCP Server**: Model Context Protocol server for AI client integration
 - **Mnesia**: In-memory distributed database (no PostgreSQL required)
+- **Telemetry**: Event-driven observability (metrics + logging via `:telemetry`)
 - **Tailwind CSS + DaisyUI**: Modern styling with responsive design
 - **Bun**: JavaScript bundling and build tooling
 - **Bandit**: High-performance HTTP server
@@ -95,7 +96,7 @@ lib/
 │   ├── storage.ex             # Storage abstraction (local/S3)
 │   ├── upstream.ex            # Upstream package fetching
 │   ├── clustering.ex          # Mnesia cluster management
-│   ├── telemetry.ex           # Application metrics
+│   ├── telemetry.ex           # Telemetry events, metrics & logging
 │   └── audit.ex               # Audit logging
 ├── hex_hub_web/               # Main web interface (public API)
 │   ├── controllers/api/       # API controllers with authentication
@@ -384,4 +385,46 @@ The MCP (Model Context Protocol) server provides AI clients with comprehensive p
 **Always Use Storage Abstraction**: Never access storage directly, use `HexHub.Storage`
 **Transaction Safety**: Wrap all Mnesia operations in transactions
 **Error Handling**: Use consistent error response formats
-**Audit Logging**: All operations automatically logged for compliance
+**Telemetry-First Logging**: Use telemetry events instead of direct Logger calls (see below)
+
+### Telemetry-First Logging (Constitution Principle VII)
+
+Application code MUST NOT use `Logger` directly for operational logging. All loggable events
+MUST be emitted as telemetry events via `:telemetry.execute/3`. Logging output is handled by
+attaching telemetry handlers that route events to appropriate destinations.
+
+**Correct Pattern**:
+```elixir
+# Emit telemetry event for logging
+:telemetry.execute([:hex_hub, :package, :published], %{duration: duration_ms}, %{
+  package: name,
+  version: version,
+  user: username
+})
+```
+
+**Incorrect Pattern**:
+```elixir
+# DO NOT use Logger directly for operational events
+Logger.info("Package #{name} published")
+```
+
+**Handler Setup**: Telemetry handlers are registered in the application supervision tree:
+- Console logging via `Logger` (configurable log level)
+- Optional file logging (when configured via environment)
+- External systems integration (metrics services, log aggregators)
+
+**Exceptions** - Direct `Logger` usage is permitted only for:
+- Application startup/shutdown messages in `Application.start/2`
+- Debugging during development (MUST be removed before merge)
+- Error rescue blocks where telemetry might not be available
+
+**Rationale**: Telemetry-first logging provides:
+1. Decoupled event emission from output handling
+2. Consistent event structure across the application
+3. Easy integration with external observability systems
+4. Ability to enable/disable specific log streams without code changes
+5. Metrics and logging from the same event source
+
+**Key Files**:
+- `lib/hex_hub/telemetry.ex` - Telemetry metrics, event definitions, and tracking functions
