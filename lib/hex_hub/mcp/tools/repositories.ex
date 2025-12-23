@@ -8,9 +8,8 @@ defmodule HexHub.MCP.Tools.Repositories do
 
   @dialyzer [{:nowarn_function, repository_exists?: 1}, {:no_match, repository_exists?: 1}]
 
-  require Logger
-
   alias HexHub.{Packages, Repositories}
+  alias HexHub.Telemetry
 
   @doc """
   List all available repositories.
@@ -18,7 +17,7 @@ defmodule HexHub.MCP.Tools.Repositories do
   def list_repositories(args \\ %{}) do
     include_private = Map.get(args, "include_private", false)
 
-    Logger.debug("MCP listing repositories (include_private: #{include_private})")
+    Telemetry.log(:debug, :mcp, "MCP listing repositories", %{include_private: include_private})
 
     repositories = Repositories.list_repositories()
 
@@ -43,7 +42,7 @@ defmodule HexHub.MCP.Tools.Repositories do
   Get detailed information about a repository.
   """
   def get_repository_info(%{"name" => name}) do
-    Logger.debug("MCP getting repository info for: #{name}")
+    Telemetry.log(:debug, :mcp, "MCP getting repository info", %{name: name})
 
     case Repositories.get_repository(name) do
       {:ok, repository} ->
@@ -65,7 +64,10 @@ defmodule HexHub.MCP.Tools.Repositories do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP get repository info failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP get repository info failed", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -78,7 +80,10 @@ defmodule HexHub.MCP.Tools.Repositories do
   Toggle package visibility between public and private.
   """
   def toggle_package_visibility(%{"name" => name, "private" => private}) do
-    Logger.debug("MCP toggling package visibility for: #{name} (private: #{private})")
+    Telemetry.log(:debug, :mcp, "MCP toggling package visibility", %{
+      name: name,
+      private: private
+    })
 
     case Packages.get_package(name) do
       {:ok, package} ->
@@ -98,12 +103,18 @@ defmodule HexHub.MCP.Tools.Repositories do
             {:ok, result}
 
           {:aborted, reason} ->
-            Logger.error("MCP toggle package visibility failed: #{inspect(reason)}")
+            Telemetry.log(:error, :mcp, "MCP toggle package visibility failed", %{
+              reason: inspect(reason)
+            })
+
             {:error, "Failed to update package visibility: #{inspect(reason)}"}
         end
 
       {:error, reason} ->
-        Logger.error("MCP toggle package visibility: package not found: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP toggle package visibility: package not found", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -247,7 +258,9 @@ defmodule HexHub.MCP.Tools.Repositories do
         end)
 
       if length(unknown_fields) > 0 do
-        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
+        Telemetry.log(:warning, :mcp, "Unknown fields in args", %{
+          unknown_fields: inspect(unknown_fields)
+        })
       end
 
       :ok
@@ -435,7 +448,7 @@ defmodule HexHub.MCP.Tools.Repositories do
   def sync_repository(name) do
     # Sync repository with upstream source
     # This would fetch package metadata from upstream
-    Logger.info("MCP syncing repository: #{name}")
+    Telemetry.log(:info, :mcp, "MCP syncing repository", %{name: name})
 
     # Implementation would depend on repository type
     # For now, return success

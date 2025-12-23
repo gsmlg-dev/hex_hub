@@ -7,8 +7,7 @@ defmodule HexHub.Upstream do
   and telemetry tracking.
   """
 
-  require Logger
-  alias HexHub.{Storage, UpstreamConfig}
+  alias HexHub.{Storage, Telemetry, UpstreamConfig}
 
   @type upstream_config :: %{
           enabled: boolean(),
@@ -206,11 +205,20 @@ defmodule HexHub.Upstream do
 
     case Storage.upload(package_key, tarball) do
       {:ok, _} ->
-        Logger.info("Cached package tarball: #{package_name}-#{version}")
+        Telemetry.log(:info, :upstream, "Cached package tarball", %{
+          package: package_name,
+          version: version
+        })
+
         :ok
 
       {:error, reason} ->
-        Logger.error("Failed to cache package tarball #{package_name}-#{version}: #{reason}")
+        Telemetry.log(:error, :upstream, "Failed to cache package tarball", %{
+          package: package_name,
+          version: version,
+          reason: reason
+        })
+
         {:error, reason}
     end
   end
@@ -224,11 +232,20 @@ defmodule HexHub.Upstream do
 
     case Storage.upload(docs_key, docs_tarball) do
       {:ok, _} ->
-        Logger.info("Cached docs tarball: #{package_name}-#{version}")
+        Telemetry.log(:info, :upstream, "Cached docs tarball", %{
+          package: package_name,
+          version: version
+        })
+
         :ok
 
       {:error, reason} ->
-        Logger.error("Failed to cache docs tarball #{package_name}-#{version}: #{reason}")
+        Telemetry.log(:error, :upstream, "Failed to cache docs tarball", %{
+          package: package_name,
+          version: version,
+          reason: reason
+        })
+
         {:error, reason}
     end
   end
@@ -265,7 +282,7 @@ defmodule HexHub.Upstream do
 
     case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body}} when is_binary(body) ->
-        Logger.debug("Raw binary response, size: #{byte_size(body)}")
+        Telemetry.log(:debug, :upstream, "Raw binary response", %{size: byte_size(body)})
         {:ok, body}
 
       {:ok, %{status: 404}} ->
@@ -278,7 +295,10 @@ defmodule HexHub.Upstream do
         {:error, "Server error: #{status}"}
 
       {:ok, response} ->
-        Logger.error("Unexpected raw binary response: status=#{response.status}")
+        Telemetry.log(:error, :upstream, "Unexpected raw binary response", %{
+          status: response.status
+        })
+
         {:error, "Unexpected response status: #{response.status}"}
 
       {:error, %Req.TransportError{reason: reason}} ->
@@ -295,15 +315,21 @@ defmodule HexHub.Upstream do
         result
 
       {:error, reason} when attempt < config.retry_attempts ->
-        Logger.warning(
-          "Upstream request failed (attempt #{attempt}/#{config.retry_attempts}): #{reason}. Retrying in #{config.retry_delay}ms..."
-        )
+        Telemetry.log(:warning, :upstream, "Upstream request failed, retrying", %{
+          attempt: attempt,
+          max_attempts: config.retry_attempts,
+          reason: reason,
+          retry_delay: config.retry_delay
+        })
 
         :timer.sleep(config.retry_delay)
         make_request_with_retry(url, config, attempt + 1)
 
       {:error, _reason} ->
-        Logger.error("Upstream request failed after #{config.retry_attempts} attempts")
+        Telemetry.log(:error, :upstream, "Upstream request failed after max attempts", %{
+          attempts: config.retry_attempts
+        })
+
         {:error, "Request failed after multiple attempts"}
     end
   end
@@ -327,15 +353,21 @@ defmodule HexHub.Upstream do
 
     case Req.get(url, req_opts) do
       {:ok, %{status: 200, body: body}} when is_binary(body) ->
-        Logger.debug("Upstream response: binary body, size: #{byte_size(body)}")
+        Telemetry.log(:debug, :upstream, "Upstream response: binary body", %{
+          size: byte_size(body)
+        })
+
         {:ok, body}
 
       {:ok, %{status: 200, body: body}} when is_map(body) ->
-        Logger.debug("Upstream response: map body")
+        Telemetry.log(:debug, :upstream, "Upstream response: map body")
         {:ok, body}
 
       {:ok, %{status: 200, body: body}} when is_list(body) ->
-        Logger.debug("Upstream response: list body with #{length(body)} items")
+        Telemetry.log(:debug, :upstream, "Upstream response: list body", %{
+          item_count: length(body)
+        })
+
         # Handle hex package format - extract the tarball contents
         # Keys may be strings or charlists
         contents_key = "contents.tar.gz"
@@ -344,13 +376,16 @@ defmodule HexHub.Upstream do
                key == contents_key or key == String.to_charlist(contents_key)
              end) do
           {_, tarball_data} when is_binary(tarball_data) ->
-            Logger.debug("Found tarball contents, size: #{byte_size(tarball_data)}")
+            Telemetry.log(:debug, :upstream, "Found tarball contents", %{
+              size: byte_size(tarball_data)
+            })
+
             {:ok, tarball_data}
 
           _ ->
-            Logger.error(
-              "Invalid package format - available keys: #{inspect(Enum.map(body, fn {k, _} -> k end))}"
-            )
+            Telemetry.log(:error, :upstream, "Invalid package format", %{
+              available_keys: Enum.map(body, fn {k, _} -> k end)
+            })
 
             {:error, "Invalid package format: missing contents.tar.gz"}
         end
@@ -365,7 +400,10 @@ defmodule HexHub.Upstream do
         {:error, "Server error: #{status}"}
 
       {:ok, response} ->
-        Logger.error("Unexpected upstream response: #{inspect(response, pretty: true)}")
+        Telemetry.log(:error, :upstream, "Unexpected upstream response", %{
+          response: inspect(response)
+        })
+
         {:error, "Unexpected response: #{inspect(response)}"}
 
       {:error, %Req.TransportError{reason: reason}} ->

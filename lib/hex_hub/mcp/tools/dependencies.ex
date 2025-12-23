@@ -6,9 +6,8 @@ defmodule HexHub.MCP.Tools.Dependencies do
   dependency trees, and checking version compatibility.
   """
 
-  require Logger
-
   alias HexHub.Packages
+  alias HexHub.Telemetry
   # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
@@ -17,7 +16,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   def resolve_dependencies(%{"requirements" => requirements} = args) do
     elixir_version = Map.get(args, "elixir_version", get_current_elixir_version())
 
-    Logger.debug("MCP resolving dependencies for Elixir #{elixir_version}")
+    Telemetry.log(:debug, :mcp, "MCP resolving dependencies", %{elixir_version: elixir_version})
 
     case parse_requirements(requirements) do
       {:ok, parsed_requirements} ->
@@ -35,12 +34,18 @@ defmodule HexHub.MCP.Tools.Dependencies do
             {:ok, result}
 
           {:error, reason} ->
-            Logger.error("MCP dependency resolution failed: #{inspect(reason)}")
+            Telemetry.log(:error, :mcp, "MCP dependency resolution failed", %{
+              reason: inspect(reason)
+            })
+
             {:error, reason}
         end
 
       {:error, reason} ->
-        Logger.error("MCP failed to parse requirements: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP failed to parse requirements", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -55,7 +60,7 @@ defmodule HexHub.MCP.Tools.Dependencies do
   def get_dependency_tree(%{"name" => name, "version" => version} = args) do
     max_depth = Map.get(args, "depth", 10)
 
-    Logger.debug("MCP building dependency tree for: #{name} v#{version}")
+    Telemetry.log(:debug, :mcp, "MCP building dependency tree", %{name: name, version: version})
 
     case build_dependency_tree(name, version, max_depth) do
       {:ok, tree} ->
@@ -73,7 +78,10 @@ defmodule HexHub.MCP.Tools.Dependencies do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP dependency tree building failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP dependency tree building failed", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -88,7 +96,9 @@ defmodule HexHub.MCP.Tools.Dependencies do
   def check_compatibility(%{"packages" => packages} = args) do
     elixir_version = Map.get(args, "elixir_version", get_current_elixir_version())
 
-    Logger.debug("MCP checking compatibility for #{length(packages)} packages")
+    Telemetry.log(:debug, :mcp, "MCP checking compatibility", %{
+      package_count: length(packages)
+    })
 
     case parse_package_list(packages) do
       {:ok, parsed_packages} ->
@@ -105,7 +115,10 @@ defmodule HexHub.MCP.Tools.Dependencies do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP compatibility check failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP compatibility check failed", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -548,7 +561,9 @@ defmodule HexHub.MCP.Tools.Dependencies do
         end)
 
       if length(unknown_fields) > 0 do
-        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
+        Telemetry.log(:warning, :mcp, "Unknown fields in args", %{
+          unknown_fields: inspect(unknown_fields)
+        })
       end
 
       :ok

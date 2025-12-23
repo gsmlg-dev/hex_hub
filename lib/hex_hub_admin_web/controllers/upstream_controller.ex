@@ -6,7 +6,6 @@ defmodule HexHubAdminWeb.UpstreamController do
   use HexHubAdminWeb, :controller
 
   alias HexHub.UpstreamConfig
-  require Logger
 
   plug :ensure_authenticated when action in [:index, :edit, :update]
   plug :ensure_admin when action in [:update]

@@ -1,9 +1,80 @@
 defmodule HexHub.Telemetry do
   @moduledoc """
-  Telemetry module for collecting application metrics.
+  Telemetry module for collecting application metrics and logging.
+
+  ## Telemetry-First Logging
+
+  This module provides a `log/4` helper function for emitting log events via telemetry.
+  All operational logging should use this function instead of direct `Logger` calls.
+
+  ## Examples
+
+      # Emit an info-level log event
+      HexHub.Telemetry.log(:info, :api, "Request completed", %{path: "/api/packages", status: 200})
+
+      # Emit a warning-level log event
+      HexHub.Telemetry.log(:warning, :auth, "Authentication failed", %{reason: "invalid_token"})
+
+      # Emit with duration measurement
+      HexHub.Telemetry.log(:info, :upstream, "Upstream request completed", %{url: url}, %{duration: 150})
   """
 
   import Telemetry.Metrics
+
+  @type log_level :: :debug | :info | :warning | :error
+  @type log_category ::
+          :api | :upstream | :storage | :auth | :package | :mcp | :cluster | :general
+
+  @doc """
+  Emits a log event via telemetry.
+
+  This is the primary function for operational logging. All log events are emitted
+  through telemetry, allowing handlers to route them to console, file, or external systems.
+
+  ## Parameters
+
+    - `level` - Log level (:debug, :info, :warning, :error)
+    - `category` - Log category for routing and filtering
+    - `message` - Human-readable log message
+    - `metadata` - Optional map of contextual data (default: %{})
+
+  ## Examples
+
+      HexHub.Telemetry.log(:info, :api, "Request completed", %{path: "/api/packages", status: 200})
+      HexHub.Telemetry.log(:warning, :auth, "Authentication failed", %{reason: "invalid_token"})
+      HexHub.Telemetry.log(:error, :storage, "Upload failed", %{error: "disk_full"})
+  """
+  @spec log(log_level(), log_category(), String.t(), map()) :: :ok
+  def log(level, category, message, metadata \\ %{}) do
+    log(level, category, message, metadata, %{})
+  end
+
+  @doc """
+  Emits a log event via telemetry with measurements.
+
+  Extended version that includes measurements (e.g., duration, count) alongside metadata.
+
+  ## Parameters
+
+    - `level` - Log level (:debug, :info, :warning, :error)
+    - `category` - Log category for routing and filtering
+    - `message` - Human-readable log message
+    - `metadata` - Map of contextual data
+    - `measurements` - Map of numeric measurements (duration, count, etc.)
+
+  ## Examples
+
+      HexHub.Telemetry.log(:info, :upstream, "Upstream request completed", %{url: url}, %{duration: 150})
+      HexHub.Telemetry.log(:debug, :storage, "File written", %{path: path}, %{size_bytes: 1024})
+  """
+  @spec log(log_level(), log_category(), String.t(), map(), map()) :: :ok
+  def log(level, category, message, metadata, measurements) do
+    :telemetry.execute(
+      [:hex_hub, :log, category],
+      measurements,
+      Map.merge(metadata, %{level: level, message: message})
+    )
+  end
 
   def child_spec(opts) do
     %{

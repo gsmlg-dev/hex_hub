@@ -7,9 +7,9 @@ defmodule HexHubWeb.MCPController do
   """
 
   use HexHubWeb, :controller
-  require Logger
 
   alias HexHub.MCP.{Handler, Server}
+  alias HexHub.Telemetry
 
   # MCP authentication and rate limiting plugs
   plug :check_mcp_enabled when action in [:handle_request, :list_tools, :server_info]
@@ -36,7 +36,7 @@ defmodule HexHubWeb.MCPController do
         end_time = System.monotonic_time(:millisecond)
         duration = end_time - start_time
 
-        Logger.error("MCP HTTP request failed", %{
+        Telemetry.log(:error, :mcp, "MCP HTTP request failed", %{
           duration_ms: duration,
           error: inspect(response)
         })
@@ -69,7 +69,7 @@ defmodule HexHubWeb.MCPController do
         |> json(result)
 
       {:error, reason} ->
-        Logger.error("Failed to list MCP tools: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "Failed to list MCP tools", %{reason: inspect(reason)})
 
         conn
         |> put_status(:internal_server_error)
@@ -301,7 +301,7 @@ defmodule HexHubWeb.MCPController do
   Log MCP HTTP request for monitoring.
   """
   def log_mcp_request(conn, params, duration, status) do
-    Logger.info("MCP HTTP request", %{
+    Telemetry.log(:info, :mcp, "MCP HTTP request", %{
       method: conn.method,
       path: conn.request_path,
       ip: format_ip(conn.remote_ip),

@@ -4,8 +4,8 @@ defmodule HexHub.Storage do
   Supports both local filesystem storage and S3-compatible storage.
   """
 
-  require Logger
   alias ExAws.S3
+  alias HexHub.Telemetry
 
   @type storage_type :: :local | :s3
   @type upload_result :: {:ok, String.t()} | {:error, String.t()}
@@ -282,12 +282,17 @@ defmodule HexHub.Storage do
   end
 
   defp handle_s3_response({:ok, _response}, operation, key) do
-    Logger.debug("S3 #{operation} successful for key: #{key}")
+    Telemetry.log(:debug, :storage, "S3 operation successful", %{operation: operation, key: key})
     {:ok, key}
   end
 
   defp handle_s3_response({:error, error}, operation, key) do
-    Logger.error("S3 #{operation} failed for key: #{key}, error: #{inspect(error)}")
+    Telemetry.log(:error, :storage, "S3 operation failed", %{
+      operation: operation,
+      key: key,
+      error: inspect(error)
+    })
+
     {:error, format_s3_error(error)}
   end
 
@@ -296,7 +301,7 @@ defmodule HexHub.Storage do
   end
 
   defp handle_s3_download_response({:error, error}, key) do
-    Logger.error("S3 download failed for key: #{key}, error: #{inspect(error)}")
+    Telemetry.log(:error, :storage, "S3 download failed", %{key: key, error: inspect(error)})
     {:error, format_s3_error(error)}
   end
 

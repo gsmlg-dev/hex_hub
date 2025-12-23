@@ -4,7 +4,6 @@ defmodule HexHubWeb.Plugs.RateLimiter do
   """
 
   import Plug.Conn
-  require Logger
 
   @behaviour Plug
 

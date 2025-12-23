@@ -6,9 +6,8 @@ defmodule HexHub.MCP.Tools.Packages do
   listing packages, and accessing package metadata.
   """
 
-  require Logger
-
   alias HexHub.{Packages, Repositories}
+  alias HexHub.Telemetry
   # alias HexHub.MCP.Schemas # Unused alias removed
 
   @doc """
@@ -18,7 +17,7 @@ defmodule HexHub.MCP.Tools.Packages do
     limit = Map.get(args, "limit", 20)
     filters = Map.get(args, "filters", %{})
 
-    Logger.debug("MCP searching packages with query: #{query}")
+    Telemetry.log(:debug, :mcp, "MCP searching packages", %{query: query})
 
     case Packages.search_packages(query, [limit: limit] ++ build_search_opts(filters)) do
       {:ok, packages, total} ->
@@ -32,7 +31,7 @@ defmodule HexHub.MCP.Tools.Packages do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP package search failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP package search failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -47,7 +46,7 @@ defmodule HexHub.MCP.Tools.Packages do
   def get_package(%{"name" => name} = args) do
     _repository = Map.get(args, "repository")
 
-    Logger.debug("MCP getting package info for: #{name}")
+    Telemetry.log(:debug, :mcp, "MCP getting package info", %{name: name})
 
     case Packages.get_package(name) do
       {:ok, package} ->
@@ -67,7 +66,7 @@ defmodule HexHub.MCP.Tools.Packages do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP get package failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP get package failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -85,7 +84,7 @@ defmodule HexHub.MCP.Tools.Packages do
     sort = Map.get(args, "sort", "name")
     order = Map.get(args, "order", "asc")
 
-    Logger.debug("MCP listing packages: page=#{page}, per_page=#{per_page}")
+    Telemetry.log(:debug, :mcp, "MCP listing packages", %{page: page, per_page: per_page})
 
     opts = [
       page: page,
@@ -110,7 +109,7 @@ defmodule HexHub.MCP.Tools.Packages do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP list packages failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP list packages failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -121,7 +120,7 @@ defmodule HexHub.MCP.Tools.Packages do
   def get_package_metadata(%{"name" => name} = args) do
     version = Map.get(args, "version")
 
-    Logger.debug("MCP getting package metadata for: #{name}#{if version, do: " v#{version}"}")
+    Telemetry.log(:debug, :mcp, "MCP getting package metadata", %{name: name, version: version})
 
     case Packages.get_release(name, version) do
       {:ok, release} ->
@@ -139,7 +138,10 @@ defmodule HexHub.MCP.Tools.Packages do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP get package metadata failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP get package metadata failed", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -318,7 +320,10 @@ defmodule HexHub.MCP.Tools.Packages do
         end)
 
       if length(unknown_fields) > 0 do
-        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
+        Telemetry.log(:warning, :mcp, "Unknown fields in args", %{
+          unknown_fields: inspect(unknown_fields)
+        })
+
         # Don't error on unknown fields, just warn
       end
 

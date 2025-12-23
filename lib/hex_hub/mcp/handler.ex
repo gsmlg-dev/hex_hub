@@ -6,9 +6,8 @@ defmodule HexHub.MCP.Handler do
   request routing, response formatting, and error handling.
   """
 
-  require Logger
-
   alias HexHub.MCP.{Schemas, Server}
+  alias HexHub.Telemetry
 
   @doc """
   Handle incoming MCP requests.
@@ -16,7 +15,7 @@ defmodule HexHub.MCP.Handler do
   def handle_request(request, transport_state \\ nil) do
     start_time = System.monotonic_time(:millisecond)
 
-    Logger.debug("MCP handling request: #{inspect(request)}")
+    Telemetry.log(:debug, :mcp, "MCP handling request", %{request: inspect(request)})
 
     result =
       case parse_and_validate_request(request) do
@@ -41,7 +40,7 @@ defmodule HexHub.MCP.Handler do
   """
   def init(opts \\ []) do
     config = Keyword.get(opts, :config, HexHub.MCP.config())
-    Logger.info("Initializing MCP Handler")
+    Telemetry.log(:info, :mcp, "Initializing MCP Handler")
 
     {:ok, %{config: config}}
   end
@@ -53,11 +52,11 @@ defmodule HexHub.MCP.Handler do
     # Register all tools and initialize server
     case Server.start_link([]) do
       {:ok, _pid} ->
-        Logger.info("MCP Server started successfully")
+        Telemetry.log(:info, :mcp, "MCP Server started successfully")
         :ok
 
       {:error, reason} ->
-        Logger.error("Failed to start MCP Server: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "Failed to start MCP Server", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -66,7 +65,7 @@ defmodule HexHub.MCP.Handler do
   Handle MCP server shutdown.
   """
   def handle_shutdown do
-    Logger.info("Shutting down MCP Handler")
+    Telemetry.log(:info, :mcp, "Shutting down MCP Handler")
     # Clean up resources
     :ok
   end
@@ -74,18 +73,18 @@ defmodule HexHub.MCP.Handler do
   # Private helper functions
 
   defp parse_and_validate_request(request) do
-    Logger.debug("Parsing request: #{inspect(request)}")
+    Telemetry.log(:debug, :mcp, "Parsing request", %{request: inspect(request)})
 
     with {:ok, parsed} <- Schemas.parse_request(request) do
-      Logger.debug("Parsed request: #{inspect(parsed)}")
+      Telemetry.log(:debug, :mcp, "Parsed request", %{parsed: inspect(parsed)})
 
       case Schemas.validate_request(parsed) do
         {:ok, validated} ->
-          Logger.debug("Validated request: #{inspect(validated)}")
+          Telemetry.log(:debug, :mcp, "Validated request", %{validated: inspect(validated)})
           {:ok, validated}
 
         {:error, reason} ->
-          Logger.warning("Validation failed: #{inspect(reason)}")
+          Telemetry.log(:warning, :mcp, "Validation failed", %{reason: inspect(reason)})
           {:error, reason}
       end
     else
@@ -190,7 +189,7 @@ defmodule HexHub.MCP.Handler do
       tool.handler.(args, %{transport_state: transport_state})
     rescue
       error ->
-        Logger.error("Tool execution error: #{inspect(error)}")
+        Telemetry.log(:error, :mcp, "Tool execution error", %{error: inspect(error)})
         {:error, :tool_execution_failed}
     end
   end
@@ -243,14 +242,14 @@ defmodule HexHub.MCP.Handler do
   defp log_request_result(request, result, duration) do
     case result do
       {:ok, _response} ->
-        Logger.info("MCP request completed", %{
+        Telemetry.log(:info, :mcp, "MCP request completed", %{
           method: get_method(request),
           duration_ms: duration,
           status: "success"
         })
 
       {:error, response} ->
-        Logger.warning("MCP request failed", %{
+        Telemetry.log(:warning, :mcp, "MCP request failed", %{
           method: get_method(request),
           duration_ms: duration,
           status: "error",
@@ -359,7 +358,7 @@ defmodule HexHub.MCP.Handler do
     # Update application configuration
     Application.put_env(:hex_hub, :mcp, updated_config)
 
-    Logger.info("MCP Handler configuration updated")
+    Telemetry.log(:info, :mcp, "MCP Handler configuration updated")
     {:ok, updated_config}
   end
 
@@ -368,7 +367,7 @@ defmodule HexHub.MCP.Handler do
   """
   def reset_stats do
     # Reset telemetry counters and statistics
-    Logger.info("MCP Handler statistics reset")
+    Telemetry.log(:info, :mcp, "MCP Handler statistics reset")
     :ok
   end
 
@@ -378,7 +377,11 @@ defmodule HexHub.MCP.Handler do
   def toggle_tool(tool_name, enabled?) do
     # Enable or disable specific tools
     # This would require maintaining a list of disabled tools
-    Logger.info("MCP Tool #{tool_name} #{if enabled?, do: "enabled", else: "disabled"}")
+    Telemetry.log(:info, :mcp, "MCP Tool toggled", %{
+      tool_name: tool_name,
+      enabled: enabled?
+    })
+
     :ok
   end
 
@@ -414,7 +417,7 @@ defmodule HexHub.MCP.Handler do
   Handle graceful shutdown.
   """
   def graceful_shutdown do
-    Logger.info("MCP Handler initiating graceful shutdown")
+    Telemetry.log(:info, :mcp, "MCP Handler initiating graceful shutdown")
 
     # Stop accepting new requests
     # Wait for existing requests to complete
@@ -427,7 +430,7 @@ defmodule HexHub.MCP.Handler do
   Reload handler configuration and tools.
   """
   def reload do
-    Logger.info("MCP Handler reloading")
+    Telemetry.log(:info, :mcp, "MCP Handler reloading")
 
     # Reload configuration
     # Re-register tools
@@ -435,11 +438,11 @@ defmodule HexHub.MCP.Handler do
 
     case handle_init() do
       :ok ->
-        Logger.info("MCP Handler reloaded successfully")
+        Telemetry.log(:info, :mcp, "MCP Handler reloaded successfully")
         :ok
 
       {:error, reason} ->
-        Logger.error("MCP Handler reload failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP Handler reload failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end

@@ -6,16 +6,15 @@ defmodule HexHub.MCP.Transport do
   transport between MCP clients and the server.
   """
 
-  require Logger
-
   alias HexHub.MCP.Server
+  alias HexHub.Telemetry
 
   @doc """
   Initialize the transport layer.
   """
   def init(opts \\ []) do
     config = Keyword.get(opts, :config, HexHub.MCP.config())
-    Logger.info("Initializing MCP transport with config: #{inspect(config)}")
+    Telemetry.log(:info, :mcp, "Initializing MCP transport", %{config: inspect(config)})
     {:ok, %{config: config}}
   end
 
@@ -23,7 +22,7 @@ defmodule HexHub.MCP.Transport do
   Handle WebSocket connection initialization.
   """
   def websocket_init(_transport, state) do
-    Logger.debug("MCP WebSocket connection established")
+    Telemetry.log(:debug, :mcp, "MCP WebSocket connection established")
     {:ok, state}
   end
 
@@ -31,7 +30,9 @@ defmodule HexHub.MCP.Transport do
   Handle incoming WebSocket messages.
   """
   def websocket_handle({:text, message}, state) do
-    Logger.debug("Received MCP message: #{String.slice(message, 0, 100)}...")
+    Telemetry.log(:debug, :mcp, "Received MCP message", %{
+      preview: String.slice(message, 0, 100)
+    })
 
     case Server.handle_request(message, state) do
       {:ok, response} ->
@@ -224,7 +225,7 @@ defmodule HexHub.MCP.Transport do
   Handle transport-level errors.
   """
   def handle_transport_error(error, state) do
-    Logger.error("MCP transport error: #{inspect(error)}")
+    Telemetry.log(:error, :mcp, "MCP transport error", %{error: inspect(error)})
 
     case error do
       :connection_closed ->
@@ -253,7 +254,7 @@ defmodule HexHub.MCP.Transport do
   Graceful shutdown of transport layer.
   """
   def shutdown(state) do
-    Logger.info("Shutting down MCP transport")
+    Telemetry.log(:info, :mcp, "Shutting down MCP transport")
     # Close all connections gracefully
     {:ok, state}
   end

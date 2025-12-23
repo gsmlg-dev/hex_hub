@@ -4,9 +4,7 @@ defmodule HexHub.Packages do
   Supports upstream fetching for packages not available locally.
   """
 
-  require Logger
-  alias HexHub.Storage
-  alias HexHub.Upstream
+  alias HexHub.{Storage, Telemetry, Upstream}
 
   @type package :: %{
           name: String.t(),
@@ -892,7 +890,10 @@ defmodule HexHub.Packages do
           create_package_from_upstream(package_name, upstream_package)
 
         {:error, _reason} ->
-          Logger.warning("Failed to fetch package #{package_name} from upstream")
+          Telemetry.log(:warning, :package, "Failed to fetch package from upstream", %{
+            package: package_name
+          })
+
           {:error, :not_found}
       end
     end
@@ -907,57 +908,82 @@ defmodule HexHub.Packages do
     if not Upstream.enabled?() do
       {:error, :not_found}
     else
-      Logger.debug("Starting upstream fetch for #{package_name}-#{version}")
+      Telemetry.log(:debug, :package, "Starting upstream fetch", %{
+        package: package_name,
+        version: version
+      })
 
       with {:ok, tarball} <- Upstream.fetch_release_tarball(package_name, version) do
-        Logger.debug("✅ Step 1: Got tarball, size: #{byte_size(tarball)}")
+        Telemetry.log(:debug, :package, "Step 1: Got tarball", %{size: byte_size(tarball)})
 
         with {:ok, releases} <- Upstream.fetch_releases(package_name) do
-          Logger.debug("✅ Step 2: Got #{length(releases)} releases")
+          Telemetry.log(:debug, :package, "Step 2: Got releases", %{count: length(releases)})
 
           release_info = Enum.find(releases, fn r -> r["version"] == version end)
 
           if release_info do
-            Logger.debug("✅ Step 3: Found release info for version #{version}")
+            Telemetry.log(:debug, :package, "Step 3: Found release info", %{version: version})
 
             with {:ok, _package} <- fetch_package_from_upstream(package_name) do
-              Logger.debug("✅ Step 4: Got package info")
+              Telemetry.log(:debug, :package, "Step 4: Got package info")
 
               meta = extract_release_meta(release_info)
               requirements = extract_requirements(release_info)
-              Logger.debug("✅ Step 5: Extracted meta and requirements")
+              Telemetry.log(:debug, :package, "Step 5: Extracted meta and requirements")
 
               # Cache the tarball
               case Upstream.cache_package(package_name, version, tarball, meta) do
                 :ok ->
-                  Logger.debug("✅ Step 6: Cached tarball successfully")
+                  Telemetry.log(:debug, :package, "Step 6: Cached tarball successfully")
                   # Create release in local database
                   create_release_from_upstream(package_name, version, meta, requirements)
 
                 {:error, reason} ->
-                  Logger.error(
-                    "❌ Step 6 failed: Failed to cache release tarball #{package_name}-#{version}: #{reason}"
+                  Telemetry.log(
+                    :error,
+                    :package,
+                    "Step 6 failed: Failed to cache release tarball",
+                    %{
+                      package: package_name,
+                      version: version,
+                      reason: reason
+                    }
                   )
 
                   {:error, :not_found}
               end
             else
               {:error, reason} ->
-                Logger.error("❌ Step 4 failed: Failed to fetch package from upstream: #{reason}")
+                Telemetry.log(
+                  :error,
+                  :package,
+                  "Step 4 failed: Failed to fetch package from upstream",
+                  %{reason: reason}
+                )
+
                 {:error, :not_found}
             end
           else
-            Logger.error("❌ Step 3 failed: Version #{version} not found in releases")
+            Telemetry.log(:error, :package, "Step 3 failed: Version not found in releases", %{
+              version: version
+            })
+
             {:error, :not_found}
           end
         else
           {:error, reason} ->
-            Logger.error("❌ Step 2 failed: Failed to fetch releases: #{reason}")
+            Telemetry.log(:error, :package, "Step 2 failed: Failed to fetch releases", %{
+              reason: reason
+            })
+
             {:error, :not_found}
         end
       else
         {:error, reason} ->
-          Logger.error("❌ Step 1 failed: Failed to fetch release tarball: #{reason}")
+          Telemetry.log(:error, :package, "Step 1 failed: Failed to fetch release tarball", %{
+            reason: reason
+          })
+
           {:error, :not_found}
       end
     end
@@ -1009,7 +1035,11 @@ defmodule HexHub.Packages do
                   {:ok, docs_tarball}
 
                 {:error, _reason} ->
-                  Logger.error("Failed to cache docs #{package_name}-#{version}")
+                  Telemetry.log(:error, :package, "Failed to cache docs", %{
+                    package: package_name,
+                    version: version
+                  })
+
                   # Still return the docs even if caching fails
                   {:ok, docs_tarball}
               end

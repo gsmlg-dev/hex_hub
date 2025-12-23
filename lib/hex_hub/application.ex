@@ -8,6 +8,9 @@ defmodule HexHub.Application do
     # Record application start time for uptime calculation
     :persistent_term.put(:hex_hub_start_time, System.system_time(:second))
 
+    # Attach telemetry log handlers
+    attach_telemetry_handlers()
+
     # Initialize clustering if enabled
     HexHub.Clustering.init_clustering()
 
@@ -80,5 +83,56 @@ defmodule HexHub.Application do
   """
   def start_time do
     :persistent_term.get(:hex_hub_start_time, 0)
+  end
+
+  # Attaches telemetry handlers for logging based on configuration.
+  # Handlers are attached for all log categories defined in HexHub.Telemetry.
+  defp attach_telemetry_handlers do
+    config = Application.get_env(:hex_hub, :telemetry_logging, [])
+
+    # Define all log event patterns to attach
+    log_events = [
+      [:hex_hub, :log, :api],
+      [:hex_hub, :log, :upstream],
+      [:hex_hub, :log, :storage],
+      [:hex_hub, :log, :auth],
+      [:hex_hub, :log, :package],
+      [:hex_hub, :log, :mcp],
+      [:hex_hub, :log, :cluster],
+      [:hex_hub, :log, :general]
+    ]
+
+    # Attach console handler if enabled
+    console_config = Keyword.get(config, :console, [])
+
+    if Keyword.get(console_config, :enabled, true) do
+      attach_handler(
+        "hex_hub_console_log",
+        log_events,
+        HexHub.Telemetry.LogHandler,
+        console_config
+      )
+    end
+
+    # Attach file handler if enabled
+    file_config = Keyword.get(config, :file, [])
+
+    if Keyword.get(file_config, :enabled, false) and Keyword.get(file_config, :path) do
+      attach_handler("hex_hub_file_log", log_events, HexHub.Telemetry.FileHandler, file_config)
+    end
+  end
+
+  # Attaches a telemetry handler, detaching any existing handler with the same ID first
+  # to prevent duplicate handler errors on restart.
+  defp attach_handler(handler_id, events, handler_module, config) do
+    # Detach existing handler if present (prevents duplicate handler errors)
+    :telemetry.detach(handler_id)
+
+    :telemetry.attach_many(
+      handler_id,
+      events,
+      &handler_module.handle_event/4,
+      config
+    )
   end
 end

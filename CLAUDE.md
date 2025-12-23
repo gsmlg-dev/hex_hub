@@ -428,3 +428,10 @@ Logger.info("Package #{name} published")
 
 **Key Files**:
 - `lib/hex_hub/telemetry.ex` - Telemetry metrics, event definitions, and tracking functions
+
+## Active Technologies
+- Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib) (001-telemetry-logging)
+- N/A (logging to console/files, not database) (001-telemetry-logging)
+
+## Recent Changes
+- 001-telemetry-logging: Added Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib)

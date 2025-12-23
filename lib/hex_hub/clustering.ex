@@ -9,7 +9,7 @@ defmodule HexHub.Clustering do
   - Provide failover and recovery capabilities
   """
 
-  require Logger
+  alias HexHub.Telemetry
 
   @doc """
   Initialize Mnesia clustering based on configuration.
@@ -28,7 +28,7 @@ defmodule HexHub.Clustering do
   Configure Mnesia clustering with the given configuration.
   """
   def configure_clustering(config) do
-    Logger.info("Configuring Mnesia clustering...")
+    Telemetry.log(:info, :cluster, "Configuring Mnesia clustering")
 
     # Set Mnesia directory via application environment
     mnesia_dir = Application.get_env(:hex_hub, :mnesia_dir, "./mnesia/#{node()}")
@@ -43,15 +43,15 @@ defmodule HexHub.Clustering do
     # Start Mnesia
     case :mnesia.start() do
       :ok ->
-        Logger.info("Mnesia started successfully")
+        Telemetry.log(:info, :cluster, "Mnesia started successfully")
         :ok
 
       {:error, {:already_started, _}} ->
-        Logger.info("Mnesia already started")
+        Telemetry.log(:info, :cluster, "Mnesia already started")
         :ok
 
       error ->
-        Logger.error("Failed to start Mnesia: #{inspect(error)}")
+        Telemetry.log(:error, :cluster, "Failed to start Mnesia", %{error: inspect(error)})
         error
     end
   end
@@ -63,10 +63,10 @@ defmodule HexHub.Clustering do
     nodes = get_cluster_nodes(config)
 
     if Enum.empty?(nodes) do
-      Logger.info("Running in single-node mode")
+      Telemetry.log(:info, :cluster, "Running in single-node mode")
       :ok
     else
-      Logger.info("Configuring replication across nodes: #{inspect(nodes)}")
+      Telemetry.log(:info, :cluster, "Configuring replication across nodes", %{nodes: nodes})
 
       # Ensure schema is created on all nodes
       :mnesia.change_table_copy_type(:schema, node(), :disc_copies)
@@ -97,14 +97,20 @@ defmodule HexHub.Clustering do
            disc_copies: Enum.take(nodes ++ [node()], replication_factor)
          ) do
       {:atomic, :ok} ->
-        Logger.info("Created table #{table} with replication")
+        Telemetry.log(:info, :cluster, "Created table with replication", %{table: table})
 
       {:aborted, {:already_exists, ^table}} ->
-        Logger.info("Table #{table} already exists, updating replication")
+        Telemetry.log(:info, :cluster, "Table already exists, updating replication", %{
+          table: table
+        })
+
         update_table_replication(table, nodes, replication_factor)
 
       error ->
-        Logger.error("Failed to create table #{table}: #{inspect(error)}")
+        Telemetry.log(:error, :cluster, "Failed to create table", %{
+          table: table,
+          error: inspect(error)
+        })
     end
   end
 
@@ -114,13 +120,13 @@ defmodule HexHub.Clustering do
 
     # Add missing copies
     Enum.each(target_nodes -- current_copies, fn node ->
-      Logger.info("Adding #{table} replica on #{node}")
+      Telemetry.log(:info, :cluster, "Adding table replica", %{table: table, node: node})
       :mnesia.add_table_copy(table, node, :disc_copies)
     end)
 
     # Remove extra copies
     Enum.each(current_copies -- target_nodes, fn node ->
-      Logger.info("Removing #{table} replica from #{node}")
+      Telemetry.log(:info, :cluster, "Removing table replica", %{table: table, node: node})
       :mnesia.del_table_copy(table, node)
     end)
   end
@@ -226,11 +232,11 @@ defmodule HexHub.Clustering do
   def join_cluster(node) when is_binary(node), do: join_cluster(String.to_atom(node))
 
   def join_cluster(node) do
-    Logger.info("Attempting to join cluster node: #{node}")
+    Telemetry.log(:info, :cluster, "Attempting to join cluster node", %{node: node})
 
     case :net_adm.ping(node) do
       :pong ->
-        Logger.info("Successfully connected to #{node}")
+        Telemetry.log(:info, :cluster, "Successfully connected to node", %{node: node})
 
         # Stop Mnesia to change configuration
         :mnesia.stop()
@@ -244,11 +250,11 @@ defmodule HexHub.Clustering do
         # Wait for tables to load
         wait_for_tables()
 
-        Logger.info("Successfully joined cluster")
+        Telemetry.log(:info, :cluster, "Successfully joined cluster")
         {:ok, :joined}
 
       :pang ->
-        Logger.error("Failed to connect to #{node}")
+        Telemetry.log(:error, :cluster, "Failed to connect to node", %{node: node})
         {:error, :connection_failed}
     end
   end
@@ -257,7 +263,7 @@ defmodule HexHub.Clustering do
   Leave the cluster.
   """
   def leave_cluster do
-    Logger.info("Leaving cluster...")
+    Telemetry.log(:info, :cluster, "Leaving cluster")
 
     # Stop Mnesia
     :mnesia.stop()
@@ -268,7 +274,7 @@ defmodule HexHub.Clustering do
     # Start fresh
     :mnesia.start()
 
-    Logger.info("Left cluster successfully")
+    Telemetry.log(:info, :cluster, "Left cluster successfully")
     {:ok, :left}
   end
 
@@ -280,15 +286,18 @@ defmodule HexHub.Clustering do
 
     case :mnesia.wait_for_tables(tables, 30_000) do
       :ok ->
-        Logger.info("All tables loaded successfully")
+        Telemetry.log(:info, :cluster, "All tables loaded successfully")
         :ok
 
       {:timeout, failed_tables} ->
-        Logger.error("Timeout waiting for tables: #{inspect(failed_tables)}")
+        Telemetry.log(:error, :cluster, "Timeout waiting for tables", %{
+          failed_tables: failed_tables
+        })
+
         {:error, :timeout}
 
       error ->
-        Logger.error("Error waiting for tables: #{inspect(error)}")
+        Telemetry.log(:error, :cluster, "Error waiting for tables", %{error: inspect(error)})
         error
     end
   end
