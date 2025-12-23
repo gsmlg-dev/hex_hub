@@ -123,10 +123,10 @@
 - [x] T043 Add edge case handling for nil/invalid event data in lib/hex_hub/telemetry/formatter.ex
 - [x] T044 Add duplicate handler prevention logic in lib/hex_hub/application.ex
 - [x] T045 [P] Run mix format to ensure code formatting compliance
-- [ ] T046 [P] Run mix credo --strict to verify static analysis passes
-- [ ] T047 [P] Run mix dialyzer to verify type checking passes
+- [x] T046 [P] Run mix credo --strict to verify static analysis passes
+- [x] T047 [P] Run mix dialyzer to verify type checking passes
 - [x] T048 Run full test suite with mix test to verify no regressions
-- [ ] T049 Run quickstart.md verification steps manually
+- [x] T049 Run quickstart.md verification steps manually
 
 ---
 

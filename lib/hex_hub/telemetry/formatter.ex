@@ -70,7 +70,15 @@ defmodule HexHub.Telemetry.Formatter do
 
     A map suitable for JSON encoding.
   """
-  @spec build_log_entry(list(atom()), map(), map()) :: map()
+  @spec build_log_entry(list(atom()), map(), map()) ::
+          %{
+            :ts => String.t(),
+            :level => String.t(),
+            :event => String.t(),
+            :message => String.t(),
+            :meta => map(),
+            optional(:duration_ms) => number()
+          }
   def build_log_entry(event_name, measurements, metadata) do
     level = Map.get(metadata, :level, :info)
     message = Map.get(metadata, :message, "")
@@ -119,9 +127,7 @@ defmodule HexHub.Telemetry.Formatter do
   """
   @spec format_event_name(list(atom())) :: String.t()
   def format_event_name(event_name) when is_list(event_name) do
-    event_name
-    |> Enum.map(&to_string/1)
-    |> Enum.join(".")
+    Enum.map_join(event_name, ".", &to_string/1)
   end
 
   def format_event_name(_), do: "unknown"
