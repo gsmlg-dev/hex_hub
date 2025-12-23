@@ -6,7 +6,7 @@ defmodule HexHub.UpstreamConfig do
   in the Mnesia database.
   """
 
-  require Logger
+  alias HexHub.Telemetry
 
   @type t :: %{
           id: String.t(),
@@ -64,9 +64,11 @@ defmodule HexHub.UpstreamConfig do
     enabled = get_param_bool(params, "enabled", existing_config.enabled)
 
     # Debug logging
-    Logger.debug(
-      "Updating upstream config: enabled=#{enabled}, params.enabled=#{inspect(Map.get(params, "enabled") || Map.get(params, :enabled))}, existing.enabled=#{existing_config.enabled}"
-    )
+    Telemetry.log(:debug, :upstream, "Updating upstream config", %{
+      enabled: enabled,
+      params_enabled: Map.get(params, "enabled") || Map.get(params, :enabled),
+      existing_enabled: existing_config.enabled
+    })
 
     config = %{
       id: "default",
@@ -99,11 +101,17 @@ defmodule HexHub.UpstreamConfig do
            :mnesia.write(record)
          end) do
       {:atomic, :ok} ->
-        Logger.info("Upstream configuration updated: enabled=#{config.enabled}")
+        Telemetry.log(:info, :upstream, "Upstream configuration updated", %{
+          enabled: config.enabled
+        })
+
         :ok
 
       {:aborted, reason} ->
-        Logger.error("Failed to update upstream configuration: #{inspect(reason)}")
+        Telemetry.log(:error, :upstream, "Failed to update upstream configuration", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end
@@ -149,11 +157,14 @@ defmodule HexHub.UpstreamConfig do
            :mnesia.delete({:upstream_configs, "default"})
          end) do
       {:atomic, :ok} ->
-        Logger.info("Upstream configuration reset to defaults")
+        Telemetry.log(:info, :upstream, "Upstream configuration reset to defaults")
         :ok
 
       {:aborted, reason} ->
-        Logger.error("Failed to reset upstream configuration: #{inspect(reason)}")
+        Telemetry.log(:error, :upstream, "Failed to reset upstream configuration", %{
+          reason: inspect(reason)
+        })
+
         {:error, reason}
     end
   end

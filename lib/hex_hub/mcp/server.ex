@@ -7,9 +7,9 @@ defmodule HexHub.MCP.Server do
   """
 
   use GenServer
-  require Logger
 
   alias HexHub.MCP.{Schemas, Tools}
+  alias HexHub.Telemetry
 
   @type state :: %{
           tools: map(),
@@ -58,7 +58,7 @@ defmodule HexHub.MCP.Server do
     # Register all tools
     tools = Tools.register_all_tools()
 
-    Logger.info("MCP Server started with #{map_size(tools)} tools")
+    Telemetry.log(:info, :mcp, "MCP Server started", %{tool_count: map_size(tools)})
 
     state = %__MODULE__{
       tools: tools,

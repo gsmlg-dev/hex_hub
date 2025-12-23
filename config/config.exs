@@ -65,6 +65,11 @@ config :tailwind,
     cd: Path.expand("..", __DIR__)
   ]
 
+# Telemetry-based logging configuration
+config :hex_hub, :telemetry_logging,
+  console: [enabled: true, level: :info],
+  file: [enabled: false, path: nil, level: :debug]
+
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]

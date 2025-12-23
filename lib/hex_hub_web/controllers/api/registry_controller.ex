@@ -12,7 +12,7 @@ defmodule HexHubWeb.API.RegistryController do
 
   use HexHubWeb, :controller
 
-  require Logger
+  alias HexHub.Telemetry
 
   @doc """
   Serves the package names registry.
@@ -26,7 +26,9 @@ defmodule HexHubWeb.API.RegistryController do
         send_registry_response(conn, data, headers)
 
       {:error, reason} ->
-        Logger.warning("Failed to fetch /names from upstream: #{reason}")
+        Telemetry.log(:warning, :api, "Failed to fetch /names from upstream", %{
+          reason: reason
+        })
 
         conn
         |> put_status(:bad_gateway)
@@ -46,7 +48,9 @@ defmodule HexHubWeb.API.RegistryController do
         send_registry_response(conn, data, headers)
 
       {:error, reason} ->
-        Logger.warning("Failed to fetch /versions from upstream: #{reason}")
+        Telemetry.log(:warning, :api, "Failed to fetch /versions from upstream", %{
+          reason: reason
+        })
 
         conn
         |> put_status(:bad_gateway)
@@ -71,7 +75,10 @@ defmodule HexHubWeb.API.RegistryController do
         |> json(%{message: "Package not found"})
 
       {:error, reason} ->
-        Logger.warning("Failed to fetch /packages/#{name} from upstream: #{reason}")
+        Telemetry.log(:warning, :api, "Failed to fetch package from upstream", %{
+          name: name,
+          reason: reason
+        })
 
         conn
         |> put_status(:bad_gateway)

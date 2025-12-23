@@ -1,5 +1,16 @@
 import Config
 
+# Telemetry logging runtime configuration (applies to all environments)
+telemetry_console_enabled = System.get_env("LOG_CONSOLE_ENABLED", "true") == "true"
+telemetry_console_level = String.to_existing_atom(System.get_env("LOG_CONSOLE_LEVEL", "info"))
+telemetry_file_enabled = System.get_env("LOG_FILE_ENABLED", "false") == "true"
+telemetry_file_path = System.get_env("LOG_FILE_PATH")
+telemetry_file_level = String.to_existing_atom(System.get_env("LOG_FILE_LEVEL", "debug"))
+
+config :hex_hub, :telemetry_logging,
+  console: [enabled: telemetry_console_enabled, level: telemetry_console_level],
+  file: [enabled: telemetry_file_enabled, path: telemetry_file_path, level: telemetry_file_level]
+
 if config_env() == :prod do
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||

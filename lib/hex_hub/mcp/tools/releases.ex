@@ -6,9 +6,8 @@ defmodule HexHub.MCP.Tools.Releases do
   downloading packages, and comparing releases.
   """
 
-  require Logger
-
   alias HexHub.{Packages, Storage}
+  alias HexHub.Telemetry
   # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
@@ -17,7 +16,7 @@ defmodule HexHub.MCP.Tools.Releases do
   def list_releases(%{"name" => name} = args) do
     include_retired = Map.get(args, "include_retired", false)
 
-    Logger.debug("MCP listing releases for package: #{name}")
+    Telemetry.log(:debug, :mcp, "MCP listing releases", %{name: name})
 
     {:ok, releases} = Packages.list_releases(name)
 
@@ -47,7 +46,7 @@ defmodule HexHub.MCP.Tools.Releases do
   Get detailed information about a specific package release.
   """
   def get_release(%{"name" => name, "version" => version} = _args) do
-    Logger.debug("MCP getting release info for: #{name} v#{version}")
+    Telemetry.log(:debug, :mcp, "MCP getting release info", %{name: name, version: version})
 
     case Packages.get_release(name, version) do
       {:ok, release} ->
@@ -70,7 +69,7 @@ defmodule HexHub.MCP.Tools.Releases do
         {:ok, result}
 
       {:error, reason} ->
-        Logger.error("MCP get release failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP get release failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -83,7 +82,7 @@ defmodule HexHub.MCP.Tools.Releases do
   Download a package release tarball.
   """
   def download_release(%{"name" => name, "version" => version}) do
-    Logger.debug("MCP downloading package: #{name} v#{version}")
+    Telemetry.log(:debug, :mcp, "MCP downloading package", %{name: name, version: version})
 
     tarball_key = "packages/#{name}-#{version}.tar.gz"
 
@@ -103,12 +102,19 @@ defmodule HexHub.MCP.Tools.Releases do
             {:ok, result}
 
           {:error, reason} ->
-            Logger.error("MCP download release failed to read tarball: #{inspect(reason)}")
+            Telemetry.log(:error, :mcp, "MCP download release failed to read tarball", %{
+              reason: inspect(reason)
+            })
+
             {:error, reason}
         end
 
       false ->
-        Logger.warning("MCP download release: tarball not found for #{name} v#{version}")
+        Telemetry.log(:warning, :mcp, "MCP download release: tarball not found", %{
+          name: name,
+          version: version
+        })
+
         {:error, :tarball_not_found}
     end
   end
@@ -121,7 +127,11 @@ defmodule HexHub.MCP.Tools.Releases do
   Compare two different releases of a package.
   """
   def compare_releases(%{"name" => name, "version1" => version1, "version2" => version2}) do
-    Logger.debug("MCP comparing releases: #{name} v#{version1} vs v#{version2}")
+    Telemetry.log(:debug, :mcp, "MCP comparing releases", %{
+      name: name,
+      version1: version1,
+      version2: version2
+    })
 
     with {:ok, release1} <- Packages.get_release(name, version1),
          {:ok, release2} <- Packages.get_release(name, version2) do
@@ -155,7 +165,7 @@ defmodule HexHub.MCP.Tools.Releases do
       {:ok, comparison}
     else
       {:error, reason} ->
-        Logger.error("MCP compare releases failed: #{inspect(reason)}")
+        Telemetry.log(:error, :mcp, "MCP compare releases failed", %{reason: inspect(reason)})
         {:error, reason}
     end
   end
@@ -344,7 +354,9 @@ defmodule HexHub.MCP.Tools.Releases do
         end)
 
       if length(unknown_fields) > 0 do
-        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
+        Telemetry.log(:warning, :mcp, "Unknown fields in args", %{
+          unknown_fields: inspect(unknown_fields)
+        })
       end
 
       :ok

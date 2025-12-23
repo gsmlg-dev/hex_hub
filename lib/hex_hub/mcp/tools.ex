@@ -6,8 +6,6 @@ defmodule HexHub.MCP.Tools do
   that expose HexHub functionality to AI clients.
   """
 
-  require Logger
-
   alias HexHub.MCP.Tools.{
     Dependencies,
     Documentation,
@@ -15,6 +13,8 @@ defmodule HexHub.MCP.Tools do
     Releases,
     Repositories
   }
+
+  alias HexHub.Telemetry
 
   defstruct [:name, :description, :input_schema, :handler]
 
@@ -66,7 +66,7 @@ defmodule HexHub.MCP.Tools do
         register_tool("toggle_package_visibility", &toggle_package_visibility_handler/2)
     }
 
-    Logger.info("Registered #{map_size(tools)} MCP tools")
+    Telemetry.log(:info, :mcp, "Registered MCP tools", %{tool_count: map_size(tools)})
     tools
   end
 

@@ -6,9 +6,8 @@ defmodule HexHub.MCP.Tools.Documentation do
   documentation versions, and searching within documentation.
   """
 
-  require Logger
-
   alias HexHub.{Packages, Storage}
+  alias HexHub.Telemetry
   # alias HexHub.MCP.Tools.Packages, as: PackageTools # Unused alias removed
 
   @doc """
@@ -18,7 +17,7 @@ defmodule HexHub.MCP.Tools.Documentation do
     version = Map.get(args, "version")
     page = Map.get(args, "page", "index")
 
-    Logger.debug("MCP getting documentation for: #{name}#{if version, do: " v#{version}"}")
+    Telemetry.log(:debug, :mcp, "MCP getting documentation", %{name: name, version: version})
 
     # Determine which version to use
     target_version =
@@ -50,12 +49,19 @@ defmodule HexHub.MCP.Tools.Documentation do
                 {:ok, result}
 
               {:error, reason} ->
-                Logger.error("MCP get documentation page failed: #{inspect(reason)}")
+                Telemetry.log(:error, :mcp, "MCP get documentation page failed", %{
+                  reason: inspect(reason)
+                })
+
                 {:error, reason}
             end
 
           false ->
-            Logger.warning("MCP documentation not found for: #{name} v#{version}")
+            Telemetry.log(:warning, :mcp, "MCP documentation not found", %{
+              name: name,
+              version: version
+            })
+
             {:error, :documentation_not_found}
         end
     end
@@ -69,7 +75,7 @@ defmodule HexHub.MCP.Tools.Documentation do
   List available documentation versions for a package.
   """
   def list_documentation_versions(%{"name" => name}) do
-    Logger.debug("MCP listing documentation versions for: #{name}")
+    Telemetry.log(:debug, :mcp, "MCP listing documentation versions", %{name: name})
 
     {:ok, releases} = Packages.list_releases(name)
 
@@ -98,7 +104,7 @@ defmodule HexHub.MCP.Tools.Documentation do
   def search_documentation(%{"name" => name, "query" => query} = args) do
     version = Map.get(args, "version")
 
-    Logger.debug("MCP searching documentation for: #{name} with query: #{query}")
+    Telemetry.log(:debug, :mcp, "MCP searching documentation", %{name: name, query: query})
 
     # Determine which version to search
     target_version =
@@ -126,7 +132,10 @@ defmodule HexHub.MCP.Tools.Documentation do
             {:ok, result}
 
           {:error, reason} ->
-            Logger.error("MCP documentation search failed: #{inspect(reason)}")
+            Telemetry.log(:error, :mcp, "MCP documentation search failed", %{
+              reason: inspect(reason)
+            })
+
             {:error, reason}
         end
     end
@@ -321,7 +330,9 @@ defmodule HexHub.MCP.Tools.Documentation do
         end)
 
       if length(unknown_fields) > 0 do
-        Logger.warning("Unknown fields in args: #{inspect(unknown_fields)}")
+        Telemetry.log(:warning, :mcp, "Unknown fields in args", %{
+          unknown_fields: inspect(unknown_fields)
+        })
       end
 
       :ok
