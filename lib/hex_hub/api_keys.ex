@@ -65,27 +65,7 @@ defmodule HexHub.ApiKeys do
           | {:error, :invalid_key | :revoked_key}
   def validate_key(key) do
     case :mnesia.transaction(fn ->
-           :mnesia.foldl(
-             fn {_, _name, username, secret_hash, permissions, revoked_at, _inserted_at,
-                 _updated_at},
-                acc ->
-               # Once we find a match, keep it (don't overwrite with nil)
-               case acc do
-                 {:ok, _} ->
-                   acc
-
-                 nil ->
-                   if Bcrypt.verify_pass(key, secret_hash) do
-                     {:ok,
-                      %{username: username, permissions: permissions, revoked_at: revoked_at}}
-                   else
-                     nil
-                   end
-               end
-             end,
-             nil,
-             @table
-           )
+           :mnesia.foldl(&check_key_match(key, &1, &2), nil, @table)
          end) do
       {:atomic, {:ok, %{username: username, permissions: permissions, revoked_at: nil}}} ->
         {:ok, %{username: username, permissions: permissions}}
@@ -98,6 +78,21 @@ defmodule HexHub.ApiKeys do
 
       {:aborted, _reason} ->
         {:error, :invalid_key}
+    end
+  end
+
+  # Helper function to check if a key matches during foldl
+  defp check_key_match(_key, _record, {:ok, _} = acc), do: acc
+
+  defp check_key_match(
+         key,
+         {_, _name, username, secret_hash, permissions, revoked_at, _inserted_at, _updated_at},
+         nil
+       ) do
+    if Bcrypt.verify_pass(key, secret_hash) do
+      {:ok, %{username: username, permissions: permissions, revoked_at: revoked_at}}
+    else
+      nil
     end
   end
 

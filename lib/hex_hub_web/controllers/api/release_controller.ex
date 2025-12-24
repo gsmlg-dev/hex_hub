@@ -316,7 +316,8 @@ defmodule HexHubWeb.API.ReleaseController do
     end
   end
 
-  defp find_term_value(_, _), do: nil
+  # Fall-through for non-list terms (defensive)
+  defp find_term_value(_non_list, _key), do: nil
 
   defp parse_meta_from_tarball(tarball) do
     # Extract build_tools and other metadata from the tarball
