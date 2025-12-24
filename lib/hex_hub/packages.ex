@@ -459,6 +459,22 @@ defmodule HexHub.Packages do
   end
 
   @doc """
+  Add an owner to a package.
+  """
+  @spec add_package_owner(String.t(), String.t(), String.t()) :: :ok | {:error, String.t()}
+  def add_package_owner(package_name, username, level \\ "full") do
+    now = DateTime.utc_now()
+    owner = {:package_owners, package_name, username, level, now}
+
+    case :mnesia.transaction(fn ->
+           :mnesia.write(owner)
+         end) do
+      {:atomic, :ok} -> :ok
+      {:aborted, reason} -> {:error, "Failed to add owner: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
   Get package owners.
   """
   @spec get_package_owners(String.t()) :: {:ok, list()} | {:error, String.t()}

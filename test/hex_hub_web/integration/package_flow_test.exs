@@ -132,12 +132,12 @@ defmodule HexHubWeb.Integration.PackageFlowTest do
       end)
 
       # 2. Publish release via API
-      mock_tarball = "mock tarball content"
+      tarball = create_test_tarball(package_name, version)
 
       conn2 =
         conn
         |> put_req_header("content-type", "application/octet-stream")
-        |> post(~p"/api/publish?name=#{package_name}&version=#{version}", mock_tarball)
+        |> post(~p"/api/packages/#{package_name}/releases", tarball)
 
       assert %{"url" => url} = json_response(conn2, 201)
       assert url == "/packages/#{package_name}/releases/#{version}"

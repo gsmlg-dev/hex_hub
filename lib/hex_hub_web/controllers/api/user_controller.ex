@@ -94,14 +94,16 @@ defmodule HexHubWeb.API.UserController do
 
             HexHub.Telemetry.track_api_request("users.me", duration_ms, 200)
 
-            json(conn, %{
-              username: user.username,
-              email: user.email,
-              inserted_at: user.inserted_at,
-              updated_at: user.updated_at,
-              url: "/users/#{user.username}",
-              organizations: []
-            })
+            response = %{
+              "username" => user.username,
+              "email" => user.email,
+              "inserted_at" => user.inserted_at,
+              "updated_at" => user.updated_at,
+              "url" => "/users/#{user.username}",
+              "organizations" => []
+            }
+
+            send_hex_response(conn, response)
 
           {:error, _} ->
             duration_ms =
@@ -114,6 +116,22 @@ defmodule HexHubWeb.API.UserController do
             |> put_status(:not_found)
             |> json(%{status: 404, message: "User not found"})
         end
+    end
+  end
+
+  # Helper to respond in the appropriate format (JSON or ETF)
+  defp send_hex_response(conn, data) do
+    case conn.assigns[:hex_format] do
+      :etf ->
+        # ETF format requires string keys for the hex client
+        encoded = HexHub.RegistryFormat.encode_etf(data, false)
+
+        conn
+        |> put_resp_content_type("application/vnd.hex+erlang")
+        |> send_resp(200, encoded)
+
+      _ ->
+        json(conn, data)
     end
   end
 

@@ -68,11 +68,19 @@ defmodule HexHub.ApiKeys do
            :mnesia.foldl(
              fn {_, _name, username, secret_hash, permissions, revoked_at, _inserted_at,
                  _updated_at},
-                _acc ->
-               if Bcrypt.verify_pass(key, secret_hash) do
-                 {:ok, %{username: username, permissions: permissions, revoked_at: revoked_at}}
-               else
-                 nil
+                acc ->
+               # Once we find a match, keep it (don't overwrite with nil)
+               case acc do
+                 {:ok, _} ->
+                   acc
+
+                 nil ->
+                   if Bcrypt.verify_pass(key, secret_hash) do
+                     {:ok,
+                      %{username: username, permissions: permissions, revoked_at: revoked_at}}
+                   else
+                     nil
+                   end
                end
              end,
              nil,

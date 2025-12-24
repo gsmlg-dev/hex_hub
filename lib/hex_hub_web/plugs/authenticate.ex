@@ -34,6 +34,12 @@ defmodule HexHubWeb.Plugs.Authenticate do
         |> put_status(401)
         |> Controller.json(%{"message" => "API key required", "status" => 401})
         |> halt()
+
+      {:error, :invalid_format} ->
+        conn
+        |> put_status(401)
+        |> Controller.json(%{"message" => "Invalid authorization format", "status" => 401})
+        |> halt()
     end
   end
 
@@ -52,6 +58,10 @@ defmodule HexHubWeb.Plugs.Authenticate do
         end
 
       ["Bearer " <> key] ->
+        {:ok, String.trim(key)}
+
+      # Hex client sends the API key directly without Bearer prefix
+      [key] when is_binary(key) and byte_size(key) > 0 ->
         {:ok, String.trim(key)}
 
       _ ->

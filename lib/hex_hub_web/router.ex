@@ -11,16 +11,17 @@ defmodule HexHubWeb.Router do
   end
 
   pipeline :api do
-    plug :accepts, ["json"]
+    plug :accepts, ["json", "hex+erlang"]
   end
 
   pipeline :api_cached do
-    plug :accepts, ["json"]
+    plug :accepts, ["json", "hex+erlang"]
     plug HexHubWeb.Plugs.ETag
   end
 
   pipeline :api_auth do
-    plug :accepts, ["json"]
+    plug :accepts, ["json", "hex+erlang"]
+    plug HexHubWeb.Plugs.HexFormat
     plug HexHubWeb.Plugs.Authenticate
     plug HexHubWeb.Plugs.RateLimit
   end
@@ -77,7 +78,22 @@ defmodule HexHubWeb.Router do
 
     # Non-cached endpoints
     post "/users", UserController, :create
-    get "/users/:username_or_email", UserController, :show
+  end
+
+  # Root-level authenticated routes for HEX_API_URL compatibility
+  scope "/", HexHubWeb.API do
+    pipe_through [:api_auth]
+
+    # Authenticated package owners (read operations)
+    get "/packages/:name/owners", OwnerController, :index
+  end
+
+  scope "/", HexHubWeb.API do
+    pipe_through [:api_auth, :require_write]
+
+    # Authenticated package management (write operations)
+    post "/publish", ReleaseController, :publish
+    post "/packages/:name/releases", ReleaseController, :publish
   end
 
   scope "/", HexHubWeb do
@@ -165,14 +181,13 @@ defmodule HexHubWeb.Router do
 
     # Non-cached endpoints
     post "/users", UserController, :create
-    get "/users/:username_or_email", UserController, :show
   end
 
   # Authenticated API routes
   scope "/api", HexHubWeb.API do
     pipe_through [:api_auth]
 
-    # Authenticated users endpoints
+    # Authenticated users endpoints (me MUST come before :username_or_email)
     get "/users/me", UserController, :me
     post "/users/:username_or_email/reset", UserController, :reset
 
@@ -202,6 +217,8 @@ defmodule HexHubWeb.Router do
 
     # Authenticated package management (write operations)
     post "/publish", ReleaseController, :publish
+    # Alternative publish endpoint used by hex client
+    post "/packages/:name/releases", ReleaseController, :publish
     post "/packages/:name/releases/:version/retire", RetirementController, :retire
     delete "/packages/:name/releases/:version/retire", RetirementController, :unretire
 
@@ -219,6 +236,13 @@ defmodule HexHubWeb.Router do
 
     # Admin endpoints
     post "/packages/search/reindex", SearchController, :reindex
+  end
+
+  # Public user lookup - MUST come after /users/me route to avoid matching "me" as username
+  scope "/api", HexHubWeb.API do
+    pipe_through :api
+
+    get "/users/:username_or_email", UserController, :show
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

@@ -1,5 +1,10 @@
 import Config
 
+# Register custom MIME types for Hex client compatibility
+config :mime, :types, %{
+  "application/vnd.hex+erlang" => ["hex+erlang"]
+}
+
 config :hex_hub,
   generators: [timestamp_type: :utc_datetime]
 

@@ -8,9 +8,10 @@ defmodule HexHubWeb.API.OwnerControllerTest do
 
   describe "GET /api/packages/:name/owners" do
     test "lists package owners", %{conn: conn} do
-      package_name = "test_package"
+      # Create a package first
+      package = create_package(%{name: "test_package_owners"})
 
-      conn = get(conn, ~p"/api/packages/#{package_name}/owners")
+      conn = get(conn, ~p"/api/packages/#{package.name}/owners")
 
       assert %{
                "owners" => owners
@@ -20,7 +21,7 @@ defmodule HexHubWeb.API.OwnerControllerTest do
     end
 
     test "returns 404 for non-existent package", %{conn: conn} do
-      conn = get(conn, ~p"/api/packages/nonexistent/owners")
+      conn = get(conn, ~p"/api/packages/nonexistent_pkg_xyz/owners")
       assert response(conn, 404)
     end
   end

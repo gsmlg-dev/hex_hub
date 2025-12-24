@@ -121,20 +121,20 @@ defmodule Mix.Tasks.Test.E2e do
   end
 
   # Sort support files so dependencies come first
-  # e2e_case.ex depends on server_helper.ex
+  # e2e_case.ex depends on server_helper.ex and publish_helper.ex
+  # Dependencies: server_helper.ex < publish_helper.ex < e2e_case.ex
   defp sort_by_dependency(files) do
-    Enum.sort(files, fn a, b ->
-      a_base = Path.basename(a)
-      b_base = Path.basename(b)
-
-      cond do
-        # server_helper must come before e2e_case
-        a_base == "server_helper.ex" and b_base == "e2e_case.ex" -> true
-        a_base == "e2e_case.ex" and b_base == "server_helper.ex" -> false
-        # Otherwise alphabetical
-        true -> a <= b
+    # Define priority: lower number = compile first
+    priority = fn file ->
+      case Path.basename(file) do
+        "server_helper.ex" -> 1
+        "publish_helper.ex" -> 2
+        "e2e_case.ex" -> 10
+        _ -> 5
       end
-    end)
+    end
+
+    Enum.sort_by(files, priority)
   end
 
   defp configure_exunit(args) do
