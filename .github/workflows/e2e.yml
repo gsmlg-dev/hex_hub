@@ -10,7 +10,7 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
@@ -34,10 +34,18 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
 
+      - name: Install hex and rebar for local operations
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
       - name: Compile
         run: mix compile
 
       - name: Run E2E tests
         run: mix test.e2e --trace
+        timeout-minutes: 15
         env:
           MIX_ENV: test
+          # Ensure hex doesn't prompt for input
+          HEX_INTERACTIVE: 0

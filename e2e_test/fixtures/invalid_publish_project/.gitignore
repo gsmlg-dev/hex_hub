@@ -1,0 +1,12 @@
+# Build artifacts
+/_build/
+/deps/
+/doc/
+
+# Dependencies
+mix.lock
+
+# Generated files
+*.beam
+*.tar
+*.ez

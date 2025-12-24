@@ -1,0 +1,13 @@
+# Build artifacts
+/_build/
+/deps/
+
+# Lock file (regenerated during tests)
+/mix.lock
+
+# Hex package build output
+/*.tar
+/*.tar.gz
+
+# Documentation output
+/doc/

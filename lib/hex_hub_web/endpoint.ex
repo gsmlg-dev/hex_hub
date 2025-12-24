@@ -41,10 +41,15 @@ defmodule HexHubWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
+  # Handle Expect: 100-continue header before reading body
+  # This is required for hex client package publishing
+  plug HexHubWeb.Plugs.ExpectContinue
+
   plug Plug.Parsers,
-    parsers: [:urlencoded, :multipart, :json],
+    parsers: [:urlencoded, :multipart, :json, HexHubWeb.Parsers.TarballParser],
     pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+    json_decoder: Phoenix.json_library(),
+    length: 100_000_000
 
   plug Plug.MethodOverride
   plug Plug.Head

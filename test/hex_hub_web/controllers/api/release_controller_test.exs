@@ -44,26 +44,22 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
 
   describe "POST /api/publish" do
     test "publishes new package release", %{conn: conn} do
-      package_name = "test_package"
+      package_name = "publish_test_pkg"
       version = "1.0.0"
 
-      # Create package first
-      {:ok, _package} =
-        HexHub.Packages.create_package(package_name, "hexpm", %{description: "Test package"})
-
-      # Create mock tarball content
-      tarball_content = "mock tarball content for testing"
+      # Create a valid hex tarball
+      tarball_content = create_test_tarball(package_name, version)
 
       conn =
         conn
         |> put_req_header("content-type", "application/octet-stream")
-        |> post(~p"/api/publish?name=#{package_name}&version=#{version}", tarball_content)
+        |> post(~p"/api/packages/#{package_name}/releases", tarball_content)
 
       assert %{
                "url" => url
              } = json_response(conn, 201)
 
-      assert url == "/packages/test_package/releases/1.0.0"
+      assert url == "/packages/#{package_name}/releases/#{version}"
     end
 
     test "returns 422 with invalid package data", %{conn: conn} do

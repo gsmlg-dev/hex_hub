@@ -343,6 +343,28 @@ mix test test/hex_hub/mcp/tools/
 mix test test/hex_hub/mcp/server_test.exs
 ```
 
+### E2E Package Publishing Tests
+End-to-end tests for `mix hex.publish` functionality:
+```bash
+# Run all E2E publish tests
+MIX_ENV=test mix test.e2e e2e_test/publish_test.exs
+
+# Run specific user story tests
+MIX_ENV=test mix test.e2e e2e_test/publish_test.exs --only us1  # Basic publishing
+MIX_ENV=test mix test.e2e e2e_test/publish_test.exs --only us2  # Authentication
+MIX_ENV=test mix test.e2e e2e_test/publish_test.exs --only us3  # Version management
+```
+
+**Test Coverage**:
+- US1: Basic package publishing with valid credentials
+- US2: Authentication failure with no/invalid/read-only API keys
+- US3: Multiple version publishing and retrieval
+
+**Key Components**:
+- `e2e_test/support/publish_helper.ex` - Helpers for hex publish environment, API keys, fixtures
+- `e2e_test/support/server_helper.ex` - Dynamic server start with port allocation
+- `e2e_test/fixtures/publish_project/` - Fixture package for testing
+
 ### Upstream Package Fetching
 
 HexHub automatically fetches packages from upstream when not found locally, creating a transparent caching proxy for hex.pm or any hex-compatible repository.
@@ -432,6 +454,8 @@ Logger.info("Package #{name} published")
 ## Active Technologies
 - Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib) (001-telemetry-logging)
 - N/A (logging to console/files, not database) (001-telemetry-logging)
+- Elixir 1.15+ (matching project requirements) + ExUnit, Hex client (mix hex.publish), existing E2E infrastructure (002-hex-publish-e2e)
+- Mnesia (via existing HexHub.Storage abstraction) for test data (002-hex-publish-e2e)
 
 ## Recent Changes
 - 001-telemetry-logging: Added Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib)

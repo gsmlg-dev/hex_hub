@@ -91,15 +91,17 @@ defmodule HexHub.UpstreamIntegrationTest do
 
   describe "upstream fallback integration" do
     test "basic upstream configuration check" do
-      # Configure upstream to be enabled
-      Application.put_env(:hex_hub, :upstream,
-        enabled: true,
-        api_url: "https://hex.pm",
-        repo_url: "https://repo.hex.pm",
-        timeout: 30_000,
-        retry_attempts: 1,
-        retry_delay: 100
-      )
+      # Configure upstream to be enabled via the UpstreamConfig module (not Application.put_env)
+      # The Upstream module reads from Mnesia, not Application config
+      :ok =
+        HexHub.UpstreamConfig.update_config(%{
+          enabled: true,
+          api_url: "https://hex.pm",
+          repo_url: "https://repo.hex.pm",
+          timeout: 30_000,
+          retry_attempts: 1,
+          retry_delay: 100
+        })
 
       # Test that upstream is enabled
       assert HexHub.Upstream.enabled?() == true
