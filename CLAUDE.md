@@ -456,6 +456,8 @@ Logger.info("Package #{name} published")
 - N/A (logging to console/files, not database) (001-telemetry-logging)
 - Elixir 1.15+ (matching project requirements) + ExUnit, Hex client (mix hex.publish), existing E2E infrastructure (002-hex-publish-e2e)
 - Mnesia (via existing HexHub.Storage abstraction) for test data (002-hex-publish-e2e)
+- Elixir 1.15+ / OTP 26+ + Phoenix 1.8+, Mnesia (built-in), DaisyUI/Tailwind CSS (003-browse-packages)
+- Mnesia (`:packages`, `:package_releases`, `:package_downloads` tables) (003-browse-packages)
 
 ## Recent Changes
 - 001-telemetry-logging: Added Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib)

@@ -55,6 +55,64 @@ defmodule HexHub.PackagesTest do
       assert length(packages) == 2
     end
 
+    test "list_packages/1 with :sort option sorts correctly" do
+      {:ok, _} = Packages.create_package("alpha", "hexpm", %{"description" => "Alpha"})
+      Process.sleep(10)
+      {:ok, _} = Packages.create_package("zebra", "hexpm", %{"description" => "Zebra"})
+
+      # Sort by name
+      assert {:ok, packages, _total} = Packages.list_packages(sort: :name)
+      assert hd(packages).name == "alpha"
+
+      # Sort by recently created (newest first)
+      assert {:ok, packages, _total} = Packages.list_packages(sort: :recently_created)
+      assert hd(packages).name == "zebra"
+    end
+
+    test "list_packages/1 with :letter option filters by first letter" do
+      {:ok, _} = Packages.create_package("alpha", "hexpm", %{"description" => "Alpha"})
+      {:ok, _} = Packages.create_package("beta", "hexpm", %{"description" => "Beta"})
+      {:ok, _} = Packages.create_package("another", "hexpm", %{"description" => "Another"})
+
+      # Filter by letter A
+      assert {:ok, packages, total} = Packages.list_packages(letter: "A")
+      assert total == 2
+      assert Enum.all?(packages, fn p -> String.starts_with?(p.name, "a") end)
+
+      # Filter by letter B
+      assert {:ok, packages, total} = Packages.list_packages(letter: "B")
+      assert total == 1
+      assert hd(packages).name == "beta"
+    end
+
+    test "list_packages/1 with :search option filters by name/description" do
+      {:ok, _} = Packages.create_package("phoenix", "hexpm", %{"description" => "Web framework"})
+      {:ok, _} = Packages.create_package("ecto", "hexpm", %{"description" => "Database wrapper"})
+
+      # Search by name
+      assert {:ok, packages, total} = Packages.list_packages(search: "phoenix")
+      assert total == 1
+      assert hd(packages).name == "phoenix"
+
+      # Search by description
+      assert {:ok, packages, total} = Packages.list_packages(search: "database")
+      assert total == 1
+      assert hd(packages).name == "ecto"
+    end
+
+    test "list_packages/1 with pagination" do
+      for i <- 1..5 do
+        {:ok, _} = Packages.create_package("pkg#{i}", "hexpm", %{"description" => "Package #{i}"})
+      end
+
+      assert {:ok, packages, total} = Packages.list_packages(page: 1, per_page: 2)
+      assert length(packages) == 2
+      assert total == 5
+
+      assert {:ok, packages, _total} = Packages.list_packages(page: 3, per_page: 2)
+      assert length(packages) == 1
+    end
+
     test "create_package/4 validates package name format" do
       assert {:error, _reason} = Packages.create_package("", "hexpm", %{"description" => "Test"})
 
@@ -63,6 +121,50 @@ defmodule HexHub.PackagesTest do
 
       assert {:error, _reason} =
                Packages.create_package("123invalid", "hexpm", %{"description" => "Test"})
+    end
+  end
+
+  describe "trend queries" do
+    test "list_most_downloaded/1 returns top packages by downloads" do
+      # Create packages (downloads default to 0, but ordering should work)
+      {:ok, _} = Packages.create_package("popular", "hexpm", %{"description" => "Popular package"})
+      {:ok, _} = Packages.create_package("less_popular", "hexpm", %{"description" => "Less popular"})
+
+      packages = Packages.list_most_downloaded(5)
+      assert is_list(packages)
+    end
+
+    test "list_recently_updated/1 returns recently updated packages" do
+      {:ok, _} = Packages.create_package("old_pkg", "hexpm", %{"description" => "Old"})
+      Process.sleep(10)
+      {:ok, _} = Packages.create_package("new_pkg", "hexpm", %{"description" => "New"})
+
+      packages = Packages.list_recently_updated(5)
+      assert is_list(packages)
+      assert length(packages) == 2
+      # Newest should be first
+      assert hd(packages).name == "new_pkg"
+    end
+
+    test "list_new_packages/1 returns newest packages by creation date" do
+      {:ok, _} = Packages.create_package("first", "hexpm", %{"description" => "First"})
+      Process.sleep(10)
+      {:ok, _} = Packages.create_package("second", "hexpm", %{"description" => "Second"})
+
+      packages = Packages.list_new_packages(5)
+      assert is_list(packages)
+      assert length(packages) == 2
+      # Newest should be first
+      assert hd(packages).name == "second"
+    end
+
+    test "list_most_downloaded/1 respects limit" do
+      for i <- 1..10 do
+        {:ok, _} = Packages.create_package("pkg#{i}", "hexpm", %{"description" => "Package #{i}"})
+      end
+
+      packages = Packages.list_most_downloaded(3)
+      assert length(packages) == 3
     end
   end
 

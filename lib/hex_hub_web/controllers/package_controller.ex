@@ -2,56 +2,138 @@ defmodule HexHubWeb.PackageController do
   use HexHubWeb, :controller
   alias HexHub.Packages
 
+  @per_page 30
+  @valid_sorts ~w(recent_downloads total_downloads name recently_updated recently_created)
+
   def index(conn, params) do
-    page = String.to_integer(params["page"] || "1")
-    per_page = String.to_integer(params["per_page"] || "20")
+    page = parse_int(params["page"], 1)
     search = params["search"]
+    sort = parse_sort(params["sort"])
+    letter = parse_letter(params["letter"])
+
+    opts = [
+      page: page,
+      per_page: @per_page,
+      search: search,
+      sort: sort,
+      letter: letter
+    ]
 
     {packages, total_count} =
-      case search do
-        nil ->
-          case Packages.list_packages(page: page, per_page: per_page) do
-            {:ok, pkgs, total} ->
-              enriched_packages = Enum.map(pkgs, &enrich_package_with_latest_version/1)
-              {enriched_packages, total}
+      case Packages.list_packages(opts) do
+        {:ok, pkgs, total} ->
+          enriched_packages = Enum.map(pkgs, &enrich_package_with_latest_version/1)
+          {enriched_packages, total}
 
-            _ ->
-              {[], 0}
-          end
-
-        search_term ->
-          case Packages.search_packages(search_term, page: page, per_page: per_page) do
-            {:ok, pkgs, total} ->
-              enriched_packages = Enum.map(pkgs, &enrich_package_with_latest_version/1)
-              {enriched_packages, total}
-
-            _ ->
-              {[], 0}
-          end
+        _ ->
+          {[], 0}
       end
+
+    total_pages = max(1, ceil(total_count / @per_page))
+
+    # Fetch trend data
+    most_downloaded = Packages.list_most_downloaded(5) |> Enum.map(&enrich_package_with_latest_version/1)
+    recently_updated = Packages.list_recently_updated(5) |> Enum.map(&enrich_package_with_latest_version/1)
+    new_packages = Packages.list_new_packages(5) |> Enum.map(&enrich_package_with_latest_version/1)
 
     render(conn, :index,
       packages: packages,
       page: page,
-      per_page: per_page,
+      per_page: @per_page,
       total_count: total_count,
-      search: search
+      total_pages: total_pages,
+      search: search,
+      sort: sort,
+      letter: letter,
+      most_downloaded: most_downloaded,
+      recently_updated: recently_updated,
+      new_packages: new_packages
     )
   end
 
+  defp parse_int(nil, default), do: default
+  defp parse_int(value, default) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, _} when int > 0 -> int
+      _ -> default
+    end
+  end
+
+  defp parse_sort(nil), do: :recent_downloads
+  defp parse_sort(sort) when sort in @valid_sorts do
+    String.to_existing_atom(sort)
+  end
+  defp parse_sort(_), do: :recent_downloads
+
+  defp parse_letter(nil), do: nil
+  defp parse_letter(""), do: nil
+  defp parse_letter(letter) when is_binary(letter) do
+    letter = String.upcase(String.first(letter))
+    if letter =~ ~r/^[A-Z]$/, do: letter, else: nil
+  end
+
   def show(conn, %{"name" => name}) do
+    start_time = System.monotonic_time()
+
     case Packages.get_package(name) do
       {:ok, package} ->
         {:ok, releases} = Packages.list_releases(name)
         enriched_package = enrich_package_with_latest_version(package)
-        render(conn, :show, package: enriched_package, releases: releases)
+
+        # Sort releases by version descending
+        sorted_releases = Enum.sort_by(releases, & &1.version, {:desc, Version})
+
+        latest_version = get_latest_version(sorted_releases)
+        dependencies = get_dependencies(sorted_releases)
+        download_stats = get_download_stats(package, sorted_releases)
+
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        :telemetry.execute(
+          [:hex_hub, :packages, :view],
+          %{duration: duration_ms},
+          %{package: name}
+        )
+
+        render(conn, :show,
+          package: enriched_package,
+          releases: sorted_releases,
+          latest_version: latest_version,
+          dependencies: dependencies,
+          download_stats: download_stats
+        )
 
       {:error, :not_found} ->
         conn
         |> put_status(:not_found)
-        |> put_view(HexHubWeb.ErrorHTML)
-        |> render(:"404")
+        |> assign(:name, name)
+        |> render(:not_found)
     end
+  end
+
+  defp get_latest_version([]), do: "0.0.0"
+  defp get_latest_version([release | _]), do: release.version
+
+  defp get_dependencies([]), do: %{}
+  defp get_dependencies([latest_release | _]) do
+    case latest_release.requirements do
+      reqs when is_map(reqs) -> reqs
+      _ -> %{}
+    end
+  end
+
+  defp get_download_stats(package, releases) do
+    total = package.downloads || 0
+    # Sum up release downloads for "recent" approximation
+    recent = Enum.reduce(releases, 0, fn r, acc -> acc + (r.downloads || 0) end)
+
+    %{
+      total: total,
+      recent: recent,
+      weekly: nil  # Would need additional tracking for accurate weekly stats
+    }
   end
 
   def docs(conn, %{"name" => name, "version" => version}) do
@@ -71,6 +153,14 @@ defmodule HexHubWeb.PackageController do
         |> put_view(HexHubWeb.ErrorHTML)
         |> render(:"404")
     end
+  end
+
+  def redirect_to_packages(conn, _params) do
+    redirect(conn, to: ~p"/packages")
+  end
+
+  def redirect_to_package(conn, %{"name" => name}) do
+    redirect(conn, to: ~p"/packages/#{name}")
   end
 
   defp enrich_package_with_latest_version(package) do

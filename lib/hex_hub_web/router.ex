@@ -100,9 +100,15 @@ defmodule HexHubWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
-    get "/browse", PackageController, :index
-    get "/package/:name", PackageController, :show
-    get "/package/:name/docs", PackageController, :docs
+
+    # Package browsing routes
+    get "/packages", PackageController, :index
+    get "/packages/:name", PackageController, :show
+    get "/packages/:name/docs", PackageController, :docs
+
+    # Legacy redirects for backward compatibility
+    get "/browse", PackageController, :redirect_to_packages
+    get "/package/:name", PackageController, :redirect_to_package
   end
 
   # Health check endpoints for monitoring

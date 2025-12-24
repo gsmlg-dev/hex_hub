@@ -141,18 +141,33 @@ defmodule HexHub.Packages do
   end
 
   @doc """
-  List all packages with optional search and pagination.
+  List all packages with optional search, sorting, letter filtering, and pagination.
+
+  ## Options
+
+  - `:search` - Search term for name/description (case-insensitive)
+  - `:sort` - Sort option (default: `:recent_downloads`)
+    - `:recent_downloads` - By recent download count (descending)
+    - `:total_downloads` - By all-time download count (descending)
+    - `:name` - Alphabetically A-Z
+    - `:recently_updated` - By last update timestamp (descending)
+    - `:recently_created` - By creation timestamp (descending)
+  - `:letter` - Filter by first letter of package name (A-Z)
+  - `:page` - Page number (default: 1)
+  - `:per_page` - Items per page (default: 30)
   """
   @spec list_packages(keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
   def list_packages(opts \\ []) do
+    start_time = System.monotonic_time()
     search_term = Keyword.get(opts, :search)
+    sort = Keyword.get(opts, :sort, :recent_downloads)
+    letter = Keyword.get(opts, :letter)
     page = Keyword.get(opts, :page, 1)
-    per_page = Keyword.get(opts, :per_page, 50)
+    per_page = Keyword.get(opts, :per_page, 30)
 
     offset = (page - 1) * per_page
 
     case :mnesia.transaction(fn ->
-           # Use transaction for consistency
            packages =
              :mnesia.foldl(
                fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
@@ -164,8 +179,8 @@ defmodule HexHub.Packages do
                       inserted_at, updated_at, html_url, docs_html_url}
                    )
 
-                 # Filter by search term if provided
-                 if matches_search?(package, search_term) do
+                 # Apply filters
+                 if matches_search?(package, search_term) and starts_with_letter?(package, letter) do
                    [package | acc]
                  else
                    acc
@@ -175,8 +190,8 @@ defmodule HexHub.Packages do
                @packages_table
              )
 
-           # Sort by downloads (descending) and then by name
-           sorted_packages = Enum.sort_by(packages, &{-&1.downloads, &1.name})
+           # Apply sorting
+           sorted_packages = apply_sort(packages, sort)
 
            total_count = length(sorted_packages)
 
@@ -187,8 +202,154 @@ defmodule HexHub.Packages do
 
            {paginated_packages, total_count}
          end) do
-      {:atomic, {packages, total}} -> {:ok, packages, total}
-      {:aborted, reason} -> {:error, "Failed to list packages: #{inspect(reason)}"}
+      {:atomic, {packages, total}} ->
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        :telemetry.execute(
+          [:hex_hub, :packages, :browse],
+          %{duration: duration_ms},
+          %{page: page, sort: sort, search: search_term, letter: letter, results: total}
+        )
+
+        {:ok, packages, total}
+
+      {:aborted, reason} ->
+        {:error, "Failed to list packages: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
+  Apply sorting to a list of packages.
+  """
+  defp apply_sort(packages, sort) do
+    case sort do
+      :recent_downloads ->
+        Enum.sort_by(packages, &{-&1.downloads, &1.name})
+
+      :total_downloads ->
+        Enum.sort_by(packages, &{-&1.downloads, &1.name})
+
+      :name ->
+        Enum.sort_by(packages, & &1.name)
+
+      :recently_updated ->
+        Enum.sort_by(packages, & &1.updated_at, {:desc, DateTime})
+
+      :recently_created ->
+        Enum.sort_by(packages, & &1.inserted_at, {:desc, DateTime})
+
+      _ ->
+        Enum.sort_by(packages, &{-&1.downloads, &1.name})
+    end
+  end
+
+  @doc """
+  Check if package name starts with the given letter.
+  """
+  defp starts_with_letter?(_package, nil), do: true
+  defp starts_with_letter?(_package, ""), do: true
+
+  defp starts_with_letter?(package, letter) when is_binary(letter) do
+    letter = String.upcase(letter)
+    first_letter = package.name |> String.first() |> String.upcase()
+    first_letter == letter
+  end
+
+  @doc """
+  List most downloaded packages.
+  """
+  @spec list_most_downloaded(integer()) :: [package()]
+  def list_most_downloaded(limit \\ 5) do
+    case :mnesia.transaction(fn ->
+           :mnesia.foldl(
+             fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
+                 html_url, docs_html_url},
+                acc ->
+               package =
+                 package_to_map(
+                   {@packages_table, name, repository_name, meta, private, downloads,
+                    inserted_at, updated_at, html_url, docs_html_url}
+                 )
+
+               [package | acc]
+             end,
+             [],
+             @packages_table
+           )
+         end) do
+      {:atomic, packages} ->
+        packages
+        |> Enum.sort_by(& &1.downloads, :desc)
+        |> Enum.take(limit)
+
+      {:aborted, _reason} ->
+        []
+    end
+  end
+
+  @doc """
+  List recently updated packages (packages with most recent releases).
+  """
+  @spec list_recently_updated(integer()) :: [package()]
+  def list_recently_updated(limit \\ 5) do
+    case :mnesia.transaction(fn ->
+           :mnesia.foldl(
+             fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
+                 html_url, docs_html_url},
+                acc ->
+               package =
+                 package_to_map(
+                   {@packages_table, name, repository_name, meta, private, downloads,
+                    inserted_at, updated_at, html_url, docs_html_url}
+                 )
+
+               [package | acc]
+             end,
+             [],
+             @packages_table
+           )
+         end) do
+      {:atomic, packages} ->
+        packages
+        |> Enum.sort_by(& &1.updated_at, {:desc, DateTime})
+        |> Enum.take(limit)
+
+      {:aborted, _reason} ->
+        []
+    end
+  end
+
+  @doc """
+  List newest packages by creation date.
+  """
+  @spec list_new_packages(integer()) :: [package()]
+  def list_new_packages(limit \\ 5) do
+    case :mnesia.transaction(fn ->
+           :mnesia.foldl(
+             fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
+                 html_url, docs_html_url},
+                acc ->
+               package =
+                 package_to_map(
+                   {@packages_table, name, repository_name, meta, private, downloads,
+                    inserted_at, updated_at, html_url, docs_html_url}
+                 )
+
+               [package | acc]
+             end,
+             [],
+             @packages_table
+           )
+         end) do
+      {:atomic, packages} ->
+        packages
+        |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
+        |> Enum.take(limit)
+
+      {:aborted, _reason} ->
+        []
     end
   end
 
