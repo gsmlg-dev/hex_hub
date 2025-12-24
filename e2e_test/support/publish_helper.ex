@@ -27,6 +27,7 @@ defmodule E2E.PublishHelper do
       {"HEX_API_URL", "http://localhost:#{port}/api"},
       {"HEX_API_KEY", api_key},
       {"HEX_UNSAFE_REGISTRY", "1"},
+      {"HEX_INTERACTIVE", "0"},
       {"MIX_ENV", "dev"}
     ]
   end
@@ -41,6 +42,7 @@ defmodule E2E.PublishHelper do
     [
       {"HEX_API_URL", "http://localhost:#{port}/api"},
       {"HEX_UNSAFE_REGISTRY", "1"},
+      {"HEX_INTERACTIVE", "0"},
       {"MIX_ENV", "dev"}
     ]
   end
