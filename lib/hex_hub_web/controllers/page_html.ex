@@ -18,4 +18,12 @@ defmodule HexHubWeb.PageHTML do
 
     "#{scheme}://#{host}#{port}"
   end
+
+  @doc """
+  Returns the API URL for the HexHub service (base URL + /api).
+  Used for publishing packages with mix hex.publish.
+  """
+  def hex_hub_api_url(conn) do
+    "#{hex_hub_url(conn)}/api"
+  end
 end
