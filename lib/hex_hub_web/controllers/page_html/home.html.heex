@@ -336,7 +336,7 @@
           </div>
         </div>
       </div>
-
+      
 <!-- Publish Packages Section -->
       <div class="mb-12">
         <div class="text-center mb-8">
@@ -371,7 +371,9 @@
             <div class="bg-base-200 rounded-lg p-4 mb-4">
               <h4 class="font-semibold text-lg mb-3 text-primary">Quick Publish</h4>
               <p class="text-sm text-base-content/70 mb-3">
-                Publish your package to this HexHub instance by setting the <code class="bg-base-300 px-1 rounded">HEX_API_URL</code> environment variable:
+                Publish your package to this HexHub instance by setting the
+                <code class="bg-base-300 px-1 rounded">HEX_API_URL</code>
+                environment variable:
               </p>
               <div class="mockup-code">
                 <pre data-prefix="$"><code class="text-success">HEX_API_URL</code><code>=</code><code class="text-info">"<%= hex_hub_api_url(@conn) %>"</code> <code>mix hex.publish</code></pre>
@@ -381,7 +383,10 @@
             <div class="bg-base-200 rounded-lg p-4 mb-4">
               <h4 class="font-semibold text-lg mb-3 text-secondary">With API Key</h4>
               <p class="text-sm text-base-content/70 mb-3">
-                For automated publishing (CI/CD), use both <code class="bg-base-300 px-1 rounded">HEX_API_URL</code> and <code class="bg-base-300 px-1 rounded">HEX_API_KEY</code>:
+                For automated publishing (CI/CD), use both
+                <code class="bg-base-300 px-1 rounded">HEX_API_URL</code>
+                and
+                <code class="bg-base-300 px-1 rounded">HEX_API_KEY</code>:
               </p>
               <div class="mockup-code">
                 <pre data-prefix="$"><code class="text-success">HEX_API_URL</code><code>=</code><code class="text-info">"<%= hex_hub_api_url(@conn) %>"</code> \</pre>
