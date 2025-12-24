@@ -208,6 +208,8 @@ defmodule E2E.PublishHelper do
   def run_hex_publish(env, opts \\ []) do
     args = Keyword.get(opts, :args, ["package", "--yes"])
     fixture = Keyword.get(opts, :fixture, :valid)
+    # 60 second timeout for hex.publish commands
+    timeout = Keyword.get(opts, :timeout, 60_000)
 
     project_path =
       case fixture do
@@ -220,13 +222,26 @@ defmodule E2E.PublishHelper do
     # so we need to preserve PATH, HOME, and other essential variables
     full_env = Map.merge(System.get_env(), Map.new(env)) |> Enum.to_list()
 
-    System.cmd(
-      "mix",
-      ["hex.publish" | args],
-      cd: project_path,
-      env: full_env,
-      stderr_to_stdout: true
-    )
+    # Use Task to enforce timeout since System.cmd doesn't support it directly
+    task =
+      Task.async(fn ->
+        System.cmd(
+          "mix",
+          ["hex.publish" | args],
+          cd: project_path,
+          env: full_env,
+          stderr_to_stdout: true
+        )
+      end)
+
+    case Task.yield(task, timeout) || Task.shutdown(task, :brutal_kill) do
+      {:ok, result} ->
+        result
+
+      nil ->
+        # Task timed out, return error
+        {"Command timed out after #{timeout}ms", 124}
+    end
   end
 
   @doc """
