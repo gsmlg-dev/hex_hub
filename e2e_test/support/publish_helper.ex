@@ -215,11 +215,16 @@ defmodule E2E.PublishHelper do
         _ -> publish_fixture_path()
       end
 
+    # Merge our environment variables with the current system environment
+    # System.cmd with env: option completely replaces the environment,
+    # so we need to preserve PATH, HOME, and other essential variables
+    full_env = Map.merge(System.get_env(), Map.new(env)) |> Enum.to_list()
+
     System.cmd(
       "mix",
       ["hex.publish" | args],
       cd: project_path,
-      env: env,
+      env: full_env,
       stderr_to_stdout: true
     )
   end
