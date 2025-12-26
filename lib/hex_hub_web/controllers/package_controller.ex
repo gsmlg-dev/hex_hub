@@ -81,7 +81,27 @@ defmodule HexHubWeb.PackageController do
     if letter =~ ~r/^[A-Z]$/, do: letter, else: nil
   end
 
-  def show(conn, %{"name" => name}) do
+  def show(conn, %{"name" => name} = params) do
+    # Check Accept header to determine if this is a browser request or registry request
+    # Registry requests (from Hex client via HEX_MIRROR) don't have Accept: text/html
+    accept_header = Plug.Conn.get_req_header(conn, "accept")
+
+    if wants_html?(accept_header) do
+      show_html(conn, name)
+    else
+      # Forward to registry controller for protobuf response
+      HexHubWeb.API.RegistryController.package(conn, params)
+    end
+  end
+
+  defp wants_html?([]), do: false
+
+  defp wants_html?([accept | _]) do
+    # Check if Accept header explicitly asks for HTML
+    String.contains?(accept, "text/html")
+  end
+
+  defp show_html(conn, name) do
     start_time = System.monotonic_time()
 
     case Packages.get_package(name) do

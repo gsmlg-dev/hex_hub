@@ -55,22 +55,13 @@ defmodule HexHubWeb.Router do
 
   # Hex registry endpoints for HEX_MIRROR compatibility
   # These serve gzipped protobuf data that the Hex client expects
-  # Note: /packages/:name registry route moved to /repo/packages/:name to avoid
-  # conflict with browser route
+  # Note: /packages/:name is handled by PackageController which dispatches based on Accept header
   scope "/", HexHubWeb.API do
     pipe_through :registry
 
     # Registry endpoints (gzipped protobuf format)
     get "/names", RegistryController, :names
     get "/versions", RegistryController, :versions
-  end
-
-  # Registry package endpoint at /repo prefix to avoid conflict with browser routes
-  scope "/repo", HexHubWeb.API do
-    pipe_through :registry
-
-    # Package registry data (protobuf format for Hex client)
-    get "/packages/:name", RegistryController, :package
   end
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
