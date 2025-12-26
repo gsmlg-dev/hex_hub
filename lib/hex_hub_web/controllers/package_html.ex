@@ -64,7 +64,12 @@ defmodule HexHubWeb.PackageHTML do
   def preserve_params(assigns, updates) do
     base = %{}
     base = if assigns[:search], do: Map.put(base, :search, assigns[:search]), else: base
-    base = if assigns[:sort] && assigns[:sort] != :recent_downloads, do: Map.put(base, :sort, assigns[:sort]), else: base
+
+    base =
+      if assigns[:sort] && assigns[:sort] != :recent_downloads,
+        do: Map.put(base, :sort, assigns[:sort]),
+        else: base
+
     base = if assigns[:letter], do: Map.put(base, :letter, assigns[:letter]), else: base
 
     Map.merge(base, updates)
@@ -118,7 +123,9 @@ defmodule HexHubWeb.PackageHTML do
   def letter_url(assigns, letter) do
     query_params = preserve_params(assigns, %{letter: letter, page: 1})
     # Remove letter key if it's nil/empty
-    query_params = if letter in [nil, ""], do: Map.delete(query_params, :letter), else: query_params
+    query_params =
+      if letter in [nil, ""], do: Map.delete(query_params, :letter), else: query_params
+
     "/packages?" <> URI.encode_query(query_params)
   end
 

@@ -32,9 +32,14 @@ defmodule HexHubWeb.PackageController do
     total_pages = max(1, ceil(total_count / @per_page))
 
     # Fetch trend data
-    most_downloaded = Packages.list_most_downloaded(5) |> Enum.map(&enrich_package_with_latest_version/1)
-    recently_updated = Packages.list_recently_updated(5) |> Enum.map(&enrich_package_with_latest_version/1)
-    new_packages = Packages.list_new_packages(5) |> Enum.map(&enrich_package_with_latest_version/1)
+    most_downloaded =
+      Packages.list_most_downloaded(5) |> Enum.map(&enrich_package_with_latest_version/1)
+
+    recently_updated =
+      Packages.list_recently_updated(5) |> Enum.map(&enrich_package_with_latest_version/1)
+
+    new_packages =
+      Packages.list_new_packages(5) |> Enum.map(&enrich_package_with_latest_version/1)
 
     render(conn, :index,
       packages: packages,
@@ -52,6 +57,7 @@ defmodule HexHubWeb.PackageController do
   end
 
   defp parse_int(nil, default), do: default
+
   defp parse_int(value, default) when is_binary(value) do
     case Integer.parse(value) do
       {int, _} when int > 0 -> int
@@ -60,13 +66,16 @@ defmodule HexHubWeb.PackageController do
   end
 
   defp parse_sort(nil), do: :recent_downloads
+
   defp parse_sort(sort) when sort in @valid_sorts do
     String.to_existing_atom(sort)
   end
+
   defp parse_sort(_), do: :recent_downloads
 
   defp parse_letter(nil), do: nil
   defp parse_letter(""), do: nil
+
   defp parse_letter(letter) when is_binary(letter) do
     letter = String.upcase(String.first(letter))
     if letter =~ ~r/^[A-Z]$/, do: letter, else: nil
@@ -117,6 +126,7 @@ defmodule HexHubWeb.PackageController do
   defp get_latest_version([release | _]), do: release.version
 
   defp get_dependencies([]), do: %{}
+
   defp get_dependencies([latest_release | _]) do
     case latest_release.requirements do
       reqs when is_map(reqs) -> reqs
@@ -125,14 +135,15 @@ defmodule HexHubWeb.PackageController do
   end
 
   defp get_download_stats(package, releases) do
-    total = package.downloads || 0
+    total = package.downloads
     # Sum up release downloads for "recent" approximation
-    recent = Enum.reduce(releases, 0, fn r, acc -> acc + (r.downloads || 0) end)
+    recent = Enum.reduce(releases, 0, fn r, acc -> acc + r.downloads end)
 
     %{
       total: total,
       recent: recent,
-      weekly: nil  # Would need additional tracking for accurate weekly stats
+      # Would need additional tracking for accurate weekly stats
+      weekly: nil
     }
   end
 

@@ -143,6 +143,9 @@ defmodule HexHub.Packages do
   @doc """
   List all packages with optional search, sorting, letter filtering, and pagination.
 
+  Searches local packages first. If no local results are found and a search term
+  is provided, falls back to searching upstream (hex.pm).
+
   ## Options
 
   - `:search` - Search term for name/description (case-insensitive)
@@ -155,6 +158,7 @@ defmodule HexHub.Packages do
   - `:letter` - Filter by first letter of package name (A-Z)
   - `:page` - Page number (default: 1)
   - `:per_page` - Items per page (default: 30)
+  - `:upstream_fallback` - Whether to fall back to upstream search (default: true)
   """
   @spec list_packages(keyword()) :: {:ok, [package()], integer()} | {:error, String.t()}
   def list_packages(opts \\ []) do
@@ -164,6 +168,7 @@ defmodule HexHub.Packages do
     letter = Keyword.get(opts, :letter)
     page = Keyword.get(opts, :page, 1)
     per_page = Keyword.get(opts, :per_page, 30)
+    upstream_fallback = Keyword.get(opts, :upstream_fallback, true)
 
     offset = (page - 1) * per_page
 
@@ -202,6 +207,11 @@ defmodule HexHub.Packages do
 
            {paginated_packages, total_count}
          end) do
+      {:atomic, {[], 0}}
+      when is_binary(search_term) and search_term != "" and upstream_fallback ->
+        # No local results found, try upstream search
+        search_packages_upstream(search_term, opts, start_time)
+
       {:atomic, {packages, total}} ->
         duration_ms =
           (System.monotonic_time() - start_time)
@@ -210,7 +220,14 @@ defmodule HexHub.Packages do
         :telemetry.execute(
           [:hex_hub, :packages, :browse],
           %{duration: duration_ms},
-          %{page: page, sort: sort, search: search_term, letter: letter, results: total}
+          %{
+            page: page,
+            sort: sort,
+            search: search_term,
+            letter: letter,
+            results: total,
+            source: :local
+          }
         )
 
         {:ok, packages, total}
@@ -220,9 +237,102 @@ defmodule HexHub.Packages do
     end
   end
 
-  @doc """
-  Apply sorting to a list of packages.
-  """
+  # Search packages from upstream and convert to local format
+  defp search_packages_upstream(search_term, opts, start_time) do
+    sort = Keyword.get(opts, :sort, :recent_downloads)
+    letter = Keyword.get(opts, :letter)
+    page = Keyword.get(opts, :page, 1)
+    per_page = Keyword.get(opts, :per_page, 30)
+
+    case Upstream.search_packages(search_term, page: page, per_page: per_page, sort: sort) do
+      {:ok, upstream_packages, total} ->
+        # Convert upstream packages to local format
+        packages =
+          upstream_packages
+          |> Enum.map(&convert_upstream_package/1)
+          |> Enum.filter(&starts_with_letter?(&1, letter))
+
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        :telemetry.execute(
+          [:hex_hub, :packages, :browse],
+          %{duration: duration_ms},
+          %{
+            page: page,
+            sort: sort,
+            search: search_term,
+            letter: letter,
+            results: total,
+            source: :upstream
+          }
+        )
+
+        Telemetry.log(:info, :package, "Searched packages from upstream", %{
+          search: search_term,
+          results: length(packages),
+          total: total
+        })
+
+        {:ok, packages, total}
+
+      {:error, _reason} ->
+        # Upstream search failed, return empty results
+        duration_ms =
+          (System.monotonic_time() - start_time)
+          |> System.convert_time_unit(:native, :millisecond)
+
+        :telemetry.execute(
+          [:hex_hub, :packages, :browse],
+          %{duration: duration_ms},
+          %{
+            page: page,
+            sort: sort,
+            search: search_term,
+            letter: letter,
+            results: 0,
+            source: :upstream_failed
+          }
+        )
+
+        {:ok, [], 0}
+    end
+  end
+
+  # Convert an upstream package map to local package format
+  defp convert_upstream_package(upstream_pkg) do
+    now = DateTime.utc_now()
+
+    # Parse dates if available
+    inserted_at = parse_upstream_datetime(upstream_pkg["inserted_at"]) || now
+    updated_at = parse_upstream_datetime(upstream_pkg["updated_at"]) || now
+
+    %{
+      name: upstream_pkg["name"],
+      repository_name: upstream_pkg["repository"] || "hexpm",
+      meta: upstream_pkg["meta"] || %{},
+      private: false,
+      downloads: (upstream_pkg["downloads"] && upstream_pkg["downloads"]["all"]) || 0,
+      inserted_at: inserted_at,
+      updated_at: updated_at,
+      html_url: upstream_pkg["html_url"] || "/packages/#{upstream_pkg["name"]}",
+      docs_html_url: upstream_pkg["docs_html_url"] || "/packages/#{upstream_pkg["name"]}/docs"
+    }
+  end
+
+  defp parse_upstream_datetime(nil), do: nil
+
+  defp parse_upstream_datetime(datetime_str) when is_binary(datetime_str) do
+    case DateTime.from_iso8601(datetime_str) do
+      {:ok, datetime, _offset} -> datetime
+      _ -> nil
+    end
+  end
+
+  defp parse_upstream_datetime(_), do: nil
+
+  # Apply sorting to a list of packages.
   defp apply_sort(packages, sort) do
     case sort do
       :recent_downloads ->
@@ -245,9 +355,7 @@ defmodule HexHub.Packages do
     end
   end
 
-  @doc """
-  Check if package name starts with the given letter.
-  """
+  # Check if package name starts with the given letter.
   defp starts_with_letter?(_package, nil), do: true
   defp starts_with_letter?(_package, ""), do: true
 
@@ -269,8 +377,8 @@ defmodule HexHub.Packages do
                 acc ->
                package =
                  package_to_map(
-                   {@packages_table, name, repository_name, meta, private, downloads,
-                    inserted_at, updated_at, html_url, docs_html_url}
+                   {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
+                    updated_at, html_url, docs_html_url}
                  )
 
                [package | acc]
@@ -301,8 +409,8 @@ defmodule HexHub.Packages do
                 acc ->
                package =
                  package_to_map(
-                   {@packages_table, name, repository_name, meta, private, downloads,
-                    inserted_at, updated_at, html_url, docs_html_url}
+                   {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
+                    updated_at, html_url, docs_html_url}
                  )
 
                [package | acc]
@@ -333,8 +441,8 @@ defmodule HexHub.Packages do
                 acc ->
                package =
                  package_to_map(
-                   {@packages_table, name, repository_name, meta, private, downloads,
-                    inserted_at, updated_at, html_url, docs_html_url}
+                   {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
+                    updated_at, html_url, docs_html_url}
                  )
 
                [package | acc]

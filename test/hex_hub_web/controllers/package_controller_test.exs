@@ -3,7 +3,7 @@ defmodule HexHubWeb.PackageControllerTest do
 
   alias HexHub.Packages
 
-  setup do
+  setup %{conn: conn} do
     Packages.reset_test_store()
 
     # Create test packages
@@ -24,7 +24,8 @@ defmodule HexHubWeb.PackageControllerTest do
         "description" => "A specification for composable modules"
       })
 
-    :ok
+    # Set Accept header for HTML to match browser routes
+    {:ok, conn: put_req_header(conn, "accept", "text/html")}
   end
 
   describe "GET /packages" do
@@ -39,7 +40,8 @@ defmodule HexHubWeb.PackageControllerTest do
       conn = get(conn, ~p"/packages?search=phoenix")
       response = html_response(conn, 200)
       assert response =~ "phoenix"
-      assert response =~ "1 packages"
+      # When searching, count is displayed with "packages matching" format
+      assert response =~ ~r/>1<\/span>\s*packages matching/
     end
 
     test "filters by search term in description", %{conn: conn} do
@@ -59,7 +61,10 @@ defmodule HexHubWeb.PackageControllerTest do
       response = html_response(conn, 200)
       assert response =~ "phoenix"
       assert response =~ "plug"
-      refute response =~ ">ecto<"
+      # The main package list should not contain ecto (starts with E, not P)
+      # Note: ecto might still appear in trend sections, so we check specifically
+      # that the filtered count is 2 (phoenix and plug)
+      assert response =~ ">2</span> packages"
     end
 
     test "paginates results", %{conn: conn} do

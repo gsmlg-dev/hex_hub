@@ -36,9 +36,25 @@ defmodule HexHubWeb.Router do
     plug :accepts, ["*/*"]
   end
 
+  # Browser routes - must come FIRST so HTML requests match before API routes
+  # The :browser pipeline only accepts ["html"], so API clients won't match these
+  scope "/", HexHubWeb do
+    pipe_through :browser
+
+    get "/", PageController, :home
+
+    # Package browsing routes (HTML interface)
+    get "/packages", PackageController, :index
+    get "/packages/:name", PackageController, :show
+    get "/packages/:name/docs", PackageController, :docs
+
+    # Legacy redirects for backward compatibility
+    get "/browse", PackageController, :redirect_to_packages
+    get "/package/:name", PackageController, :redirect_to_package
+  end
+
   # Hex registry endpoints for HEX_MIRROR compatibility
   # These serve gzipped protobuf data that the Hex client expects
-  # Must come before other routes to avoid conflicts
   scope "/", HexHubWeb.API do
     pipe_through :registry
 
@@ -50,7 +66,6 @@ defmodule HexHubWeb.Router do
   end
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
-  # These must come before browser routes to avoid conflicts
   # NOTE: These routes are intentionally duplicated at /api/* for standard API access
   # This root-level scope is specifically for Mix clients using HEX_MIRROR environment variable
   # Note: /packages/:name is handled by RegistryController above for protobuf format
@@ -94,21 +109,6 @@ defmodule HexHubWeb.Router do
     # Authenticated package management (write operations)
     post "/publish", ReleaseController, :publish
     post "/packages/:name/releases", ReleaseController, :publish
-  end
-
-  scope "/", HexHubWeb do
-    pipe_through :browser
-
-    get "/", PageController, :home
-
-    # Package browsing routes
-    get "/packages", PackageController, :index
-    get "/packages/:name", PackageController, :show
-    get "/packages/:name/docs", PackageController, :docs
-
-    # Legacy redirects for backward compatibility
-    get "/browse", PackageController, :redirect_to_packages
-    get "/package/:name", PackageController, :redirect_to_package
   end
 
   # Health check endpoints for monitoring

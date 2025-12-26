@@ -127,8 +127,11 @@ defmodule HexHub.PackagesTest do
   describe "trend queries" do
     test "list_most_downloaded/1 returns top packages by downloads" do
       # Create packages (downloads default to 0, but ordering should work)
-      {:ok, _} = Packages.create_package("popular", "hexpm", %{"description" => "Popular package"})
-      {:ok, _} = Packages.create_package("less_popular", "hexpm", %{"description" => "Less popular"})
+      {:ok, _} =
+        Packages.create_package("popular", "hexpm", %{"description" => "Popular package"})
+
+      {:ok, _} =
+        Packages.create_package("less_popular", "hexpm", %{"description" => "Less popular"})
 
       packages = Packages.list_most_downloaded(5)
       assert is_list(packages)
