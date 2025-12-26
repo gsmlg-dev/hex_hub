@@ -1,12 +1,69 @@
 defmodule HexHub.StorageConfigTest do
-  use ExUnit.Case, async: true
+  # async: false to prevent test isolation issues with Application.put_env
+  use ExUnit.Case, async: false
 
   alias HexHub.StorageConfig
 
   setup do
+    # Save original config
+    original_config = %{
+      storage_type: Application.get_env(:hex_hub, :storage_type),
+      storage_path: Application.get_env(:hex_hub, :storage_path),
+      s3_bucket: Application.get_env(:hex_hub, :s3_bucket),
+      s3_region: Application.get_env(:hex_hub, :s3_region),
+      s3_host: Application.get_env(:hex_hub, :s3_host),
+      s3_port: Application.get_env(:hex_hub, :s3_port),
+      s3_scheme: Application.get_env(:hex_hub, :s3_scheme),
+      s3_path_style: Application.get_env(:hex_hub, :s3_path_style)
+    }
+
     # Reset configuration before each test
     Application.put_env(:hex_hub, :s3_region, "us-east-1")
     Application.put_env(:hex_hub, :storage_type, :local)
+
+    # Restore original config after each test
+    on_exit(fn ->
+      Application.put_env(:hex_hub, :storage_type, original_config.storage_type || :local)
+
+      Application.put_env(
+        :hex_hub,
+        :storage_path,
+        original_config.storage_path || "priv/test_storage"
+      )
+
+      Application.put_env(:hex_hub, :s3_region, original_config.s3_region || "us-east-1")
+
+      if original_config.s3_bucket do
+        Application.put_env(:hex_hub, :s3_bucket, original_config.s3_bucket)
+      else
+        Application.delete_env(:hex_hub, :s3_bucket)
+      end
+
+      if original_config.s3_host do
+        Application.put_env(:hex_hub, :s3_host, original_config.s3_host)
+      else
+        Application.delete_env(:hex_hub, :s3_host)
+      end
+
+      if original_config.s3_port do
+        Application.put_env(:hex_hub, :s3_port, original_config.s3_port)
+      else
+        Application.delete_env(:hex_hub, :s3_port)
+      end
+
+      if original_config.s3_scheme do
+        Application.put_env(:hex_hub, :s3_scheme, original_config.s3_scheme)
+      else
+        Application.delete_env(:hex_hub, :s3_scheme)
+      end
+
+      if original_config.s3_path_style do
+        Application.put_env(:hex_hub, :s3_path_style, original_config.s3_path_style)
+      else
+        Application.delete_env(:hex_hub, :s3_path_style)
+      end
+    end)
+
     :ok
   end
 

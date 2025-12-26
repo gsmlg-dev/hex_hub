@@ -8,8 +8,9 @@ defmodule E2E.ProxyTest do
 
   use E2E.Case
 
-  # Default timeout for E2E test scenarios (60 seconds)
-  @test_timeout 60_000
+  # Default timeout for E2E test scenarios (120 seconds)
+  # Proxy tests may take longer due to network latency to hex.pm
+  @test_timeout 120_000
 
   # Path to test fixture project
   @fixture_project_path Path.join([File.cwd!(), "e2e_test", "fixtures", "test_project"])

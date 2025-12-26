@@ -1,161 +1,242 @@
 <Layouts.app flash={@flash}>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="bg-base-100 shadow-xl rounded-lg p-6 mb-6">
-      <div class="flex items-start justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-base-content mb-2">{@package.name}</h1>
-          <p class="text-lg text-base-content/70 mb-4">
-            {@package.meta["description"] || "No description available"}
-          </p>
-
-          <div class="flex flex-wrap gap-2">
-            <span class="badge badge-primary badge-lg">Latest: v{@package.latest_version}</span>
-            <span class="badge badge-ghost badge-lg">📥 {@package.downloads || 0} downloads</span>
-            <span class="badge badge-outline badge-lg">
-              {@package.repository_name || "hexpm"}
-            </span>
-          </div>
+    <!-- Breadcrumb -->
+    <div class="text-sm breadcrumbs mb-6">
+      <ul>
+        <li><a href="/packages">Packages</a></li>
+        <li>{@package.name}</li>
+      </ul>
+    </div>
+    
+<!-- Header Section -->
+    <div class="flex flex-col lg:flex-row justify-between gap-6 mb-8">
+      <div class="flex-1">
+        <h1 class="text-3xl font-bold mb-2">{@package.name}</h1>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <span class="badge badge-lg badge-primary">v{@latest_version}</span>
+          <span class="badge badge-lg badge-outline">{license_name(@package)}</span>
         </div>
-
-        <div class="text-right">
-          <div class="text-sm text-base-content/60">
-            <div>Published {format_date(@package.inserted_at)}</div>
-            <div>Updated {format_date(@package.updated_at)}</div>
-          </div>
+        <p class="text-lg text-base-content/70 mb-4">
+          {@package.meta["description"] || "No description available"}
+        </p>
+        
+<!-- External Links -->
+        <div class="flex flex-wrap gap-4">
+          <%= if @package.docs_html_url do %>
+            <a
+              href={@package.docs_html_url}
+              target="_blank"
+              class="link link-primary flex items-center gap-1"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                />
+              </svg>
+              Documentation
+            </a>
+          <% end %>
+          <%= for {name, url} <- @package.meta["links"] || %{} do %>
+            <a href={url} target="_blank" class="link link-secondary flex items-center gap-1">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-4 h-4"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+                />
+              </svg>
+              {name}
+            </a>
+          <% end %>
+        </div>
+      </div>
+      
+<!-- Download Stats -->
+      <div class="stats shadow bg-base-100">
+        <div class="stat">
+          <div class="stat-title">Total Downloads</div>
+          <div class="stat-value text-primary">{format_downloads(@download_stats.total)}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-title">Recent</div>
+          <div class="stat-value text-secondary">{format_downloads(@download_stats.recent)}</div>
+        </div>
+      </div>
+    </div>
+    
+<!-- Installation -->
+    <div class="card bg-base-100 shadow-xl mb-8">
+      <div class="card-body">
+        <h2 class="card-title text-xl mb-4">Installation</h2>
+        <div class="mockup-code">
+          <pre data-prefix="#"><code>mix.exs</code></pre>
+          <pre data-prefix=""><code>{"{:#{@package.name}, \"~> #{@latest_version}\"}"}</code></pre>
         </div>
       </div>
     </div>
 
     <div class="grid md:grid-cols-3 gap-6">
-      <div class="md:col-span-2">
-        <div class="bg-base-100 shadow-xl rounded-lg p-6 mb-6">
-          <h2 class="text-2xl font-bold mb-4">Releases</h2>
-
-          <div class="space-y-4">
-            <%= for release <- @releases do %>
-              <div class="border border-base-300 rounded-lg p-4">
-                <div class="flex items-center justify-between mb-2">
-                  <h3 class="text-lg font-semibold">
-                    v{release.version}
-                  </h3>
-
-                  <div class="flex items-center gap-2">
-                    <%= if release.has_docs do %>
-                      <span class="badge badge-success badge-sm">📚 Docs</span>
-                    <% end %>
-
-                    <%= if release.retired do %>
-                      <span class="badge badge-error badge-sm">Retired</span>
-                    <% end %>
-                  </div>
-                </div>
-
-                <div class="text-sm text-base-content/70 mb-2">
-                  Published {format_date(release.inserted_at)}
-                </div>
-
-                <%= if release.meta do %>
-                  <div class="text-sm">
-                    <%= if release.meta["description"] do %>
-                      <p>{release.meta["description"]}</p>
-                    <% end %>
-
-                    <%= if release.meta["links"] && !Enum.empty?(release.meta["links"]) do %>
-                      <div class="mt-2">
-                        <strong>Links:</strong>
-                        <div class="flex flex-wrap gap-2 mt-1">
-                          <%= for {name, url} <- release.meta["links"] do %>
-                            <a href={url} target="_blank" class="link link-primary text-xs">
-                              {name}
-                            </a>
+      <!-- Main Content -->
+      <div class="md:col-span-2 space-y-6">
+        <!-- Versions -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h2 class="card-title text-xl mb-4">Versions</h2>
+            <div class="overflow-x-auto">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Released</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for release <- @releases do %>
+                    <tr class={if release.retired, do: "opacity-50"}>
+                      <td class="font-mono">{release.version}</td>
+                      <td>{format_relative_time(release.inserted_at)}</td>
+                      <td>
+                        <div class="flex gap-2">
+                          <%= if release.has_docs do %>
+                            <span class="badge badge-success badge-sm">Docs</span>
+                          <% end %>
+                          <%= if release.retired do %>
+                            <span class="badge badge-warning badge-sm">Retired</span>
                           <% end %>
                         </div>
-                      </div>
-                    <% end %>
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-
-        <%= if Enum.any?(@releases, &(!Enum.empty?(&1.requirements))) do %>
-          <div class="bg-base-100 shadow-xl rounded-lg p-6">
-            <h2 class="text-2xl font-bold mb-4">Dependencies</h2>
-
-            <%= for release <- Enum.filter(@releases, &(!Enum.empty?(&1.requirements))) do %>
-              <div class="mb-4">
-                <h3 class="text-lg font-semibold mb-2">v{release.version} Requirements</h3>
-
-                <div class="space-y-2">
-                  <%= for {dep_name, req} <- release.requirements do %>
-                    <div class="flex items-center justify-between p-2 bg-base-200 rounded">
-                      <span class="font-mono text-sm">{dep_name}</span>
-                      <span class="text-sm text-base-content/70">{req}</span>
-                    </div>
-                  <% end %>
-                </div>
+        
+<!-- Dependencies -->
+        <%= if map_size(@dependencies) > 0 do %>
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h2 class="card-title text-xl mb-4">Dependencies</h2>
+              <div class="overflow-x-auto">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Package</th>
+                      <th>Requirement</th>
+                      <th>Optional</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <%= for {name, req} <- @dependencies do %>
+                      <tr>
+                        <td>
+                          <a href={~p"/packages/#{name}"} class="link link-primary">{name}</a>
+                        </td>
+                        <td class="font-mono text-sm">
+                          <%= case req do %>
+                            <% %{"requirement" => r} -> %>
+                              {r}
+                            <% r when is_binary(r) -> %>
+                              {r}
+                            <% _ -> %>
+                              any
+                          <% end %>
+                        </td>
+                        <td>
+                          <%= case req do %>
+                            <% %{"optional" => true} -> %>
+                              <span class="badge badge-ghost badge-sm">Optional</span>
+                            <% _ -> %>
+                              -
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
               </div>
-            <% end %>
+            </div>
           </div>
         <% end %>
       </div>
-
+      
+<!-- Sidebar -->
       <div class="space-y-6">
-        <div class="bg-base-100 shadow-xl rounded-lg p-4">
-          <h3 class="font-semibold mb-3">Quick Actions</h3>
-
-          <div class="space-y-2">
-            <a href={~p"/package/#{@package.name}/docs"} class="btn btn-primary w-full">
-              <%= if Enum.any?(@releases, & &1.has_docs) do %>
-                View Documentation
-              <% else %>
-                No Documentation
-              <% end %>
-            </a>
-
-            <button class="btn btn-outline w-full" disabled>
-              Add to Favorites
-            </button>
-          </div>
-        </div>
-
-        <div class="bg-base-100 shadow-xl rounded-lg p-4">
-          <h3 class="font-semibold mb-3">Package Info</h3>
-
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-base-content/70">Name:</span>
-              <span class="font-mono">{@package.name}</span>
-            </div>
-
-            <div class="flex justify-between">
-              <span class="text-base-content/70">Latest:</span>
-              <span>v{@package.latest_version}</span>
-            </div>
-
-            <div class="flex justify-between">
-              <span class="text-base-content/70">Repository:</span>
-              <span>{@package.repository_name || "hexpm"}</span>
-            </div>
-
-            <div class="flex justify-between">
-              <span class="text-base-content/70">Downloads:</span>
-              <span>{@package.downloads || 0}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-base-100 shadow-xl rounded-lg p-4">
-          <h3 class="font-semibold mb-3">Recent Activity</h3>
-
-          <div class="space-y-2 text-sm">
-            <%= for release <- Enum.take(@releases, 3) do %>
-              <div class="flex items-center justify-between">
-                <span class="text-base-content/70">v{release.version} released:</span>
-                <span>{format_date(release.inserted_at)}</span>
+        <!-- Package Info -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h3 class="font-semibold mb-3">Package Info</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Name:</span>
+                <span class="font-mono">{@package.name}</span>
               </div>
-            <% end %>
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Latest:</span>
+                <span>v{@latest_version}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-base-content/70">License:</span>
+                <span>{license_name(@package)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Repository:</span>
+                <span>{@package.repository_name || "hexpm"}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Downloads:</span>
+                <span>{@package.downloads || 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+<!-- Maintainers -->
+        <%= if @package.meta["maintainers"] && length(@package.meta["maintainers"]) > 0 do %>
+          <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+              <h3 class="font-semibold mb-3">Maintainers</h3>
+              <div class="flex flex-wrap gap-2">
+                <%= for maintainer <- @package.meta["maintainers"] do %>
+                  <span class="badge badge-outline">{maintainer}</span>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        
+<!-- Dates -->
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <h3 class="font-semibold mb-3">Timeline</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Published:</span>
+                <span>{format_date(@package.inserted_at)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-base-content/70">Updated:</span>
+                <span>{format_date(@package.updated_at)}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

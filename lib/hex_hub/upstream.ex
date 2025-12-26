@@ -155,6 +155,76 @@ defmodule HexHub.Upstream do
   end
 
   @doc """
+  Search packages from upstream.
+
+  ## Options
+
+  - `:page` - Page number (default: 1)
+  - `:per_page` - Items per page (default: 30)
+  - `:sort` - Sort option (default: nil, uses upstream default)
+  """
+  @spec search_packages(String.t(), keyword()) :: {:ok, [map()], integer()} | {:error, String.t()}
+  def search_packages(query, opts \\ []) do
+    upstream_config = config()
+
+    if not upstream_config.enabled do
+      {:error, "Upstream is disabled"}
+    else
+      start_time = System.monotonic_time()
+      page = Keyword.get(opts, :page, 1)
+      per_page = Keyword.get(opts, :per_page, 30)
+      sort = Keyword.get(opts, :sort)
+
+      # Build query params
+      params =
+        [{"search", query}, {"page", to_string(page)}, {"per_page", to_string(per_page)}]
+        |> maybe_add_sort(sort)
+
+      query_string = URI.encode_query(params)
+      url = "#{upstream_config.api_url}/api/packages?#{query_string}"
+
+      result = make_request_with_retry(url, upstream_config)
+
+      duration_ms =
+        (System.monotonic_time() - start_time)
+        |> System.convert_time_unit(:native, :millisecond)
+
+      case result do
+        {:ok, packages} when is_list(packages) ->
+          HexHub.Telemetry.track_upstream_request("search_packages", duration_ms, 200)
+          # Hex API returns packages directly, we estimate total from result size
+          total =
+            if length(packages) < per_page,
+              do: (page - 1) * per_page + length(packages),
+              else: page * per_page + 1
+
+          {:ok, packages, total}
+
+        {:ok, %{"packages" => packages} = response} when is_list(packages) ->
+          HexHub.Telemetry.track_upstream_request("search_packages", duration_ms, 200)
+          total = Map.get(response, "total", length(packages))
+          {:ok, packages, total}
+
+        {:ok, _} ->
+          HexHub.Telemetry.track_upstream_request("search_packages", duration_ms, 200)
+          {:ok, [], 0}
+
+        {:error, _reason} ->
+          HexHub.Telemetry.track_upstream_request("search_packages", duration_ms, 500, "error")
+          {:error, "Failed to search upstream"}
+      end
+    end
+  end
+
+  defp maybe_add_sort(params, nil), do: params
+  defp maybe_add_sort(params, :recent_downloads), do: params ++ [{"sort", "recent_downloads"}]
+  defp maybe_add_sort(params, :total_downloads), do: params ++ [{"sort", "total_downloads"}]
+  defp maybe_add_sort(params, :name), do: params ++ [{"sort", "name"}]
+  defp maybe_add_sort(params, :recently_updated), do: params ++ [{"sort", "updated_at"}]
+  defp maybe_add_sort(params, :recently_created), do: params ++ [{"sort", "inserted_at"}]
+  defp maybe_add_sort(params, _), do: params
+
+  @doc """
   Fetch package releases from upstream.
   """
   @spec fetch_releases(String.t()) :: {:ok, [map()]} | {:error, String.t()}
@@ -368,26 +438,44 @@ defmodule HexHub.Upstream do
           item_count: length(body)
         })
 
-        # Handle hex package format - extract the tarball contents
-        # Keys may be strings or charlists
-        contents_key = "contents.tar.gz"
+        # Check if this is a list of maps (API response like search results)
+        # or a list of tuples (tarball contents)
+        case body do
+          [] ->
+            # Empty list - return as is
+            {:ok, []}
 
-        case Enum.find(body, fn {key, _} ->
-               key == contents_key or key == String.to_charlist(contents_key)
-             end) do
-          {_, tarball_data} when is_binary(tarball_data) ->
-            Telemetry.log(:debug, :upstream, "Found tarball contents", %{
-              size: byte_size(tarball_data)
-            })
-
-            {:ok, tarball_data}
+          [first | _] when is_map(first) ->
+            # List of maps - this is a search result or similar API response
+            {:ok, body}
 
           _ ->
-            Telemetry.log(:error, :upstream, "Invalid package format", %{
-              available_keys: Enum.map(body, fn {k, _} -> k end)
-            })
+            # Handle hex package format - extract the tarball contents
+            # Keys may be strings or charlists
+            contents_key = "contents.tar.gz"
 
-            {:error, "Invalid package format: missing contents.tar.gz"}
+            case Enum.find(body, fn
+                   {key, _} -> key == contents_key or key == String.to_charlist(contents_key)
+                   _ -> false
+                 end) do
+              {_, tarball_data} when is_binary(tarball_data) ->
+                Telemetry.log(:debug, :upstream, "Found tarball contents", %{
+                  size: byte_size(tarball_data)
+                })
+
+                {:ok, tarball_data}
+
+              _ ->
+                Telemetry.log(:error, :upstream, "Invalid package format", %{
+                  available_keys:
+                    Enum.map(body, fn
+                      {k, _} -> k
+                      other -> inspect(other)
+                    end)
+                })
+
+                {:error, "Invalid package format: missing contents.tar.gz"}
+            end
         end
 
       {:ok, %{status: 404}} ->

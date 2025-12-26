@@ -135,15 +135,16 @@ defmodule E2E.PublishTest do
 
       # Run hex publish with shorter timeout since we expect it to fail quickly
       # In CI, without an API key hex may hang trying to authenticate interactively
-      {output, exit_code} = PublishHelper.run_hex_publish(env, timeout: 30_000)
+      {output, exit_code} = PublishHelper.run_hex_publish(env, timeout: 15_000)
 
       # Should fail with authentication error or timeout (both indicate auth failure)
       assert exit_code != 0, "Expected non-zero exit code, got #{exit_code}"
 
       # Accept either explicit auth error OR timeout (which also indicates auth failure)
+      # Note: "Command timed out" is the message from our timeout handler
       assert output =~ "401" or output =~ "unauthorized" or output =~ "Unauthorized" or
                output =~ "authentication" or output =~ "Authentication" or
-               output =~ "timed out",
+               output =~ "timed out" or output =~ "Command timed out",
              "Expected authentication error or timeout in output: #{output}"
     end
 

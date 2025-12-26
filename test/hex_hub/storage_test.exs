@@ -1,7 +1,13 @@
 defmodule HexHub.StorageTest do
-  use ExUnit.Case
+  # async: false to prevent test isolation issues with Application.put_env
+  use ExUnit.Case, async: false
 
   setup do
+    # Save original config
+    original_storage_type = Application.get_env(:hex_hub, :storage_type)
+    original_storage_path = Application.get_env(:hex_hub, :storage_path)
+    original_s3_bucket = Application.get_env(:hex_hub, :s3_bucket)
+
     # Ensure we start with local storage for each test
     Application.put_env(:hex_hub, :storage_type, :local)
     Application.put_env(:hex_hub, :storage_path, "priv/test_storage")
@@ -9,6 +15,18 @@ defmodule HexHub.StorageTest do
     # Create necessary subdirectories
     File.mkdir_p!("priv/test_storage/packages")
     File.mkdir_p!("priv/test_storage/docs")
+
+    # Always restore original config after test
+    on_exit(fn ->
+      Application.put_env(:hex_hub, :storage_type, original_storage_type || :local)
+      Application.put_env(:hex_hub, :storage_path, original_storage_path || "priv/test_storage")
+
+      if original_s3_bucket do
+        Application.put_env(:hex_hub, :s3_bucket, original_s3_bucket)
+      else
+        Application.delete_env(:hex_hub, :s3_bucket)
+      end
+    end)
 
     :ok
   end
@@ -93,6 +111,7 @@ defmodule HexHub.StorageTest do
   describe "S3 storage configuration" do
     test "returns error when bucket not configured" do
       # Temporarily remove bucket configuration
+      # on_exit callback will restore to original values
       Application.put_env(:hex_hub, :storage_type, :s3)
       Application.delete_env(:hex_hub, :s3_bucket)
 
@@ -100,9 +119,6 @@ defmodule HexHub.StorageTest do
       content = "test package content"
 
       assert {:error, "S3 bucket not configured"} = HexHub.Storage.upload(key, content)
-
-      # Restore configuration
-      Application.put_env(:hex_hub, :storage_type, :local)
     end
 
     @tag :s3
@@ -112,14 +128,12 @@ defmodule HexHub.StorageTest do
       # S3 configuration validation is tested separately without actual uploads
 
       # When no bucket configured, verify error handling
+      # on_exit callback will restore to original values
       Application.put_env(:hex_hub, :storage_type, :s3)
       Application.delete_env(:hex_hub, :s3_bucket)
 
       result = HexHub.Storage.upload("test", "content")
       assert {:error, "S3 bucket not configured"} = result
-
-      # Restore configuration
-      Application.put_env(:hex_hub, :storage_type, :local)
     end
 
     test "signed_url/2 returns error for local storage" do
@@ -130,15 +144,13 @@ defmodule HexHub.StorageTest do
     end
 
     test "signed_url/2 returns error when bucket not configured" do
+      # on_exit callback will restore to original values
       Application.put_env(:hex_hub, :storage_type, :s3)
       Application.delete_env(:hex_hub, :s3_bucket)
 
       key = "packages/test_package-1.0.0.tar.gz"
 
       assert {:error, "S3 bucket not configured"} = HexHub.Storage.signed_url(key)
-
-      # Restore configuration
-      Application.put_env(:hex_hub, :storage_type, :local)
     end
 
     @tag :s3
@@ -148,14 +160,12 @@ defmodule HexHub.StorageTest do
       # S3 URL generation validation is tested separately without actual S3 access
 
       # When no bucket configured, verify error handling
+      # on_exit callback will restore to original values
       Application.put_env(:hex_hub, :storage_type, :s3)
       Application.delete_env(:hex_hub, :s3_bucket)
 
       result = HexHub.Storage.signed_url("test")
       assert {:error, "S3 bucket not configured"} = result
-
-      # Restore configuration
-      Application.put_env(:hex_hub, :storage_type, :local)
     end
   end
 end
