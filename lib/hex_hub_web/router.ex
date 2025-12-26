@@ -55,26 +55,33 @@ defmodule HexHubWeb.Router do
 
   # Hex registry endpoints for HEX_MIRROR compatibility
   # These serve gzipped protobuf data that the Hex client expects
+  # Note: /packages/:name registry route moved to /repo/packages/:name to avoid
+  # conflict with browser route
   scope "/", HexHubWeb.API do
     pipe_through :registry
 
     # Registry endpoints (gzipped protobuf format)
     get "/names", RegistryController, :names
     get "/versions", RegistryController, :versions
-    # Package registry data (different from /api/packages/:name which returns JSON)
+  end
+
+  # Registry package endpoint at /repo prefix to avoid conflict with browser routes
+  scope "/repo", HexHubWeb.API do
+    pipe_through :registry
+
+    # Package registry data (protobuf format for Hex client)
     get "/packages/:name", RegistryController, :package
   end
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
   # NOTE: These routes are intentionally duplicated at /api/* for standard API access
   # This root-level scope is specifically for Mix clients using HEX_MIRROR environment variable
-  # Note: /packages/:name is handled by RegistryController above for protobuf format
+  # Note: /packages and /packages/:name are browser routes (HTML), use /api/* for JSON
   scope "/", HexHubWeb.API do
     pipe_through :api_cached
 
-    # Public endpoints for Mix/HEX_MIRROR support (with caching)
-    get "/packages", PackageController, :list
-    # Note: /packages/:name is in registry scope above for protobuf support
+    # Release and repo endpoints for Mix/HEX_MIRROR support (with caching)
+    # Note: /packages is browser route, use /api/packages for JSON list
     get "/packages/:name/releases/:version", ReleaseController, :show
     get "/repos", RepositoryController, :list
     get "/repos/:name", RepositoryController, :show
