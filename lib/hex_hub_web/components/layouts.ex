@@ -35,14 +35,13 @@ defmodule HexHubWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <.dm_simple_appbar
-      title="HexHub"
-      class={[
-        "z-50 bg-primary",
-        "shadow shadow-primary-content"
-      ]}
-    >
-      <:logo></:logo>
+    <.dm_simple_appbar class={[
+      "z-50 bg-primary",
+      "shadow shadow-primary-content"
+    ]}>
+      <:logo>
+        <a href="/" class="text-xl font-bold text-primary-content hover:opacity-80">HexHub</a>
+      </:logo>
       <:user_profile>
         <div class="flex items-center">
           <.dm_theme_switcher />

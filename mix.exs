@@ -65,7 +65,8 @@ defmodule HexHub.MixProject do
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:nimble_totp, "~> 1.0"},
-      {:qr_code, "~> 3.0"}
+      {:qr_code, "~> 3.0"},
+      {:yaml_elixir, "~> 2.11"}
     ]
   end
 

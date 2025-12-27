@@ -1,0 +1,234 @@
+<Layouts.app flash={@flash}>
+  <.docs_layout current_page={@current_page} page_title={@page_title}>
+    <div class="prose prose-lg max-w-none">
+      <h1 class="text-4xl font-bold mb-4">API Reference</h1>
+
+      <p class="text-lg text-base-content/70 mb-4">
+        {@api_info.description |> String.split("\n") |> List.first()}
+      </p>
+
+      <div class="flex gap-4 not-prose mb-8">
+        <div class="badge badge-lg badge-outline">Version: {@api_info.version}</div>
+        <a href="/openapi/hex-api.yaml" target="_blank" class="badge badge-lg badge-primary gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-4 h-4"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+            />
+          </svg>
+          Download OpenAPI Spec
+        </a>
+      </div>
+
+      <h2 id="authentication">Authentication</h2>
+
+      <p>
+        The HexHub API supports two authentication methods:
+      </p>
+
+      <div class="overflow-x-auto not-prose mb-6">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Use Case</th>
+              <th>Header</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Basic Auth</strong></td>
+              <td>Generating API tokens</td>
+              <td><code>Authorization: Basic base64(username:password)</code></td>
+            </tr>
+            <tr>
+              <td><strong>Bearer Token</strong></td>
+              <td>All API operations</td>
+              <td><code>Authorization: Bearer your_api_key</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="rate-limiting">Rate Limiting</h2>
+
+      <p>
+        API requests are limited to <strong>100 requests per minute</strong>
+        per IP address, or <strong>500 requests per minute</strong>
+        for authenticated users. The following headers
+        are returned with each response:
+      </p>
+
+      <div class="overflow-x-auto not-prose mb-6">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th>Header</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>X-RateLimit-Limit</code></td>
+              <td>Maximum requests per minute</td>
+            </tr>
+            <tr>
+              <td><code>X-RateLimit-Remaining</code></td>
+              <td>Remaining requests in the current window</td>
+            </tr>
+            <tr>
+              <td><code>X-RateLimit-Reset</code></td>
+              <td>UNIX timestamp for when the limit resets</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="media-types">Media Types</h2>
+
+      <p>The API supports the following media types:</p>
+
+      <ul>
+        <li><code>application/json</code> - Standard JSON format</li>
+        <li><code>application/vnd.hex+json</code> - Hex-specific JSON format</li>
+        <li><code>application/vnd.hex+erlang</code> - Erlang term format</li>
+      </ul>
+
+      <h2 id="endpoints">Endpoints</h2>
+
+      <div class="not-prose">
+        <!-- Quick navigation -->
+        <div class="flex flex-wrap gap-2 mb-8">
+          <%= for {tag, _endpoints} <- @endpoints_by_tag do %>
+            <a
+              href={"##{String.downcase(String.replace(tag, " ", "-"))}"}
+              class="badge badge-outline badge-lg hover:badge-primary"
+            >
+              {tag}
+            </a>
+          <% end %>
+        </div>
+        
+<!-- Endpoint sections by tag -->
+        <%= for {tag, endpoints} <- @endpoints_by_tag do %>
+          <section id={String.downcase(String.replace(tag, " ", "-"))} class="mb-12 scroll-mt-20">
+            <h3 class="text-2xl font-bold mb-4 flex items-center gap-2">
+              <span class="text-primary">#</span>
+              {tag}
+            </h3>
+
+            <div class="space-y-4">
+              <%= for {path, method, spec} <- endpoints do %>
+                <div class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow">
+                  <div class="card-body p-4">
+                    <div class="flex flex-wrap items-center gap-3 mb-2">
+                      <span class={method_badge_class(method)}>
+                        {String.upcase(method)}
+                      </span>
+                      <code class="text-sm font-mono bg-base-200 px-2 py-1 rounded">{path}</code>
+                    </div>
+                    <p class="text-base-content/80 mb-2">
+                      {spec["summary"]}
+                    </p>
+                    <%= if spec["description"] && spec["description"] != spec["summary"] do %>
+                      <p class="text-sm text-base-content/60">
+                        {spec["description"]
+                        |> String.split("\n")
+                        |> List.first()
+                        |> String.slice(0, 200)}
+                        <%= if String.length(spec["description"] || "") > 200 do %>
+                          ...
+                        <% end %>
+                      </p>
+                    <% end %>
+                    
+<!-- Parameters -->
+                    <%= if spec["parameters"] && length(spec["parameters"]) > 0 do %>
+                      <div class="mt-3">
+                        <h4 class="text-sm font-semibold mb-2">Parameters:</h4>
+                        <div class="flex flex-wrap gap-2">
+                          <%= for param <- spec["parameters"] do %>
+                            <span class="badge badge-ghost badge-sm">
+                              {param["name"]}
+                              <%= if param["required"] do %>
+                                <span class="text-error">*</span>
+                              <% end %>
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                    
+<!-- Response codes -->
+                    <%= if spec["responses"] do %>
+                      <div class="mt-3">
+                        <h4 class="text-sm font-semibold mb-2">Responses:</h4>
+                        <div class="flex flex-wrap gap-2">
+                          <%= for {code, _response} <- spec["responses"] do %>
+                            <span class={
+                              cond do
+                                String.starts_with?(code, "2") -> "badge badge-success badge-sm"
+                                String.starts_with?(code, "4") -> "badge badge-warning badge-sm"
+                                String.starts_with?(code, "5") -> "badge badge-error badge-sm"
+                                true -> "badge badge-ghost badge-sm"
+                              end
+                            }>
+                              {code}
+                            </span>
+                          <% end %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+      </div>
+
+      <h2 id="error-responses">Error Responses</h2>
+
+      <p>
+        Error responses follow a consistent format across all endpoints:
+      </p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix=""><code>&#123;</code></pre>
+        <pre data-prefix=""><code>  "status"&#58; 404,</code></pre>
+        <pre data-prefix=""><code>  "message"&#58; "Not Found",</code></pre>
+        <pre data-prefix=""><code>  "errors"&#58; &#123;</code></pre>
+        <pre data-prefix=""><code>    "detail"&#58; "Package not found"</code></pre>
+        <pre data-prefix=""><code>  &#125;</code></pre>
+        <pre data-prefix=""><code>&#125;</code></pre>
+      </div>
+
+      <h2 id="next-steps">Next Steps</h2>
+
+      <ul>
+        <li>
+          <a href="/docs/getting-started" class="link link-primary">Getting Started</a>
+          - Configure your environment to use HexHub
+        </li>
+        <li>
+          <a href="/docs/publishing" class="link link-primary">Publishing</a>
+          - Learn how to publish packages
+        </li>
+        <li>
+          <a href="/openapi/hex-api.yaml" target="_blank" class="link link-primary">
+            OpenAPI Specification
+          </a>
+          - Download the complete API spec for code generation
+        </li>
+      </ul>
+    </div>
+  </.docs_layout>
+</Layouts.app>
