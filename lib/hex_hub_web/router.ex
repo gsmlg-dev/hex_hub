@@ -43,6 +43,12 @@ defmodule HexHubWeb.Router do
 
     get "/", PageController, :home
 
+    # Documentation routes
+    get "/docs", DocsController, :index
+    get "/docs/getting-started", DocsController, :getting_started
+    get "/docs/publishing", DocsController, :publishing
+    get "/docs/api-reference", DocsController, :api_reference
+
     # Package browsing routes (HTML interface)
     get "/packages", PackageController, :index
     get "/packages/:name", PackageController, :show

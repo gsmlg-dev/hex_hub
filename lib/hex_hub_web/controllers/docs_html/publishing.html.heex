@@ -1,0 +1,237 @@
+<Layouts.app flash={@flash}>
+  <.docs_layout current_page={@current_page} page_title={@page_title}>
+    <div class="prose prose-lg max-w-none">
+      <h1 class="text-4xl font-bold mb-6">Publishing Packages to HexHub</h1>
+
+      <p class="text-lg text-base-content/70 mb-8">
+        Learn how to publish your Elixir packages to HexHub. This guide covers account creation,
+        API key generation, and the complete publishing workflow.
+      </p>
+
+      <h2 id="prerequisites">Prerequisites</h2>
+
+      <p>Before publishing packages to HexHub, you need:</p>
+
+      <ul>
+        <li>A HexHub user account</li>
+        <li>An API key with write permissions</li>
+        <li>A valid Elixir package with a <code>mix.exs</code> file</li>
+      </ul>
+
+      <h2 id="account-setup">Account Setup</h2>
+
+      <h3>Creating an Account</h3>
+
+      <p>Create a new HexHub account using the API:</p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="$"><code>curl -X POST <%= @hex_hub_api_url %>/users \</code></pre>
+        <pre data-prefix=" "><code>  -H "Content-Type&#58; application/json" \</code></pre>
+        <pre data-prefix=" "><code>  -d '&#123;"username"&#58; "myuser", "email"&#58; "user@example.com", "password"&#58; "secret123"&#125;'</code></pre>
+      </div>
+
+      <h3 id="api-keys">Generating an API Key</h3>
+
+      <p>
+        Generate an API key with write permissions. You'll need to authenticate with your
+        username and password using Basic Authentication:
+      </p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="$"><code>curl -X POST <%= @hex_hub_api_url %>/keys \</code></pre>
+        <pre data-prefix=" "><code>  -u "myuser&#58;secret123" \</code></pre>
+        <pre data-prefix=" "><code>  -H "Content-Type&#58; application/json" \</code></pre>
+        <pre data-prefix=" "><code>  -d '&#123;"name"&#58; "publish-key", "permissions"&#58; [&#123;"domain"&#58; "api", "resource"&#58; "write"&#125;]&#125;'</code></pre>
+      </div>
+
+      <p>Save the returned API key securely - you'll need it for publishing.</p>
+
+      <h2 id="publishing">Publishing Packages</h2>
+
+      <h3>Quick Publish</h3>
+
+      <p>
+        To publish your package to HexHub, set the <code>HEX_API_URL</code> environment variable
+        and run <code>mix hex.publish</code>:
+      </p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="$"><code class="text-success">HEX_API_URL</code><code>=<%= @hex_hub_api_url %> mix hex.publish</code></pre>
+      </div>
+
+      <h3>With API Key (Non-Interactive)</h3>
+
+      <p>
+        For automated publishing in CI/CD pipelines, use both <code>HEX_API_URL</code>
+        and <code>HEX_API_KEY</code>:
+      </p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="$"><code class="text-success">HEX_API_URL</code><code>=<%= @hex_hub_api_url %> \</code></pre>
+        <pre data-prefix=" "><code class="text-success">HEX_API_KEY</code><code>=your_api_key \</code></pre>
+        <pre data-prefix=" "><code>mix hex.publish --yes</code></pre>
+      </div>
+
+      <div class="alert alert-info not-prose mb-6">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          class="stroke-current shrink-0 w-6 h-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          >
+          </path>
+        </svg>
+        <div>
+          <h3 class="font-bold">The --yes Flag</h3>
+          <div class="text-sm">
+            The <code>--yes</code> flag skips all confirmation prompts, making it suitable for
+            automated publishing. Without it, mix will prompt for confirmation before publishing.
+          </div>
+        </div>
+      </div>
+
+      <h3>Publishing Package Only (No Docs)</h3>
+
+      <p>To publish just the package without documentation:</p>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="$"><code class="text-success">HEX_API_URL</code><code>=<%= @hex_hub_api_url %> \</code></pre>
+        <pre data-prefix=" "><code>mix hex.publish package --yes</code></pre>
+      </div>
+
+      <h2 id="ci-cd">CI/CD Integration</h2>
+
+      <h3>GitHub Actions</h3>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="1"><code># .github/workflows/publish.yml</code></pre>
+        <pre data-prefix="2"><code class="text-info">name:</code> <code>Publish to HexHub</code></pre>
+        <pre data-prefix="3"><code class="text-info">on:</code></pre>
+        <pre data-prefix="4"><code>  release:</code></pre>
+        <pre data-prefix="5"><code>    types: [published]</code></pre>
+        <pre data-prefix="6"><code></code></pre>
+        <pre data-prefix="7"><code class="text-info">jobs:</code></pre>
+        <pre data-prefix="8"><code>  publish:</code></pre>
+        <pre data-prefix="9"><code>    runs-on: ubuntu-latest</code></pre>
+        <pre data-prefix="10"><code>    steps:</code></pre>
+        <pre data-prefix="11"><code>      - uses: actions/checkout@v4</code></pre>
+        <pre data-prefix="12"><code>      - uses: erlef/setup-beam@v1</code></pre>
+        <pre data-prefix="13"><code>        with:</code></pre>
+        <pre data-prefix="14"><code>          elixir-version: '1.15'</code></pre>
+        <pre data-prefix="15"><code>          otp-version: '26'</code></pre>
+        <pre data-prefix="16"><code>      - name: Publish to HexHub</code></pre>
+        <pre data-prefix="17"><code>        <code class="text-info">env:</code></code></pre>
+        <pre data-prefix="18"><code>          HEX_API_URL: <%= @hex_hub_api_url %></code></pre>
+        <pre data-prefix="19"><code>          HEX_API_KEY: $&#123;&#123; secrets.HEX_API_KEY &#125;&#125;</code></pre>
+        <pre data-prefix="20"><code>        run: |</code></pre>
+        <pre data-prefix="21"><code>          mix deps.get</code></pre>
+        <pre data-prefix="22"><code>          mix hex.publish --yes</code></pre>
+      </div>
+
+      <h3>Docker</h3>
+
+      <div class="mockup-code not-prose mb-6">
+        <pre data-prefix="1"><code># docker-compose.yml</code></pre>
+        <pre data-prefix="2"><code class="text-info">services:</code></pre>
+        <pre data-prefix="3"><code>  publish:</code></pre>
+        <pre data-prefix="4"><code>    image: elixir:1.15</code></pre>
+        <pre data-prefix="5"><code>    <code class="text-info">environment:</code></code></pre>
+        <pre data-prefix="6"><code>      - HEX_API_URL=<%= @hex_hub_api_url %></code></pre>
+        <pre data-prefix="7"><code>      - HEX_API_KEY=${HEX_API_KEY}</code></pre>
+        <pre data-prefix="8"><code>    command: mix hex.publish --yes</code></pre>
+      </div>
+
+      <h2 id="environment-variables">Environment Variables Reference</h2>
+
+      <div class="overflow-x-auto not-prose mb-6">
+        <table class="table table-zebra">
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>HEX_API_URL</code></td>
+              <td>HexHub API endpoint for publishing</td>
+              <td><code>{@hex_hub_api_url}</code></td>
+            </tr>
+            <tr>
+              <td><code>HEX_API_KEY</code></td>
+              <td>API key with write permissions</td>
+              <td><code>your_api_key_here</code></td>
+            </tr>
+            <tr>
+              <td><code>HEX_MIRROR</code></td>
+              <td>HexHub mirror URL (for fetching dependencies)</td>
+              <td><code>{String.replace(@hex_hub_api_url, "/api", "")}</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-warning not-prose mb-6">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="stroke-current shrink-0 h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <div>
+          <h3 class="font-bold">Security Note</h3>
+          <div class="text-sm">
+            Never commit API keys to version control. Use environment variables or secrets
+            management in your CI/CD platform.
+          </div>
+        </div>
+      </div>
+
+      <h2 id="troubleshooting">Troubleshooting</h2>
+
+      <h3>Authentication Errors</h3>
+
+      <p>If you get a 401 Unauthorized error:</p>
+      <ul>
+        <li>Verify your API key is correct</li>
+        <li>Ensure your API key has write permissions</li>
+        <li>Check that <code>HEX_API_URL</code> is set correctly</li>
+      </ul>
+
+      <h3>Version Conflicts</h3>
+
+      <p>If publishing fails due to version conflicts:</p>
+      <ul>
+        <li>Ensure the version in <code>mix.exs</code> doesn't already exist on HexHub</li>
+        <li>Use semantic versioning for new releases</li>
+      </ul>
+
+      <h2 id="next-steps">Next Steps</h2>
+
+      <ul>
+        <li>
+          <a href="/docs/api-reference" class="link link-primary">API Reference</a>
+          - Explore the complete HexHub API documentation
+        </li>
+        <li>
+          <a href="/docs/getting-started" class="link link-primary">Getting Started</a>
+          - Configure mix to fetch packages from HexHub
+        </li>
+      </ul>
+    </div>
+  </.docs_layout>
+</Layouts.app>
