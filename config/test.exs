@@ -9,7 +9,8 @@ config :hex_hub, HexHubWeb.Endpoint,
 
 config :hex_hub, HexHubAdminWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4003],
-  secret_key_base: "test_admin_secret_key_base_1234567890abcdef",
+  secret_key_base:
+    "test_admin_secret_key_base_1234567890abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   server: false
 
 # In test we don't send emails

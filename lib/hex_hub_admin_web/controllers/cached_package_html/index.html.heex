@@ -1,0 +1,201 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-base-content">Cached Packages</h1>
+        <p class="text-sm text-base-content/70 mt-1">
+          Packages fetched from upstream. Total: {@pagination.total} packages
+        </p>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="badge badge-secondary badge-lg">Cached</span>
+        <%= if @pagination.total > 0 do %>
+          <form method="post" action={~p"/cached-packages?confirm=true"} class="inline">
+            <input type="hidden" name="_method" value="delete" />
+            <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+            <.dm_btn
+              type="submit"
+              class="btn btn-error btn-sm"
+              onclick="return confirm('Are you sure you want to delete ALL cached packages? This cannot be undone.')"
+            >
+              Clear All Cache
+            </.dm_btn>
+          </form>
+        <% end %>
+      </div>
+    </div>
+    
+<!-- Search and Sort Controls -->
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body py-4">
+        <form method="get" action={~p"/cached-packages"} class="flex flex-wrap gap-4 items-end">
+          <div class="form-control flex-1 min-w-[200px]">
+            <label class="label">
+              <span class="label-text">Search</span>
+            </label>
+            <input
+              type="text"
+              name="search"
+              value={@search}
+              placeholder="Search cached packages..."
+              class="input input-bordered w-full"
+            />
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Sort by</span>
+            </label>
+            <select name="sort" class="select select-bordered">
+              <option value="updated_at" selected={@sort == "updated_at"}>Updated</option>
+              <option value="name" selected={@sort == "name"}>Name</option>
+              <option value="downloads" selected={@sort == "downloads"}>Downloads</option>
+            </select>
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Direction</span>
+            </label>
+            <select name="sort_dir" class="select select-bordered">
+              <option value="desc" selected={@sort_dir == "desc"}>Descending</option>
+              <option value="asc" selected={@sort_dir == "asc"}>Ascending</option>
+            </select>
+          </div>
+          <.dm_btn type="submit" class="btn btn-primary">
+            Search
+          </.dm_btn>
+          <%= if @search != "" do %>
+            <.dm_link navigate={~p"/cached-packages"} class="btn btn-ghost">
+              Clear
+            </.dm_link>
+          <% end %>
+        </form>
+      </div>
+    </div>
+    
+<!-- Empty State -->
+    <%= if @packages == [] do %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body items-center text-center py-16">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-16 w-16 text-base-content/30"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+            />
+          </svg>
+          <h3 class="text-lg font-medium text-base-content mt-4">No cached packages found</h3>
+          <p class="text-base-content/70 mt-2">
+            <%= if @search != "" do %>
+              No packages match your search. Try a different term.
+            <% else %>
+              No packages have been fetched from upstream yet.
+            <% end %>
+          </p>
+        </div>
+      </div>
+    <% else %>
+      <!-- Package Table -->
+      <div class="overflow-x-auto">
+        <.dm_table data={@packages}>
+          <:col :let={package} label="Name">
+            <.dm_link
+              navigate={~p"/cached-packages/#{package.name}"}
+              class="link link-primary font-medium"
+            >
+              {package.name}
+            </.dm_link>
+            <div class="text-sm text-base-content/60">
+              {package.latest_version || "No versions"}
+            </div>
+          </:col>
+          <:col :let={package} label="Status">
+            <span class={status_badge_class(package.status)}>
+              {if package.status == :shadowed, do: "Shadowed", else: "Active"}
+            </span>
+          </:col>
+          <:col :let={package} label="Repository">
+            {package.repository_name}
+          </:col>
+          <:col :let={package} label="Description" class="max-w-xs truncate">
+            {package.meta["description"] || "No description"}
+          </:col>
+          <:col :let={package} label="Downloads">
+            <span class="badge badge-ghost">{package.downloads}</span>
+          </:col>
+          <:col :let={package} label="Updated">
+            {format_timestamp(package.updated_at)}
+          </:col>
+          <:col :let={package} label="Actions">
+            <div class="flex gap-2">
+              <.dm_link
+                navigate={~p"/cached-packages/#{package.name}"}
+                class="btn btn-ghost btn-sm"
+              >
+                View
+              </.dm_link>
+              <form action={~p"/cached-packages/#{package.name}"} method="post" class="inline">
+                <input type="hidden" name="_method" value="delete" />
+                <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+                <.dm_btn
+                  type="submit"
+                  class="btn btn-ghost btn-sm text-error"
+                  onclick="return confirm('Delete this cached package?')"
+                >
+                  Delete
+                </.dm_btn>
+              </form>
+            </div>
+          </:col>
+        </.dm_table>
+      </div>
+      
+<!-- Pagination -->
+      <div class="flex justify-between items-center mt-6">
+        <div class="text-sm text-base-content/70">
+          Showing {(@pagination.page - 1) * @pagination.per_page + 1} to {min(
+            @pagination.page * @pagination.per_page,
+            @pagination.total
+          )} of {@pagination.total} packages
+        </div>
+        <div class="join">
+          <%= if @pagination.page > 1 do %>
+            <.dm_link
+              navigate={
+                ~p"/cached-packages?#{build_query_params(@search, @sort, @sort_dir, @pagination.page - 1)}"
+              }
+              class="join-item btn btn-sm"
+            >
+              Previous
+            </.dm_link>
+          <% else %>
+            <button class="join-item btn btn-sm btn-disabled">Previous</button>
+          <% end %>
+
+          <button class="join-item btn btn-sm btn-active">
+            {@pagination.page}
+          </button>
+
+          <%= if @pagination.page < @pagination.total_pages do %>
+            <.dm_link
+              navigate={
+                ~p"/cached-packages?#{build_query_params(@search, @sort, @sort_dir, @pagination.page + 1)}"
+              }
+              class="join-item btn btn-sm"
+            >
+              Next
+            </.dm_link>
+          <% else %>
+            <button class="join-item btn btn-sm btn-disabled">Next</button>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</Layouts.app>

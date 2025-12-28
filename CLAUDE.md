@@ -460,6 +460,7 @@ Logger.info("Package #{name} published")
 - Mnesia (`:packages`, `:package_releases`, `:package_downloads` tables) (003-browse-packages)
 - Elixir 1.15+ / OTP 26+ + Phoenix 1.8+, Tailwind CSS, DaisyUI, YamlElixir (for OpenAPI parsing) (004-api-docs)
 - N/A (static documentation content rendered from templates and hex-api.yaml) (004-api-docs)
+- Mnesia (`:packages`, `:package_releases` tables) + HexHub.Storage abstraction for tarballs (005-admin-package-management)
 
 ## Recent Changes
 - 001-telemetry-logging: Added Elixir 1.15+ / OTP 26+ + `:telemetry` (already in project), `Logger` (Elixir stdlib)

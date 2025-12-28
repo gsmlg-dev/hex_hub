@@ -35,6 +35,7 @@ defmodule HexHubAdminWeb.Router do
 
     get "/packages", PackageController, :index
     get "/packages/new", PackageController, :new
+    get "/packages/search", PackageController, :search
     post "/packages", PackageController, :create
     get "/packages/:name", PackageController, :show
     get "/packages/:name/edit", PackageController, :edit
@@ -58,6 +59,12 @@ defmodule HexHubAdminWeb.Router do
     get "/storage/edit", StorageController, :edit
     put "/storage", StorageController, :update
     post "/storage/test-connection", StorageController, :test_connection
+
+    # Local and cached package management
+    resources "/local-packages", LocalPackageController, only: [:index, :show]
+
+    resources "/cached-packages", CachedPackageController, only: [:index, :show, :delete]
+    delete "/cached-packages", CachedPackageController, :clear_all
   end
 
   # Enable LiveDashboard in development

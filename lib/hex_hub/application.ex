@@ -23,6 +23,9 @@ defmodule HexHub.Application do
     HexHub.Mnesia.init()
     HexHub.Audit.init()
 
+    # Migrate existing packages to include source field (if needed)
+    HexHub.Mnesia.migrate_package_source_field()
+
     # Initialize default upstream configuration if needed
     HexHub.UpstreamConfig.init_default_config()
 

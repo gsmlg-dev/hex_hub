@@ -15,7 +15,8 @@ defmodule HexHub.Packages do
           inserted_at: DateTime.t(),
           updated_at: DateTime.t(),
           html_url: String.t(),
-          docs_html_url: String.t()
+          docs_html_url: String.t(),
+          source: :local | :cached
         }
 
   @type release :: %{
@@ -51,9 +52,9 @@ defmodule HexHub.Packages do
   @doc """
   Create a new package.
   """
-  @spec create_package(String.t(), String.t(), map(), boolean()) ::
+  @spec create_package(String.t(), String.t(), map(), boolean(), atom()) ::
           {:ok, package()} | {:error, String.t()}
-  def create_package(name, repository_name, meta, private \\ false) do
+  def create_package(name, repository_name, meta, private \\ false, source \\ :local) do
     start_time = System.monotonic_time()
 
     with :ok <- validate_package_name(name) do
@@ -70,7 +71,8 @@ defmodule HexHub.Packages do
         now,
         now,
         "/packages/#{name}",
-        "/packages/#{name}/docs"
+        "/packages/#{name}/docs",
+        source
       }
 
       case :mnesia.transaction(fn ->
@@ -116,12 +118,12 @@ defmodule HexHub.Packages do
            case :mnesia.dirty_read(@packages_table, name) do
              [
                {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                updated_at, html_url, docs_html_url}
+                updated_at, html_url, docs_html_url, source}
              ] ->
                {:ok,
                 package_to_map(
                   {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                   updated_at, html_url, docs_html_url}
+                   updated_at, html_url, docs_html_url, source}
                 )}
 
              [] ->
@@ -176,12 +178,12 @@ defmodule HexHub.Packages do
            packages =
              :mnesia.foldl(
                fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
-                   html_url, docs_html_url},
+                   html_url, docs_html_url, source},
                   acc ->
                  package =
                    package_to_map(
                      {@packages_table, name, repository_name, meta, private, downloads,
-                      inserted_at, updated_at, html_url, docs_html_url}
+                      inserted_at, updated_at, html_url, docs_html_url, source}
                    )
 
                  # Apply filters
@@ -317,7 +319,8 @@ defmodule HexHub.Packages do
       inserted_at: inserted_at,
       updated_at: updated_at,
       html_url: upstream_pkg["html_url"] || "/packages/#{upstream_pkg["name"]}",
-      docs_html_url: upstream_pkg["docs_html_url"] || "/packages/#{upstream_pkg["name"]}/docs"
+      docs_html_url: upstream_pkg["docs_html_url"] || "/packages/#{upstream_pkg["name"]}/docs",
+      source: :cached
     }
   end
 
@@ -373,12 +376,12 @@ defmodule HexHub.Packages do
     case :mnesia.transaction(fn ->
            :mnesia.foldl(
              fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
-                 html_url, docs_html_url},
+                 html_url, docs_html_url, source},
                 acc ->
                package =
                  package_to_map(
                    {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                    updated_at, html_url, docs_html_url}
+                    updated_at, html_url, docs_html_url, source}
                  )
 
                [package | acc]
@@ -405,12 +408,12 @@ defmodule HexHub.Packages do
     case :mnesia.transaction(fn ->
            :mnesia.foldl(
              fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
-                 html_url, docs_html_url},
+                 html_url, docs_html_url, source},
                 acc ->
                package =
                  package_to_map(
                    {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                    updated_at, html_url, docs_html_url}
+                    updated_at, html_url, docs_html_url, source}
                  )
 
                [package | acc]
@@ -437,12 +440,12 @@ defmodule HexHub.Packages do
     case :mnesia.transaction(fn ->
            :mnesia.foldl(
              fn {_, name, repository_name, meta, private, downloads, inserted_at, updated_at,
-                 html_url, docs_html_url},
+                 html_url, docs_html_url, source},
                 acc ->
                package =
                  package_to_map(
                    {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-                    updated_at, html_url, docs_html_url}
+                    updated_at, html_url, docs_html_url, source}
                  )
 
                [package | acc]
@@ -855,7 +858,7 @@ defmodule HexHub.Packages do
 
   defp package_to_map(
          {@packages_table, name, repository_name, meta, private, downloads, inserted_at,
-          updated_at, html_url, docs_html_url}
+          updated_at, html_url, docs_html_url, source}
        ) do
     %{
       name: name,
@@ -866,7 +869,8 @@ defmodule HexHub.Packages do
       inserted_at: inserted_at,
       updated_at: updated_at,
       html_url: html_url,
-      docs_html_url: docs_html_url
+      docs_html_url: docs_html_url,
+      source: source
     }
   end
 
@@ -929,7 +933,7 @@ defmodule HexHub.Packages do
     case :mnesia.transaction(fn ->
            :mnesia.foldl(
              fn {_, _name, repository_name, _meta, _private, _downloads, _inserted_at,
-                 _updated_at, _html_url, _docs_html_url},
+                 _updated_at, _html_url, _docs_html_url, _source},
                 acc ->
                MapSet.put(acc, repository_name)
              end,
@@ -958,7 +962,7 @@ defmodule HexHub.Packages do
   @spec get_repository(String.t()) :: {:ok, map()} | {:error, :not_found}
   def get_repository(name) do
     case :mnesia.transaction(fn ->
-           :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_})
+           :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_, :_})
          end) do
       {:atomic, []} ->
         {:error, :not_found}
@@ -990,7 +994,7 @@ defmodule HexHub.Packages do
     else
       # Check if repository already exists
       case :mnesia.transaction(fn ->
-             :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_})
+             :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_, :_})
            end) do
         {:atomic, []} ->
           {:ok,
@@ -1022,11 +1026,13 @@ defmodule HexHub.Packages do
     else
       case :mnesia.transaction(fn ->
              packages =
-               :mnesia.match_object({@packages_table, :_, old_name, :_, :_, :_, :_, :_, :_, :_})
+               :mnesia.match_object(
+                 {@packages_table, :_, old_name, :_, :_, :_, :_, :_, :_, :_, :_}
+               )
 
              # Update all packages with the new repository name
              Enum.each(packages, fn {table, pkg_name, _old_repo, meta, private, downloads,
-                                     inserted_at, _updated_at, html_url, docs_html_url} ->
+                                     inserted_at, _updated_at, html_url, docs_html_url, source} ->
                updated_package = {
                  table,
                  pkg_name,
@@ -1037,7 +1043,8 @@ defmodule HexHub.Packages do
                  inserted_at,
                  DateTime.utc_now(),
                  html_url,
-                 docs_html_url
+                 docs_html_url,
+                 source
                }
 
                :mnesia.write(updated_package)
@@ -1067,17 +1074,19 @@ defmodule HexHub.Packages do
   def delete_repository(name) do
     case :mnesia.transaction(fn ->
            packages =
-             :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_})
+             :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_, :_})
 
            # Delete all packages in the repository
            Enum.each(packages, fn {table, pkg_name, _repo, _meta, _private, _downloads,
-                                   _inserted_at, _updated_at, _html_url, _docs_html_url} ->
+                                   _inserted_at, _updated_at, _html_url, _docs_html_url,
+                                   _source} ->
              :mnesia.delete({table, pkg_name})
            end)
 
            # Also delete all releases for packages in this repository
            Enum.each(packages, fn {_table, pkg_name, _repo, _meta, _private, _downloads,
-                                   _inserted_at, _updated_at, _html_url, _docs_html_url} ->
+                                   _inserted_at, _updated_at, _html_url, _docs_html_url,
+                                   _source} ->
              releases =
                :mnesia.match_object(
                  {@releases_table, pkg_name, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_, :_}
@@ -1154,7 +1163,7 @@ defmodule HexHub.Packages do
   @spec count_packages_in_repository(String.t()) :: integer()
   defp count_packages_in_repository(name) do
     case :mnesia.transaction(fn ->
-           :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_})
+           :mnesia.match_object({@packages_table, :_, name, :_, :_, :_, :_, :_, :_, :_, :_})
          end) do
       {:atomic, packages} -> length(packages)
       {:aborted, _reason} -> 0
@@ -1351,7 +1360,8 @@ defmodule HexHub.Packages do
 
     repository_name = upstream_package["repository"] || "hexpm"
 
-    create_package(package_name, repository_name, meta, false)
+    # Create as cached package (from upstream)
+    create_package(package_name, repository_name, meta, false, :cached)
   end
 
   defp create_release_from_upstream(package_name, version, meta, requirements) do
