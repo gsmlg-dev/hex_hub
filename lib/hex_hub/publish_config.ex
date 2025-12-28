@@ -17,22 +17,29 @@ defmodule HexHub.PublishConfig do
 
   @doc """
   Get the current publish configuration from the database.
-  Returns default config if no configuration exists.
+  Returns default config if no configuration exists or table is not yet created.
   """
   @spec get_config() :: t()
   def get_config do
-    case :mnesia.dirty_read(:publish_configs, "default") do
-      [] ->
-        # Return default configuration if none exists
+    # Check if table exists first to handle startup race conditions
+    case table_exists?(:publish_configs) do
+      false ->
         get_default_config()
 
-      [{:publish_configs, "default", enabled, inserted_at, updated_at}] ->
-        %{
-          id: "default",
-          enabled: enabled,
-          inserted_at: DateTime.from_unix!(inserted_at),
-          updated_at: DateTime.from_unix!(updated_at)
-        }
+      true ->
+        case :mnesia.dirty_read(:publish_configs, "default") do
+          [] ->
+            # Return default configuration if none exists
+            get_default_config()
+
+          [{:publish_configs, "default", enabled, inserted_at, updated_at}] ->
+            %{
+              id: "default",
+              enabled: enabled,
+              inserted_at: DateTime.from_unix!(inserted_at),
+              updated_at: DateTime.from_unix!(updated_at)
+            }
+        end
     end
   end
 
@@ -41,6 +48,16 @@ defmodule HexHub.PublishConfig do
   """
   @spec update_config(map()) :: :ok | {:error, term()}
   def update_config(params) do
+    # Check if table exists first
+    if table_exists?(:publish_configs) do
+      do_update_config(params)
+    else
+      Telemetry.log(:warn, :config, "Cannot update publish config: table does not exist", %{})
+      {:error, :table_not_exists}
+    end
+  end
+
+  defp do_update_config(params) do
     # Get existing config to merge with
     existing_config = get_config()
     current_time = DateTime.utc_now()
@@ -107,17 +124,30 @@ defmodule HexHub.PublishConfig do
   """
   @spec init_default_config() :: :ok | {:error, term()}
   def init_default_config do
-    case :mnesia.dirty_read(:publish_configs, "default") do
-      [] ->
-        # Create default config (disabled by default per FR-003)
-        update_config(%{"enabled" => false})
-
-      [_] ->
+    # Ensure table exists before trying to read
+    case table_exists?(:publish_configs) do
+      false ->
+        # Table doesn't exist yet, skip initialization
+        # (will be created by Mnesia.init and config will use defaults)
         :ok
+
+      true ->
+        case :mnesia.dirty_read(:publish_configs, "default") do
+          [] ->
+            # Create default config (disabled by default per FR-003)
+            update_config(%{"enabled" => false})
+
+          [_] ->
+            :ok
+        end
     end
   end
 
   # Private functions
+
+  defp table_exists?(table) do
+    :mnesia.system_info(:tables) |> Enum.member?(table)
+  end
 
   defp get_param_bool(params, key, default) do
     cond do
