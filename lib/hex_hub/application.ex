@@ -29,6 +29,12 @@ defmodule HexHub.Application do
     # Initialize default upstream configuration if needed
     HexHub.UpstreamConfig.init_default_config()
 
+    # Initialize default publish configuration if needed
+    HexHub.PublishConfig.init_default_config()
+
+    # Ensure anonymous user exists for anonymous publishing feature
+    HexHub.Users.ensure_anonymous_user()
+
     children = [
       # Start the Telemetry supervisor
       HexHubWeb.Telemetry,
@@ -102,6 +108,8 @@ defmodule HexHub.Application do
       [:hex_hub, :log, :package],
       [:hex_hub, :log, :mcp],
       [:hex_hub, :log, :cluster],
+      [:hex_hub, :log, :config],
+      [:hex_hub, :log, :user],
       [:hex_hub, :log, :general]
     ]
 

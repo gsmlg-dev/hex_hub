@@ -26,6 +26,14 @@ defmodule HexHubWeb.Router do
     plug HexHubWeb.Plugs.RateLimit
   end
 
+  # Pipeline for optional authentication (supports anonymous publishing when enabled)
+  pipeline :api_auth_optional do
+    plug :accepts, ["json", "hex+erlang"]
+    plug HexHubWeb.Plugs.HexFormat
+    plug HexHubWeb.Plugs.OptionalAuthenticate
+    plug HexHubWeb.Plugs.RateLimit
+  end
+
   pipeline :require_write do
     plug HexHubWeb.Plugs.Authorize, "write"
   end
@@ -107,10 +115,11 @@ defmodule HexHubWeb.Router do
     get "/packages/:name/owners", OwnerController, :index
   end
 
+  # Root-level publish routes with optional auth (supports anonymous publishing)
   scope "/", HexHubWeb.API do
-    pipe_through [:api_auth, :require_write]
+    pipe_through [:api_auth_optional, :require_write]
 
-    # Authenticated package management (write operations)
+    # Package publishing (supports anonymous when enabled)
     post "/publish", ReleaseController, :publish
     post "/packages/:name/releases", ReleaseController, :publish
   end
@@ -221,14 +230,21 @@ defmodule HexHubWeb.Router do
     get "/packages/:name/retired", RetirementController, :index
   end
 
-  # Authenticated API routes requiring write permissions
+  # Publishing routes with optional auth (supports anonymous publishing when enabled)
   scope "/api", HexHubWeb.API do
-    pipe_through [:api_auth, :require_write]
+    pipe_through [:api_auth_optional, :require_write]
 
-    # Authenticated package management (write operations)
+    # Package publishing (supports anonymous when enabled)
     post "/publish", ReleaseController, :publish
     # Alternative publish endpoint used by hex client
     post "/packages/:name/releases", ReleaseController, :publish
+  end
+
+  # Authenticated API routes requiring write permissions (always require auth)
+  scope "/api", HexHubWeb.API do
+    pipe_through [:api_auth, :require_write]
+
+    # Package retirement (requires authentication)
     post "/packages/:name/releases/:version/retire", RetirementController, :retire
     delete "/packages/:name/releases/:version/retire", RetirementController, :unretire
 

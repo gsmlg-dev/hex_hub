@@ -2,19 +2,37 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-base-content">Edit User</h1>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-base-content">Edit User</h1>
+          <%= if HexHub.Users.is_system_user?(@user.username) do %>
+            <span class="badge badge-info">System User</span>
+          <% end %>
+        </div>
         <p class="text-sm text-base-content/70 mt-1">
           Edit user <span class="font-semibold">{@user.username}</span>.
         </p>
       </div>
     </div>
 
-    <div class="card bg-base-100 shadow-lg">
-      <div class="card-body">
-        <.dm_form action={~p"/users/#{@user.username}"} method="post">
-          <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
-          <input type="hidden" name="_method" value="put" />
-
+    <%= if HexHub.Users.is_system_user?(@user.username) do %>
+      <div class="alert alert-warning mb-6">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="stroke-current shrink-0 h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+        <span>System users cannot be modified. This user is protected.</span>
+      </div>
+      <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
           <div class="space-y-6">
             <.dm_input
               name="user[username]"
@@ -29,33 +47,68 @@
               label="Email Address"
               type="email"
               value={@user.email}
-              required
-            />
-
-            <.dm_input
-              name="user[password]"
-              label="New Password (leave blank to keep current)"
-              type="password"
-              value=""
+              readonly
             />
           </div>
-
-          <:actions>
+          <div class="mt-6">
             <.dm_link
               navigate={~p"/users/#{@user.username}"}
               class="btn btn-ghost"
             >
-              Cancel
+              Back to User
             </.dm_link>
-            <.dm_btn
-              type="submit"
-              class="btn btn-primary"
-            >
-              Update User
-            </.dm_btn>
-          </:actions>
-        </.dm_form>
+          </div>
+        </div>
       </div>
-    </div>
+    <% else %>
+      <div class="card bg-base-100 shadow-lg">
+        <div class="card-body">
+          <.dm_form action={~p"/users/#{@user.username}"} method="post">
+            <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+            <input type="hidden" name="_method" value="put" />
+
+            <div class="space-y-6">
+              <.dm_input
+                name="user[username]"
+                label="Username"
+                type="text"
+                value={@user.username}
+                readonly
+              />
+
+              <.dm_input
+                name="user[email]"
+                label="Email Address"
+                type="email"
+                value={@user.email}
+                required
+              />
+
+              <.dm_input
+                name="user[password]"
+                label="New Password (leave blank to keep current)"
+                type="password"
+                value=""
+              />
+            </div>
+
+            <:actions>
+              <.dm_link
+                navigate={~p"/users/#{@user.username}"}
+                class="btn btn-ghost"
+              >
+                Cancel
+              </.dm_link>
+              <.dm_btn
+                type="submit"
+                class="btn btn-primary"
+              >
+                Update User
+              </.dm_btn>
+            </:actions>
+          </.dm_form>
+        </div>
+      </div>
+    <% end %>
   </div>
 </Layouts.app>

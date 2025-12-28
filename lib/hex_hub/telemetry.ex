@@ -23,7 +23,16 @@ defmodule HexHub.Telemetry do
 
   @type log_level :: :debug | :info | :warning | :error
   @type log_category ::
-          :api | :upstream | :storage | :auth | :package | :mcp | :cluster | :general
+          :api
+          | :upstream
+          | :storage
+          | :auth
+          | :package
+          | :mcp
+          | :cluster
+          | :config
+          | :user
+          | :general
 
   @doc """
   Emits a log event via telemetry.

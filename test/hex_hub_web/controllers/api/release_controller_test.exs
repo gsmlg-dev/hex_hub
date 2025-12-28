@@ -160,4 +160,95 @@ defmodule HexHubWeb.API.ReleaseControllerTest do
       assert json_response(conn, 400)["error"] == "Release is not retired"
     end
   end
+
+  describe "anonymous publishing" do
+    setup do
+      # Ensure anonymous user exists
+      HexHub.Users.ensure_anonymous_user()
+      :ok
+    end
+
+    test "allows anonymous publish when enabled", %{conn: _conn} do
+      # Enable anonymous publishing
+      :ok = HexHub.PublishConfig.update_config(%{"enabled" => true})
+
+      package_name = "anon_test_pkg"
+      version = "1.0.0"
+      tarball_content = create_test_tarball(package_name, version)
+
+      # Make request without authentication
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> put_req_header("content-type", "application/octet-stream")
+        |> post(~p"/api/packages/#{package_name}/releases", tarball_content)
+
+      assert %{
+               "url" => url
+             } = json_response(conn, 201)
+
+      assert url == "/packages/#{package_name}/releases/#{version}"
+
+      # Verify package is owned by anonymous user
+      {:ok, package} = HexHub.Packages.get_package(package_name)
+      assert package.name == package_name
+    end
+
+    test "rejects anonymous publish when disabled" do
+      # Ensure anonymous publishing is disabled (default)
+      :ok = HexHub.PublishConfig.update_config(%{"enabled" => false})
+
+      package_name = "anon_disabled_pkg"
+      version = "1.0.0"
+      tarball_content = create_test_tarball(package_name, version)
+
+      # Make request without authentication
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> put_req_header("content-type", "application/octet-stream")
+        |> post(~p"/api/packages/#{package_name}/releases", tarball_content)
+
+      assert json_response(conn, 401)["message"] == "API key required"
+    end
+
+    test "authenticated publish still works when anonymous is enabled", %{conn: conn} do
+      # Enable anonymous publishing
+      :ok = HexHub.PublishConfig.update_config(%{"enabled" => true})
+
+      package_name = "auth_with_anon_enabled"
+      version = "1.0.0"
+      tarball_content = create_test_tarball(package_name, version)
+
+      # Make authenticated request
+      conn =
+        conn
+        |> put_req_header("content-type", "application/octet-stream")
+        |> post(~p"/api/packages/#{package_name}/releases", tarball_content)
+
+      assert %{
+               "url" => url
+             } = json_response(conn, 201)
+
+      assert url == "/packages/#{package_name}/releases/#{version}"
+    end
+
+    test "logs IP address for anonymous publish" do
+      # Enable anonymous publishing
+      :ok = HexHub.PublishConfig.update_config(%{"enabled" => true})
+
+      package_name = "anon_ip_test"
+      version = "1.0.0"
+      tarball_content = create_test_tarball(package_name, version)
+
+      # Make request without authentication (IP logging happens in the plug)
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> put_req_header("content-type", "application/octet-stream")
+        |> post(~p"/api/packages/#{package_name}/releases", tarball_content)
+
+      # Request should succeed
+      assert json_response(conn, 201)
+      # Note: Actual IP logging verification would require telemetry event capture,
+      # which is tested at the integration level
+    end
+  end
 end

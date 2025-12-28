@@ -18,12 +18,17 @@
     <div class="overflow-x-auto">
       <.dm_table data={@users}>
         <:col :let={user} label="Username">
-          <.dm_link
-            navigate={~p"/users/#{user.username}"}
-            class="link link-primary"
-          >
-            {user.username}
-          </.dm_link>
+          <div class="flex items-center gap-2">
+            <.dm_link
+              navigate={~p"/users/#{user.username}"}
+              class="link link-primary"
+            >
+              {user.username}
+            </.dm_link>
+            <%= if HexHub.Users.is_system_user?(user.username) do %>
+              <span class="badge badge-info badge-sm">System</span>
+            <% end %>
+          </div>
         </:col>
         <:col :let={user} label="Email">{user.email}</:col>
         <:col :let={_user} label="Packages">0</:col>
@@ -36,17 +41,26 @@
             >
               View
             </.dm_link>
-            <form action={~p"/users/#{user.username}"} method="post" class="inline">
-              <input type="hidden" name="_method" value="delete" />
-              <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
-              <.dm_btn
-                type="submit"
-                class="btn btn-sm btn-ghost btn-error"
-                onclick="return confirm('Are you sure you want to delete this user?')"
+            <%= if HexHub.Users.is_system_user?(user.username) do %>
+              <span
+                class="btn btn-sm btn-ghost btn-disabled"
+                title="System users cannot be deleted"
               >
-                Delete
-              </.dm_btn>
-            </form>
+                Protected
+              </span>
+            <% else %>
+              <form action={~p"/users/#{user.username}"} method="post" class="inline">
+                <input type="hidden" name="_method" value="delete" />
+                <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+                <.dm_btn
+                  type="submit"
+                  class="btn btn-sm btn-ghost btn-error"
+                  onclick="return confirm('Are you sure you want to delete this user?')"
+                >
+                  Delete
+                </.dm_btn>
+              </form>
+            <% end %>
           </div>
         </:col>
       </.dm_table>

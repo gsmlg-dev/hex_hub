@@ -15,6 +15,9 @@ defmodule HexHub.Users do
 
   @table :users
 
+  # Reserved usernames that cannot be registered by regular users
+  @reserved_usernames ["anonymous", "admin", "system", "hexhub"]
+
   @doc """
   Reset test data - mainly for testing purposes.
   """
@@ -402,6 +405,96 @@ defmodule HexHub.Users do
     end
   end
 
+  @doc """
+  Check if a username is a system user (cannot be deleted or modified).
+  """
+  @spec is_system_user?(String.t()) :: boolean()
+  def is_system_user?(username) do
+    String.downcase(username) == "anonymous"
+  end
+
+  @doc """
+  Delete a user by username.
+  System users (like "anonymous") cannot be deleted.
+  """
+  @spec delete_user(String.t()) :: :ok | {:error, String.t()}
+  def delete_user(username) do
+    if is_system_user?(username) do
+      {:error, "Cannot delete system user"}
+    else
+      case :mnesia.transaction(fn ->
+             case :mnesia.read(@table, username) do
+               [_user] ->
+                 :mnesia.delete({@table, username})
+
+               [] ->
+                 {:error, "User not found"}
+             end
+           end) do
+        {:atomic, :ok} -> :ok
+        {:atomic, {:error, reason}} -> {:error, reason}
+        {:aborted, reason} -> {:error, "Failed to delete user: #{inspect(reason)}"}
+      end
+    end
+  end
+
+  @doc """
+  Update a user's details.
+  System users (like "anonymous") cannot be modified.
+  """
+  @spec update_user(String.t(), map()) :: {:ok, user()} | {:error, String.t()}
+  def update_user(username, _params) do
+    if is_system_user?(username) do
+      {:error, "Cannot modify system user"}
+    else
+      # For now, just return user not found - full implementation would update fields
+      {:error, "User not found"}
+    end
+  end
+
+  @doc """
+  Ensure the anonymous system user exists.
+  Creates the user if it doesn't exist. Called at application startup.
+  """
+  @spec ensure_anonymous_user() :: :ok | {:error, String.t()}
+  def ensure_anonymous_user do
+    case get_user("anonymous") do
+      {:ok, _user} ->
+        :ok
+
+      {:error, :not_found} ->
+        # Create anonymous user as a service account
+        # Use a special email and random password (never used for login)
+        email = "anonymous@hexhub.local"
+        password = :crypto.strong_rand_bytes(32) |> Base.encode64()
+        now = DateTime.utc_now()
+
+        case :mnesia.transaction(fn ->
+               :mnesia.write(
+                 {@table, "anonymous", email, Bcrypt.hash_pwd_salt(password), nil, false, [],
+                  true, nil, now, now}
+               )
+             end) do
+          {:atomic, :ok} ->
+            # Emit telemetry event
+            :telemetry.execute(
+              [:hex_hub, :anonymous_user, :created],
+              %{},
+              %{username: "anonymous"}
+            )
+
+            HexHub.Telemetry.log(:info, :user, "Anonymous system user created", %{
+              username: "anonymous"
+            })
+
+            :ok
+
+          {:aborted, reason} ->
+            {:error, "Failed to create anonymous user: #{inspect(reason)}"}
+        end
+    end
+  end
+
   ## Helper functions
 
   defp user_to_map(
@@ -442,6 +535,9 @@ defmodule HexHub.Users do
 
   defp validate_username(username) do
     cond do
+      String.downcase(username) in @reserved_usernames ->
+        {:error, "Username is reserved"}
+
       String.length(username) < 3 ->
         {:error, "Username must be at least 3 characters"}
 
