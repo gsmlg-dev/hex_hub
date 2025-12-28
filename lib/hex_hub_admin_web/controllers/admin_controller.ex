@@ -20,8 +20,8 @@ defmodule HexHubAdminWeb.AdminController do
       total_users: length(users),
       upstream_enabled: upstream_config.enabled,
       storage_type: storage_config.storage_type,
-      local_packages: package_stats.local,
-      cached_packages: package_stats.cached
+      local_packages: package_stats.local_count,
+      cached_packages: package_stats.cached_count
     }
 
     render(conn, :dashboard, stats: stats)

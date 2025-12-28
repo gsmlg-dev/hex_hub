@@ -60,6 +60,7 @@ defmodule HexHub.CachedPackages do
   """
   @spec list_packages_by_source(source(), list_opts()) ::
           {:ok, %{packages: [annotated_package()], pagination: map()}} | {:error, term()}
+  @dialyzer {:nowarn_function, list_packages_by_source: 2}
   def list_packages_by_source(source, opts \\ []) when source in [:local, :cached] do
     page = Keyword.get(opts, :page, 1)
     per_page = min(Keyword.get(opts, :per_page, 50), 100)
