@@ -52,7 +52,7 @@ defmodule HexHub.PublishConfig do
     if table_exists?(:publish_configs) do
       do_update_config(params)
     else
-      Telemetry.log(:warn, :config, "Cannot update publish config: table does not exist", %{})
+      Telemetry.log(:warning, :config, "Cannot update publish config: table does not exist", %{})
       {:error, :table_not_exists}
     end
   end
