@@ -14,6 +14,7 @@ defmodule HexHub.Mnesia do
     :rate_limit,
     :audit_logs,
     :upstream_configs,
+    :publish_configs,
     :blocked_addresses,
     :retired_releases,
     :system_metadata
@@ -164,6 +165,17 @@ defmodule HexHub.Mnesia do
            :timeout,
            :retry_attempts,
            :retry_delay,
+           :inserted_at,
+           :updated_at
+         ],
+         type: :set,
+         ram_copies: [node()]
+       ]},
+      {:publish_configs,
+       [
+         attributes: [
+           :id,
+           :enabled,
            :inserted_at,
            :updated_at
          ],

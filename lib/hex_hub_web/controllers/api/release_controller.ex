@@ -451,6 +451,15 @@ defmodule HexHubWeb.API.ReleaseController do
 
   defp maybe_add_owner(package_name, conn) do
     case conn.assigns[:current_user] do
+      %{username: "anonymous", is_anonymous: true, ip_address: ip_address} ->
+        # Anonymous user - add as owner and log telemetry
+        Packages.add_package_owner(package_name, "anonymous", "full")
+
+        HexHub.Telemetry.log(:info, :package, "Anonymous package published", %{
+          package_name: package_name,
+          ip_address: ip_address
+        })
+
       %{username: username} ->
         Packages.add_package_owner(package_name, username, "full")
 

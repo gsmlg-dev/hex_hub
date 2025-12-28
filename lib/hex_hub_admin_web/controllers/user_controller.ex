@@ -77,45 +77,65 @@ defmodule HexHubAdminWeb.UserController do
   end
 
   def update(conn, %{"username" => username, "user" => user_params}) do
-    case Users.get_user(username) do
-      {:ok, user} ->
-        # Handle different types of updates
-        update_result =
-          cond do
-            user_params["email"] && user_params["email"] != user.email ->
-              Users.update_email(username, user_params["email"])
+    # Check if this is a system user - block modification
+    if Users.is_system_user?(username) do
+      conn
+      |> put_flash(:error, "System users cannot be modified")
+      |> redirect(to: ~p"/users/#{username}")
+    else
+      case Users.get_user(username) do
+        {:ok, user} ->
+          # Handle different types of updates
+          update_result =
+            cond do
+              user_params["email"] && user_params["email"] != user.email ->
+                Users.update_email(username, user_params["email"])
 
-            user_params["password"] && user_params["password"] != "" ->
-              Users.update_password(username, user_params["password"])
+              user_params["password"] && user_params["password"] != "" ->
+                Users.update_password(username, user_params["password"])
 
-            true ->
-              {:error, "No changes provided"}
+              true ->
+                {:error, "No changes provided"}
+            end
+
+          case update_result do
+            {:ok, updated_user} ->
+              conn
+              |> put_flash(:info, "User #{updated_user.username} updated successfully!")
+              |> redirect(to: ~p"/users/#{updated_user.username}")
+
+            {:error, reason} ->
+              conn
+              |> put_flash(:error, "Failed to update user: #{reason}")
+              |> redirect(to: ~p"/users/#{username}/edit")
           end
 
-        case update_result do
-          {:ok, updated_user} ->
-            conn
-            |> put_flash(:info, "User #{updated_user.username} updated successfully!")
-            |> redirect(to: ~p"/users/#{updated_user.username}")
-
-          {:error, reason} ->
-            conn
-            |> put_flash(:error, "Failed to update user: #{reason}")
-            |> redirect(to: ~p"/users/#{username}/edit")
-        end
-
-      {:error, :not_found} ->
-        conn
-        |> put_flash(:error, "User not found")
-        |> redirect(to: ~p"/users")
+        {:error, :not_found} ->
+          conn
+          |> put_flash(:error, "User not found")
+          |> redirect(to: ~p"/users")
+      end
     end
   end
 
-  def delete(conn, %{"username" => _username}) do
-    # For now, show not implemented message since user deletion
-    # might have additional considerations
-    conn
-    |> put_flash(:error, "User deletion is not implemented yet")
-    |> redirect(to: ~p"/users")
+  def delete(conn, %{"username" => username}) do
+    # Check if this is a system user - block deletion
+    if Users.is_system_user?(username) do
+      conn
+      |> put_flash(:error, "System users cannot be deleted")
+      |> redirect(to: ~p"/users")
+    else
+      case Users.delete_user(username) do
+        :ok ->
+          conn
+          |> put_flash(:info, "User #{username} deleted successfully")
+          |> redirect(to: ~p"/users")
+
+        {:error, reason} ->
+          conn
+          |> put_flash(:error, "Failed to delete user: #{reason}")
+          |> redirect(to: ~p"/users")
+      end
+    end
   end
 end

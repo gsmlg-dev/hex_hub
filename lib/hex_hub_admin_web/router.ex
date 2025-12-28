@@ -60,6 +60,10 @@ defmodule HexHubAdminWeb.Router do
     put "/storage", StorageController, :update
     post "/storage/test-connection", StorageController, :test_connection
 
+    # Publish configuration
+    get "/publish-config", PublishConfigController, :index
+    put "/publish-config", PublishConfigController, :update
+
     # Local and cached package management
     resources "/local-packages", LocalPackageController, only: [:index, :show]
 

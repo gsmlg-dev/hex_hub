@@ -21,3 +21,10 @@
 - Use `setup` blocks for test isolation
 - Follow Phoenix conventions for controllers and components
 - Import Phoenix deps in formatter, handle HEEX templates
+
+## Active Technologies
+- Elixir 1.15+ / OTP 26+ + Phoenix 1.8+, Mnesia (built-in), DaisyUI/Tailwind CSS (006-anonymous-publish-config)
+- Mnesia (`:system_settings` or `:publish_configs` table for setting, existing `:users` table for anonymous user) (006-anonymous-publish-config)
+
+## Recent Changes
+- 006-anonymous-publish-config: Added Elixir 1.15+ / OTP 26+ + Phoenix 1.8+, Mnesia (built-in), DaisyUI/Tailwind CSS
