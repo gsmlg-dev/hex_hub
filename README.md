@@ -1,5 +1,10 @@
 # HexHub - Private Hex Package Manager
 
+[![CI](https://github.com/gsmlg-dev/hex_hub/actions/workflows/ci.yml/badge.svg)](https://github.com/gsmlg-dev/hex_hub/actions/workflows/ci.yml)
+[![Test](https://github.com/gsmlg-dev/hex_hub/actions/workflows/test.yml/badge.svg)](https://github.com/gsmlg-dev/hex_hub/actions/workflows/test.yml)
+[![E2E Tests](https://github.com/gsmlg-dev/hex_hub/actions/workflows/e2e.yml/badge.svg)](https://github.com/gsmlg-dev/hex_hub/actions/workflows/e2e.yml)
+[![Docker Image](https://ghcr-badge.egpl.dev/gsmlg-dev/hex-hub/latest_tag?trim=major&label=docker&color=blue)](https://github.com/gsmlg-dev/hex_hub/pkgs/container/hex-hub)
+
 HexHub is a complete implementation of the Hex API specification for managing Elixir packages privately. It provides package hosting, documentation serving, and repository management capabilities.
 
 ## Features
@@ -13,6 +18,8 @@ HexHub is a complete implementation of the Hex API specification for managing El
 - **Mnesia Storage**: In-memory database with disk persistence (no PostgreSQL required)
 - **Flexible Storage**: Support for local filesystem or S3-compatible storage
 - **Zero Database Setup**: Uses Mnesia for data storage, no external database required
+- **Anonymous Publishing**: Optional mode for publishing packages without authentication (configurable via admin dashboard)
+- **Admin Dashboard**: Web-based administration interface for managing users, packages, and configuration
 
 ## Status
 
@@ -26,8 +33,10 @@ HexHub is a complete implementation of the Hex API specification for managing El
 - ✅ Documentation hosting
 - ✅ API key management
 - ✅ Package ownership management
-- ✅ Comprehensive test suite (94 tests, 100% passing)
+- ✅ Comprehensive test suite (389+ tests, 100% passing)
 - ✅ Local file storage for packages and documentation
+- ✅ Anonymous publishing mode (admin configurable)
+- ✅ Admin dashboard with user/package management
 
 The application is ready for production use. See the [development plan](DEVELOPMENT_PLAN.md) for detailed implementation summary.
 
@@ -324,8 +333,50 @@ For persistence, ensure these directories are backed up and restored as needed.
 
 ### Docker Deployment
 
+Pre-built Docker images are available on GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/gsmlg-dev/hex-hub:main
+
+# Run with basic configuration
+docker run -d \
+  --name hex-hub \
+  -p 4000:4000 \
+  -p 4001:4001 \
+  -e SECRET_KEY_BASE=$(openssl rand -base64 48) \
+  -e PHX_HOST=localhost \
+  -v hex_hub_data:/app/priv/storage \
+  -v hex_hub_mnesia:/app/Mnesia.hex_hub@localhost \
+  ghcr.io/gsmlg-dev/hex-hub:main
+```
+
+Or use Docker Compose:
+
+```yaml
+version: '3.8'
+services:
+  hex-hub:
+    image: ghcr.io/gsmlg-dev/hex-hub:main
+    ports:
+      - "4000:4000"   # Main API
+      - "4001:4001"   # Admin dashboard
+    environment:
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - PHX_HOST=${PHX_HOST:-localhost}
+    volumes:
+      - hex_hub_data:/app/priv/storage
+      - hex_hub_mnesia:/app/Mnesia.hex_hub@localhost
+
+volumes:
+  hex_hub_data:
+  hex_hub_mnesia:
+```
+
+For building from source:
+
 ```dockerfile
-FROM elixir:1.15-alpine
+FROM elixir:1.18-alpine
 
 WORKDIR /app
 COPY . .
@@ -336,7 +387,7 @@ RUN mix local.hex --force && \
     mix compile && \
     mix assets.deploy
 
-EXPOSE 4000
+EXPOSE 4000 4001
 CMD ["mix", "phx.server"]
 ```
 
