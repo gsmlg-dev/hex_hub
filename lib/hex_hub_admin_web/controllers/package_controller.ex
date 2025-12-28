@@ -1,6 +1,7 @@
 defmodule HexHubAdminWeb.PackageController do
   use HexHubAdminWeb, :controller
 
+  alias HexHub.CachedPackages
   alias HexHub.Packages
 
   def index(conn, params) do
@@ -156,4 +157,77 @@ defmodule HexHubAdminWeb.PackageController do
   end
 
   defp read_uploaded_file(_), do: {:error, "Invalid file upload"}
+
+  @doc """
+  Unified search across both local and cached packages with priority annotations.
+  """
+  def search(conn, params) do
+    start_time = System.monotonic_time()
+
+    query = params["q"] || ""
+    source_filter = parse_source_filter(params["source"])
+    page = parse_int(params["page"], 1)
+    per_page = 50
+
+    opts = [
+      page: page,
+      per_page: per_page,
+      search: query,
+      sort: :name,
+      sort_dir: :asc
+    ]
+
+    # Get packages based on source filter
+    result =
+      case source_filter do
+        :all ->
+          CachedPackages.list_packages_with_priority(opts)
+
+        source when source in [:local, :cached] ->
+          CachedPackages.list_packages_by_source(source, opts)
+      end
+
+    case result do
+      {:ok, %{packages: packages, pagination: pagination}} ->
+        # Emit telemetry
+        duration = System.monotonic_time() - start_time
+
+        :telemetry.execute(
+          [:hex_hub, :admin, :packages, :searched],
+          %{duration: duration},
+          %{query: query, source: source_filter, count: length(packages)}
+        )
+
+        render(conn, :search,
+          results: packages,
+          query: query,
+          source_filter: to_string(source_filter),
+          pagination: pagination
+        )
+
+      {:error, _reason} ->
+        render(conn, :search,
+          results: [],
+          query: query,
+          source_filter: to_string(source_filter),
+          pagination: %{page: 1, per_page: per_page, total: 0, total_pages: 1}
+        )
+    end
+  end
+
+  defp parse_source_filter("local"), do: :local
+  defp parse_source_filter("cached"), do: :cached
+  defp parse_source_filter(_), do: :all
+
+  defp parse_int(nil, default), do: default
+
+  defp parse_int(val, default) when is_binary(val) do
+    case Integer.parse(val) do
+      {int, _} when int > 0 -> int
+      _ -> default
+    end
+  end
+
+  defp parse_int(val, _default) when is_integer(val) and val > 0, do: val
+  defp parse_int(_, default), do: default
 end

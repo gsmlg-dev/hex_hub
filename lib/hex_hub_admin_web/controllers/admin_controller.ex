@@ -1,6 +1,7 @@
 defmodule HexHubAdminWeb.AdminController do
   use HexHubAdminWeb, :controller
 
+  alias HexHub.CachedPackages
   alias HexHub.Packages
   alias HexHub.StorageConfig
   alias HexHub.Upstream
@@ -11,13 +12,16 @@ defmodule HexHubAdminWeb.AdminController do
     {:ok, users} = Users.list_users()
     upstream_config = Upstream.config()
     storage_config = StorageConfig.config()
+    package_stats = CachedPackages.get_package_stats()
 
     stats = %{
       total_packages: total,
       total_repositories: length(Packages.list_repositories()),
       total_users: length(users),
       upstream_enabled: upstream_config.enabled,
-      storage_type: storage_config.storage_type
+      storage_type: storage_config.storage_type,
+      local_packages: package_stats.local_count,
+      cached_packages: package_stats.cached_count
     }
 
     render(conn, :dashboard, stats: stats)

@@ -78,7 +78,8 @@ defmodule HexHub.Mnesia do
            :inserted_at,
            :updated_at,
            :html_url,
-           :docs_html_url
+           :docs_html_url,
+           :source
          ],
          type: :set,
          ram_copies: [node()]
@@ -204,6 +205,7 @@ defmodule HexHub.Mnesia do
     # Additional indices for common queries
     indices = [
       {:packages, :inserted_at},
+      {:packages, :source},
       {:package_releases, :inserted_at},
       {:users, :email},
       {:audit_logs, :user_id},
@@ -223,6 +225,37 @@ defmodule HexHub.Mnesia do
           IO.warn("Failed to add index on #{table}.#{attribute}: #{inspect(reason)}")
       end
     end)
+  end
+
+  @doc """
+  Migrate existing packages to add the source field.
+  Existing packages default to :local source.
+  """
+  def migrate_package_source_field do
+    case :mnesia.transaction(fn ->
+           # Match all packages that have 10 fields (old format without source)
+           packages = :mnesia.match_object({:packages, :_, :_, :_, :_, :_, :_, :_, :_, :_})
+
+           Enum.each(packages, fn pkg when tuple_size(pkg) == 10 ->
+             # Old record format, add source: :local as default
+             new_pkg = Tuple.insert_at(pkg, tuple_size(pkg), :local)
+             :mnesia.delete_object(pkg)
+             :mnesia.write(new_pkg)
+           end)
+
+           length(packages)
+         end) do
+      {:atomic, count} when count > 0 ->
+        IO.puts("Migrated #{count} packages to include source field")
+        :ok
+
+      {:atomic, 0} ->
+        :ok
+
+      {:aborted, reason} ->
+        IO.warn("Failed to migrate package source field: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
   @doc """

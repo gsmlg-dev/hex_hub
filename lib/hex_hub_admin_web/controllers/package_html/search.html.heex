@@ -1,0 +1,192 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-base-content">Package Search</h1>
+        <p class="text-sm text-base-content/70 mt-1">
+          Search across local and cached packages
+        </p>
+      </div>
+    </div>
+    
+<!-- Search Form -->
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body py-4">
+        <form method="get" action={~p"/packages/search"} class="flex flex-wrap gap-4 items-end">
+          <div class="form-control flex-1 min-w-[300px]">
+            <label class="label">
+              <span class="label-text">Search Query</span>
+            </label>
+            <input
+              type="text"
+              name="q"
+              value={@query}
+              placeholder="Search packages by name..."
+              class="input input-bordered w-full"
+              autofocus
+            />
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Source Filter</span>
+            </label>
+            <select name="source" class="select select-bordered">
+              <option value="all" selected={@source_filter == "all"}>All Sources</option>
+              <option value="local" selected={@source_filter == "local"}>Local Only</option>
+              <option value="cached" selected={@source_filter == "cached"}>Cached Only</option>
+            </select>
+          </div>
+          <.dm_btn type="submit" class="btn btn-primary">
+            Search
+          </.dm_btn>
+          <%= if @query != "" do %>
+            <.dm_link navigate={~p"/packages/search"} class="btn btn-ghost">
+              Clear
+            </.dm_link>
+          <% end %>
+        </form>
+      </div>
+    </div>
+    
+<!-- Results Summary -->
+    <%= if @query != "" do %>
+      <div class="mb-4">
+        <p class="text-sm text-base-content/70">
+          Found {@pagination.total} package(s) matching "<strong>{@query}</strong>"
+          <%= if @source_filter != "all" do %>
+            in <span class="badge badge-sm">{@source_filter}</span> source
+          <% end %>
+        </p>
+      </div>
+    <% end %>
+    
+<!-- Results Table -->
+    <%= if @results == [] do %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body items-center text-center py-16">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-16 w-16 text-base-content/30"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <h3 class="text-lg font-medium text-base-content mt-4">
+            <%= if @query == "" do %>
+              Enter a search term
+            <% else %>
+              No packages found
+            <% end %>
+          </h3>
+          <p class="text-base-content/70 mt-2">
+            <%= if @query == "" do %>
+              Search for packages by name across all sources.
+            <% else %>
+              No packages match your search criteria. Try a different term or source filter.
+            <% end %>
+          </p>
+        </div>
+      </div>
+    <% else %>
+      <div class="overflow-x-auto">
+        <.dm_table data={@results}>
+          <:col :let={package} label="Name">
+            <.dm_link
+              navigate={
+                if package.source == :local,
+                  do: ~p"/local-packages/#{package.name}",
+                  else: ~p"/cached-packages/#{package.name}"
+              }
+              class="link link-primary font-medium"
+            >
+              {package.name}
+            </.dm_link>
+            <div class="text-sm text-base-content/60">
+              {package.latest_version || "No versions"}
+            </div>
+          </:col>
+          <:col :let={package} label="Source">
+            <span class={
+              if package.source == :local,
+                do: "badge badge-primary",
+                else: "badge badge-secondary"
+            }>
+              {if package.source == :local, do: "Local", else: "Cached"}
+            </span>
+          </:col>
+          <:col :let={package} label="Status">
+            <span class={status_badge_class(package.status)}>
+              {if package.status == :shadowed, do: "Shadowed", else: "Active"}
+            </span>
+          </:col>
+          <:col :let={package} label="Description" class="max-w-xs truncate">
+            {package.meta["description"] || "No description"}
+          </:col>
+          <:col :let={package} label="Downloads">
+            <span class="badge badge-ghost">{package.downloads}</span>
+          </:col>
+          <:col :let={package} label="Actions">
+            <.dm_link
+              navigate={
+                if package.source == :local,
+                  do: ~p"/local-packages/#{package.name}",
+                  else: ~p"/cached-packages/#{package.name}"
+              }
+              class="btn btn-ghost btn-sm"
+            >
+              View
+            </.dm_link>
+          </:col>
+        </.dm_table>
+      </div>
+      
+<!-- Pagination -->
+      <div class="flex justify-between items-center mt-6">
+        <div class="text-sm text-base-content/70">
+          Showing {(@pagination.page - 1) * @pagination.per_page + 1} to {min(
+            @pagination.page * @pagination.per_page,
+            @pagination.total
+          )} of {@pagination.total} results
+        </div>
+        <div class="join">
+          <%= if @pagination.page > 1 do %>
+            <.dm_link
+              navigate={
+                ~p"/packages/search?#{build_query_params(@query, @source_filter, @pagination.page - 1)}"
+              }
+              class="join-item btn btn-sm"
+            >
+              Previous
+            </.dm_link>
+          <% else %>
+            <button class="join-item btn btn-sm btn-disabled">Previous</button>
+          <% end %>
+
+          <button class="join-item btn btn-sm btn-active">
+            {@pagination.page}
+          </button>
+
+          <%= if @pagination.page < @pagination.total_pages do %>
+            <.dm_link
+              navigate={
+                ~p"/packages/search?#{build_query_params(@query, @source_filter, @pagination.page + 1)}"
+              }
+              class="join-item btn btn-sm"
+            >
+              Next
+            </.dm_link>
+          <% else %>
+            <button class="join-item btn btn-sm btn-disabled">Next</button>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</Layouts.app>

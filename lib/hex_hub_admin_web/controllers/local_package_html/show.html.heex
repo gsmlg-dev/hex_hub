@@ -1,0 +1,145 @@
+<Layouts.app flash={@flash}>
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-3xl font-bold text-base-content">{@package.name}</h1>
+          <span class="badge badge-primary">Local</span>
+          <span class="badge badge-success">Active</span>
+        </div>
+        <p class="mt-2 text-base-content/70">
+          {@package.meta["description"] || "No description"}
+        </p>
+      </div>
+
+      <div class="flex space-x-3">
+        <.dm_link navigate={~p"/local-packages"} class="btn btn-ghost">
+          Back to Local Packages
+        </.dm_link>
+      </div>
+    </div>
+
+    <%= if @has_cached_counterpart do %>
+      <div class="alert alert-info mb-6">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          class="stroke-current shrink-0 w-6 h-6"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          >
+          </path>
+        </svg>
+        <div>
+          <h3 class="font-bold">Cached version exists</h3>
+          <div class="text-sm">
+            A cached version of this package from upstream exists but is shadowed by this local version.
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="card bg-base-100 shadow-lg">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Package Details</h2>
+
+        <div class="space-y-4">
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Repository</span>
+            <span class="text-base-content">{@package.repository_name}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Source</span>
+            <span class="badge badge-primary">Local</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Latest Version</span>
+            <span class="badge badge-info">{@package.latest_version || "None"}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Total Versions</span>
+            <span class="text-base-content">{length(@package.versions)}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Downloads</span>
+            <span class="text-base-content">{@package.downloads}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Visibility</span>
+            <span class={
+              if @package.private, do: "badge badge-error", else: "badge badge-success"
+            }>
+              {if @package.private, do: "Private", else: "Public"}
+            </span>
+          </div>
+
+          <div class="flex justify-between items-center py-3 border-b border-base-200">
+            <span class="font-medium text-base-content/70">Updated</span>
+            <span class="text-base-content">{format_timestamp(@package.updated_at)}</span>
+          </div>
+
+          <div class="flex justify-between items-center py-3">
+            <span class="font-medium text-base-content/70">Created</span>
+            <span class="text-base-content">{format_timestamp(@package.inserted_at)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-lg mt-8">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Releases</h2>
+
+        <%= if @releases == [] do %>
+          <p class="text-base-content/70 py-4">No releases published yet.</p>
+        <% else %>
+          <div class="overflow-x-auto">
+            <.dm_table data={@releases}>
+              <:col :let={release} label="Version">
+                <span class="font-mono">{release.version}</span>
+              </:col>
+              <:col :let={release} label="Has Docs">
+                <span class={
+                  if release.has_docs, do: "badge badge-success", else: "badge badge-ghost"
+                }>
+                  {if release.has_docs, do: "Yes", else: "No"}
+                </span>
+              </:col>
+              <:col :let={release} label="Downloads">{release.downloads}</:col>
+              <:col :let={release} label="Retired">
+                <%= if release.retired do %>
+                  <span class="badge badge-warning">Retired</span>
+                <% else %>
+                  <span class="badge badge-ghost">Active</span>
+                <% end %>
+              </:col>
+              <:col :let={release} label="Updated">{format_timestamp(release.updated_at)}</:col>
+            </.dm_table>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow-lg mt-8">
+      <div class="card-body">
+        <h2 class="card-title text-base-content">Metadata</h2>
+
+        <div class="mockup-code">
+          <pre class="text-sm whitespace-pre-wrap text-base-content">
+            <code><%= Jason.encode!(@package.meta, pretty: true) %></code>
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>
