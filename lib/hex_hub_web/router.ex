@@ -76,6 +76,11 @@ defmodule HexHubWeb.Router do
     # Registry endpoints (gzipped protobuf format)
     get "/names", RegistryController, :names
     get "/versions", RegistryController, :versions
+
+    # Hex client version check endpoints
+    # Returns empty CSV since Hex updates should come from official hex.pm
+    get "/installs/hex-1.x.csv", InstallsController, :hex_csv
+    get "/installs/hex-1.x.csv.signed", InstallsController, :hex_csv_signed
   end
 
   # API routes at root level for HEX_MIRROR compatibility (no /api prefix)
