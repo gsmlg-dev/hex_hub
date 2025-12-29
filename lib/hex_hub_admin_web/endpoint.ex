@@ -7,8 +7,14 @@ defmodule HexHubAdminWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_hex_hub_admin_key",
-    signing_salt: "admin_signing_salt"
+    signing_salt: "admin_signing_salt",
+    same_site: "Lax"
   ]
+
+  # LiveView socket for real-time features
+  socket "/live", Phoenix.LiveView.Socket,
+    websocket: [connect_info: [session: @session_options]],
+    longpoll: [connect_info: [session: @session_options]]
 
   # Serve at "/admin" the static files from admin priv/static directory.
   plug Plug.Static,
