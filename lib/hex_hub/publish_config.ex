@@ -81,7 +81,9 @@ defmodule HexHub.PublishConfig do
       DateTime.to_unix(config.updated_at)
     }
 
-    case :mnesia.transaction(fn ->
+    # Use sync_transaction to ensure config is persisted to disc immediately
+    # This is important for disc_copies tables to survive process restarts
+    case :mnesia.sync_transaction(fn ->
            :mnesia.write(record)
          end) do
       {:atomic, :ok} ->

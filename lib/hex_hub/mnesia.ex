@@ -28,6 +28,24 @@ defmodule HexHub.Mnesia do
     create_tables()
     create_indices()
     migrate_to_disc_copies()
+    wait_for_tables()
+  end
+
+  # Wait for all tables to be fully loaded from disc
+  # This is crucial for disc_copies tables to ensure data is available
+  defp wait_for_tables do
+    case :mnesia.wait_for_tables(@tables, 30_000) do
+      :ok ->
+        :ok
+
+      {:timeout, remaining} ->
+        IO.warn("Timeout waiting for Mnesia tables: #{inspect(remaining)}")
+        :ok
+
+      {:error, reason} ->
+        IO.warn("Error waiting for Mnesia tables: #{inspect(reason)}")
+        :ok
+    end
   end
 
   defp ensure_mnesia_running do

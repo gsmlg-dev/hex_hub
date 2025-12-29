@@ -97,7 +97,8 @@ defmodule HexHub.UpstreamConfig do
       DateTime.to_unix(config.updated_at)
     }
 
-    case :mnesia.transaction(fn ->
+    # Use sync_transaction to ensure config is persisted to disc immediately
+    case :mnesia.sync_transaction(fn ->
            :mnesia.write(record)
          end) do
       {:atomic, :ok} ->
@@ -153,7 +154,8 @@ defmodule HexHub.UpstreamConfig do
   """
   @spec reset_to_defaults() :: :ok | {:error, term()}
   def reset_to_defaults do
-    case :mnesia.transaction(fn ->
+    # Use sync_transaction to ensure the reset is persisted to disc immediately
+    case :mnesia.sync_transaction(fn ->
            :mnesia.delete({:upstream_configs, "default"})
          end) do
       {:atomic, :ok} ->
