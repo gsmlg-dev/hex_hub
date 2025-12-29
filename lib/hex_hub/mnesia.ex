@@ -44,9 +44,11 @@ defmodule HexHub.Mnesia do
   end
 
   defp create_tables() do
-    # Use disc_copies for persistent data, ram_copies for ephemeral data
-    # disc_copies: data persisted to disk and loaded into RAM
-    # ram_copies: data only in RAM (lost on restart)
+    # Determine storage type based on node configuration
+    # disc_copies requires a proper node name (not nonode@nohost)
+    # Fall back to ram_copies for development without node name
+    storage_type = get_storage_type()
+
     tables = [
       {:users,
        [
@@ -63,15 +65,13 @@ defmodule HexHub.Mnesia do
            :updated_at
          ],
          type: :set,
-         disc_copies: [node()],
          index: [:email, :service_account]
-       ]},
+       ] ++ storage_opt(storage_type)},
       {:repositories,
        [
          attributes: [:name, :public, :active, :billing_active, :inserted_at, :updated_at],
-         type: :set,
-         disc_copies: [node()]
-       ]},
+         type: :set
+       ] ++ storage_opt(storage_type)},
       {:packages,
        [
          attributes: [
@@ -86,9 +86,8 @@ defmodule HexHub.Mnesia do
            :docs_html_url,
            :source
          ],
-         type: :set,
-         disc_copies: [node()]
-       ]},
+         type: :set
+       ] ++ storage_opt(storage_type)},
       {:package_releases,
        [
          attributes: [
@@ -106,15 +105,13 @@ defmodule HexHub.Mnesia do
            :html_url,
            :docs_html_url
          ],
-         type: :bag,
-         disc_copies: [node()]
-       ]},
+         type: :bag
+       ] ++ storage_opt(storage_type)},
       {:package_owners,
        [
          attributes: [:package_name, :username, :level, :inserted_at],
-         type: :bag,
-         disc_copies: [node()]
-       ]},
+         type: :bag
+       ] ++ storage_opt(storage_type)},
       {:api_keys,
        [
          attributes: [
@@ -126,16 +123,14 @@ defmodule HexHub.Mnesia do
            :inserted_at,
            :updated_at
          ],
-         type: :set,
-         disc_copies: [node()]
-       ]},
+         type: :set
+       ] ++ storage_opt(storage_type)},
       {:package_downloads,
        [
          attributes: [:package_name, :version, :day_count, :week_count, :all_count],
-         type: :set,
-         disc_copies: [node()]
-       ]},
-      # Rate limit is ephemeral - no need to persist across restarts
+         type: :set
+       ] ++ storage_opt(storage_type)},
+      # Rate limit is always ephemeral - no need to persist across restarts
       {:rate_limit,
        [
          attributes: [:key, :type, :identifier, :count, :window_start, :updated_at],
@@ -156,9 +151,8 @@ defmodule HexHub.Mnesia do
            :user_agent
          ],
          type: :ordered_set,
-         disc_copies: [node()],
          index: [:user_id, :resource_type, :timestamp]
-       ]},
+       ] ++ storage_opt(storage_type)},
       {:upstream_configs,
        [
          attributes: [
@@ -173,9 +167,8 @@ defmodule HexHub.Mnesia do
            :inserted_at,
            :updated_at
          ],
-         type: :set,
-         disc_copies: [node()]
-       ]},
+         type: :set
+       ] ++ storage_opt(storage_type)},
       {:publish_configs,
        [
          attributes: [
@@ -184,29 +177,25 @@ defmodule HexHub.Mnesia do
            :inserted_at,
            :updated_at
          ],
-         type: :set,
-         disc_copies: [node()]
-       ]},
+         type: :set
+       ] ++ storage_opt(storage_type)},
       {:blocked_addresses,
        [
          attributes: [:ip_address, :type, :reason, :blocked_at, :blocked_until, :created_by],
          type: :set,
-         disc_copies: [node()],
          index: [:type, :blocked_until]
-       ]},
+       ] ++ storage_opt(storage_type)},
       {:retired_releases,
        [
          attributes: [:key, :package_name, :version, :reason, :message, :retired_at, :retired_by],
          type: :set,
-         disc_copies: [node()],
          index: [:package_name]
-       ]},
+       ] ++ storage_opt(storage_type)},
       {:system_metadata,
        [
          attributes: [:key, :value],
-         type: :set,
-         disc_copies: [node()]
-       ]}
+         type: :set
+       ] ++ storage_opt(storage_type)}
     ]
 
     Enum.each(tables, fn {table_name, opts} ->
@@ -217,6 +206,25 @@ defmodule HexHub.Mnesia do
       end
     end)
   end
+
+  # Determine storage type based on node configuration
+  # disc_copies requires a proper distributed node name
+  defp get_storage_type do
+    case node() do
+      :nonode@nohost ->
+        # Running without a node name, can't use disc_copies
+        # This is typical for development with `mix phx.server`
+        :ram_copies
+
+      _ ->
+        # Running with a node name, can use disc_copies for persistence
+        :disc_copies
+    end
+  end
+
+  # Generate storage option keyword list based on storage type
+  defp storage_opt(:disc_copies), do: [disc_copies: [node()]]
+  defp storage_opt(:ram_copies), do: [ram_copies: [node()]]
 
   defp create_indices() do
     # Additional indices for common queries
@@ -326,8 +334,21 @@ defmodule HexHub.Mnesia do
   @doc """
   Migrate existing ram_copies tables to disc_copies for data persistence.
   This is needed for deployments that were created before disc_copies was enabled.
+  Only runs when the node has a proper distributed name (not nonode@nohost).
   """
   def migrate_to_disc_copies do
+    # Only migrate if we have a proper node name that supports disc_copies
+    case node() do
+      :nonode@nohost ->
+        # Can't use disc_copies without a node name, skip migration
+        :ok
+
+      _ ->
+        do_migrate_to_disc_copies()
+    end
+  end
+
+  defp do_migrate_to_disc_copies do
     # Tables that should use disc_copies for persistence
     persistent_tables = [
       :users,
