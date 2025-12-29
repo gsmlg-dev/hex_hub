@@ -242,20 +242,50 @@ defmodule HexHub.Mnesia do
   @doc """
   Migrate existing packages to add the source field.
   Existing packages default to :local source.
+
+  Note: This migration only applies to packages created before the source field
+  was added. New packages already have the source field.
   """
   def migrate_package_source_field do
+    # Check if migration is needed by looking at table attributes
+    # If the table already has the source field in its schema, no migration needed
+    case :mnesia.table_info(:packages, :attributes) do
+      attributes when is_list(attributes) ->
+        if :source in attributes do
+          # Table already has source field, no migration needed
+          :ok
+        else
+          do_migrate_package_source_field()
+        end
+
+      _ ->
+        # Table info not available, skip migration
+        :ok
+    end
+  rescue
+    _ ->
+      # Mnesia not ready or table doesn't exist, skip migration
+      :ok
+  end
+
+  defp do_migrate_package_source_field do
     case :mnesia.transaction(fn ->
-           # Match all packages that have 10 fields (old format without source)
-           packages = :mnesia.match_object({:packages, :_, :_, :_, :_, :_, :_, :_, :_, :_})
-
-           Enum.each(packages, fn pkg when tuple_size(pkg) == 10 ->
-             # Old record format, add source: :local as default
-             new_pkg = Tuple.insert_at(pkg, tuple_size(pkg), :local)
-             :mnesia.delete_object(pkg)
-             :mnesia.write(new_pkg)
-           end)
-
-           length(packages)
+           # Use foldl to iterate over all packages and check their size
+           :mnesia.foldl(
+             fn pkg, acc ->
+               if tuple_size(pkg) == 10 do
+                 # Old record format (10 fields), add source: :local
+                 new_pkg = Tuple.insert_at(pkg, tuple_size(pkg), :local)
+                 :mnesia.delete_object(pkg)
+                 :mnesia.write(new_pkg)
+                 acc + 1
+               else
+                 acc
+               end
+             end,
+             0,
+             :packages
+           )
          end) do
       {:atomic, count} when count > 0 ->
         IO.puts("Migrated #{count} packages to include source field")
@@ -287,4 +317,35 @@ defmodule HexHub.Mnesia do
   Get all table names.
   """
   def tables(), do: @tables
+
+  @doc """
+  Debug function to inspect package sources in the database.
+  Returns a summary of packages by source type.
+  """
+  def debug_package_sources do
+    case :mnesia.transaction(fn ->
+           :mnesia.foldl(
+             fn pkg, acc ->
+               size = tuple_size(pkg)
+               source = if size == 11, do: elem(pkg, 10), else: :unknown
+               name = if size >= 2, do: elem(pkg, 1), else: :unknown
+
+               Map.update(acc, source, [{name, size}], fn list -> [{name, size} | list] end)
+             end,
+             %{},
+             :packages
+           )
+         end) do
+      {:atomic, summary} ->
+        %{
+          local: length(Map.get(summary, :local, [])),
+          cached: length(Map.get(summary, :cached, [])),
+          unknown: length(Map.get(summary, :unknown, [])),
+          details: summary
+        }
+
+      {:aborted, reason} ->
+        {:error, reason}
+    end
+  end
 end
