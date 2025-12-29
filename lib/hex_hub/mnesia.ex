@@ -40,9 +40,13 @@ defmodule HexHub.Mnesia do
 
     create_tables()
     create_indices()
+    migrate_to_disc_copies()
   end
 
   defp create_tables() do
+    # Use disc_copies for persistent data, ram_copies for ephemeral data
+    # disc_copies: data persisted to disk and loaded into RAM
+    # ram_copies: data only in RAM (lost on restart)
     tables = [
       {:users,
        [
@@ -59,14 +63,14 @@ defmodule HexHub.Mnesia do
            :updated_at
          ],
          type: :set,
-         ram_copies: [node()],
+         disc_copies: [node()],
          index: [:email, :service_account]
        ]},
       {:repositories,
        [
          attributes: [:name, :public, :active, :billing_active, :inserted_at, :updated_at],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:packages,
        [
@@ -83,7 +87,7 @@ defmodule HexHub.Mnesia do
            :source
          ],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:package_releases,
        [
@@ -103,13 +107,13 @@ defmodule HexHub.Mnesia do
            :docs_html_url
          ],
          type: :bag,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:package_owners,
        [
          attributes: [:package_name, :username, :level, :inserted_at],
          type: :bag,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:api_keys,
        [
@@ -123,14 +127,15 @@ defmodule HexHub.Mnesia do
            :updated_at
          ],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:package_downloads,
        [
          attributes: [:package_name, :version, :day_count, :week_count, :all_count],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
+      # Rate limit is ephemeral - no need to persist across restarts
       {:rate_limit,
        [
          attributes: [:key, :type, :identifier, :count, :window_start, :updated_at],
@@ -151,7 +156,7 @@ defmodule HexHub.Mnesia do
            :user_agent
          ],
          type: :ordered_set,
-         ram_copies: [node()],
+         disc_copies: [node()],
          index: [:user_id, :resource_type, :timestamp]
        ]},
       {:upstream_configs,
@@ -169,7 +174,7 @@ defmodule HexHub.Mnesia do
            :updated_at
          ],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:publish_configs,
        [
@@ -180,27 +185,27 @@ defmodule HexHub.Mnesia do
            :updated_at
          ],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]},
       {:blocked_addresses,
        [
          attributes: [:ip_address, :type, :reason, :blocked_at, :blocked_until, :created_by],
          type: :set,
-         ram_copies: [node()],
+         disc_copies: [node()],
          index: [:type, :blocked_until]
        ]},
       {:retired_releases,
        [
          attributes: [:key, :package_name, :version, :reason, :message, :retired_at, :retired_by],
          type: :set,
-         ram_copies: [node()],
+         disc_copies: [node()],
          index: [:package_name]
        ]},
       {:system_metadata,
        [
          attributes: [:key, :value],
          type: :set,
-         ram_copies: [node()]
+         disc_copies: [node()]
        ]}
     ]
 
@@ -317,6 +322,73 @@ defmodule HexHub.Mnesia do
   Get all table names.
   """
   def tables(), do: @tables
+
+  @doc """
+  Migrate existing ram_copies tables to disc_copies for data persistence.
+  This is needed for deployments that were created before disc_copies was enabled.
+  """
+  def migrate_to_disc_copies do
+    # Tables that should use disc_copies for persistence
+    persistent_tables = [
+      :users,
+      :repositories,
+      :packages,
+      :package_releases,
+      :package_owners,
+      :api_keys,
+      :package_downloads,
+      :audit_logs,
+      :upstream_configs,
+      :publish_configs,
+      :blocked_addresses,
+      :retired_releases,
+      :system_metadata
+    ]
+
+    Enum.each(persistent_tables, fn table ->
+      migrate_table_to_disc_copies(table)
+    end)
+  end
+
+  defp migrate_table_to_disc_copies(table) do
+    node = node()
+
+    try do
+      # Check current storage type for this table
+      case :mnesia.table_info(table, :storage_type) do
+        :ram_copies ->
+          # Table exists as ram_copies, convert to disc_copies
+          case :mnesia.change_table_copy_type(table, node, :disc_copies) do
+            {:atomic, :ok} ->
+              IO.puts("Migrated table #{table} from ram_copies to disc_copies")
+              :ok
+
+            {:aborted, {:already_exists, ^table, ^node, :disc_copies}} ->
+              :ok
+
+            {:aborted, reason} ->
+              IO.warn("Failed to migrate table #{table} to disc_copies: #{inspect(reason)}")
+              {:error, reason}
+          end
+
+        :disc_copies ->
+          # Already disc_copies, nothing to do
+          :ok
+
+        :disc_only_copies ->
+          # Already on disc, nothing to do
+          :ok
+
+        other ->
+          IO.warn("Table #{table} has unexpected storage type: #{inspect(other)}")
+          :ok
+      end
+    rescue
+      e ->
+        IO.warn("Error checking table #{table}: #{inspect(e)}")
+        :ok
+    end
+  end
 
   @doc """
   Debug function to inspect package sources in the database.
