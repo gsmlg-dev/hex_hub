@@ -24,23 +24,73 @@ defmodule HexHub.Mnesia do
   Initialize Mnesia tables on application start.
   """
   def init() do
+    ensure_mnesia_running()
+    create_tables()
+    create_indices()
+    migrate_to_disc_copies()
+  end
+
+  defp ensure_mnesia_running do
     case :mnesia.system_info(:is_running) do
       :no ->
-        case :mnesia.create_schema([node()]) do
-          :ok -> :ok
-          {:error, {_, {:already_exists, _}}} -> :ok
-          error -> error
-        end
-
+        # Ensure schema exists for current node
+        ensure_schema()
         :mnesia.start()
+
+      _ ->
+        # Already running, ensure current node is in schema
+        ensure_node_in_schema()
+    end
+  end
+
+  defp ensure_schema do
+    case :mnesia.create_schema([node()]) do
+      :ok ->
+        :ok
+
+      {:error, {_, {:already_exists, _}}} ->
+        # Schema exists, check if current node is included
+        :ok
+
+      {:error, reason} ->
+        IO.warn("Failed to create Mnesia schema: #{inspect(reason)}")
+        :ok
+    end
+  end
+
+  defp ensure_node_in_schema do
+    # Check if current node has disc copies capability
+    # by checking if it's in the schema nodes
+    case :mnesia.table_info(:schema, :disc_copies) do
+      nodes when is_list(nodes) ->
+        if node() in nodes do
+          :ok
+        else
+          # Node not in schema, try to add it
+          add_node_to_schema()
+        end
 
       _ ->
         :ok
     end
+  rescue
+    _ -> :ok
+  end
 
-    create_tables()
-    create_indices()
-    migrate_to_disc_copies()
+  defp add_node_to_schema do
+    # Try to add current node to schema for disc_copies support
+    case :mnesia.change_table_copy_type(:schema, node(), :disc_copies) do
+      {:atomic, :ok} ->
+        IO.puts("Added node #{node()} to Mnesia schema with disc_copies")
+        :ok
+
+      {:aborted, {:already_exists, :schema, _, :disc_copies}} ->
+        :ok
+
+      {:aborted, reason} ->
+        IO.warn("Could not add node to schema: #{inspect(reason)}")
+        :ok
+    end
   end
 
   defp create_tables() do
@@ -199,12 +249,36 @@ defmodule HexHub.Mnesia do
     ]
 
     Enum.each(tables, fn {table_name, opts} ->
-      case :mnesia.create_table(table_name, opts) do
-        {:atomic, :ok} -> :ok
-        {:aborted, {:already_exists, ^table_name}} -> :ok
-        {:aborted, reason} -> IO.warn("Failed to create table #{table_name}: #{inspect(reason)}")
-      end
+      create_table_with_fallback(table_name, opts, storage_type)
     end)
+  end
+
+  # Try to create table, falling back to ram_copies if disc_copies fails
+  defp create_table_with_fallback(table_name, opts, :disc_copies) do
+    case :mnesia.create_table(table_name, opts) do
+      {:atomic, :ok} ->
+        :ok
+
+      {:aborted, {:already_exists, ^table_name}} ->
+        :ok
+
+      {:aborted, {:bad_type, ^table_name, :disc_copies, _node}} ->
+        # disc_copies failed (schema issue), fall back to ram_copies
+        IO.puts("Falling back to ram_copies for table #{table_name}")
+        fallback_opts = Keyword.delete(opts, :disc_copies) ++ [ram_copies: [node()]]
+        create_table_with_fallback(table_name, fallback_opts, :ram_copies)
+
+      {:aborted, reason} ->
+        IO.warn("Failed to create table #{table_name}: #{inspect(reason)}")
+    end
+  end
+
+  defp create_table_with_fallback(table_name, opts, :ram_copies) do
+    case :mnesia.create_table(table_name, opts) do
+      {:atomic, :ok} -> :ok
+      {:aborted, {:already_exists, ^table_name}} -> :ok
+      {:aborted, reason} -> IO.warn("Failed to create table #{table_name}: #{inspect(reason)}")
+    end
   end
 
   # Determine storage type based on node configuration
@@ -217,7 +291,8 @@ defmodule HexHub.Mnesia do
         :ram_copies
 
       _ ->
-        # Running with a node name, can use disc_copies for persistence
+        # Running with a node name, try disc_copies for persistence
+        # Will fall back to ram_copies if schema doesn't support it
         :disc_copies
     end
   end
