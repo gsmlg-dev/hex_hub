@@ -32,4 +32,8 @@ config :phoenix_live_view,
 # Test storage configuration
 config :hex_hub,
   storage_type: :local,
-  storage_path: "priv/test_storage"
+  storage_path: "priv/test_storage",
+  mnesia_dir: "priv/mnesia/test"
+
+# Mnesia directory for test
+config :mnesia, dir: ~c"priv/mnesia/test"

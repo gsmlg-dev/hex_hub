@@ -14,6 +14,9 @@ defmodule HexHub.Application do
     # Initialize clustering if enabled
     HexHub.Clustering.init_clustering()
 
+    # Configure Mnesia directory before starting
+    configure_mnesia_dir()
+
     # Start Mnesia only if not already started and clustering is not handling it
     unless Process.whereis(:mnesia_sup) do
       :mnesia.start()
@@ -145,5 +148,20 @@ defmodule HexHub.Application do
       &handler_module.handle_event/4,
       config
     )
+  end
+
+  # Configures the Mnesia directory based on application configuration.
+  # Must be called before Mnesia is started.
+  defp configure_mnesia_dir do
+    case Application.get_env(:hex_hub, :mnesia_dir) do
+      nil ->
+        :ok
+
+      dir when is_binary(dir) ->
+        # Ensure the directory exists
+        File.mkdir_p!(dir)
+        # Set the Mnesia directory
+        Application.put_env(:mnesia, :dir, String.to_charlist(dir))
+    end
   end
 end

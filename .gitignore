@@ -41,6 +41,7 @@ node_modules
 bun.lock
 
 /Mnesia*
+/priv/mnesia/
 
 # devenv
 .devenv/

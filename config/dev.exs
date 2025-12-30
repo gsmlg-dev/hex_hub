@@ -47,8 +47,12 @@ config :hex_hub, dev_routes: true
 config :hex_hub,
   storage_type: :local,
   storage_path: "priv/storage",
+  mnesia_dir: "priv/mnesia/dev",
   s3_bucket: System.get_env("S3_BUCKET"),
   s3_region: System.get_env("AWS_REGION", "us-east-1")
+
+# Mnesia directory for development
+config :mnesia, dir: ~c"priv/mnesia/dev"
 
 # S3 Configuration for development
 config :ex_aws,
